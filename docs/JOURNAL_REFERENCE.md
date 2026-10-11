@@ -193,7 +193,9 @@ the code; the constants named are in `ed_outrider.py` unless another file is giv
   then.
 - `horizons` / `odyssey` come from `LoadGame` only: a key it leaves out stays out.
 - Market.json, Outfitting.json, Shipyard.json, FCMaterials.json and NavRoute.json are sent only when their timestamp is
-  within 5 s of the event's and their `MarketID` is the event's (`_wait_check`): NFS can serve an older file.
+  from 5 s before the event's to `FILE_LATE_S` (30 s) after it and their `MarketID` is the event's (`_wait_check`): NFS
+  can serve an older file, and the game can write the file well after its line (a fleet carrier's first market of a
+  docking, 2026-10-11: no commodity went with the old 5 s window). A live wait ends after `FILE_WAIT_S` and says so.
 
 **Other**
 - `Shutdown` is written only on a clean quit; a crash writes nothing, so the last event is where a session

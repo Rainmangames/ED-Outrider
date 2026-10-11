@@ -109,9 +109,12 @@ def fss_message(ev, session):
     return schema, m
 
 
-NAVROUTE_WINDOW_S = 5     # NavRoute.json must be the one this NavRoute event wrote (EDMC's check)
-NAVROUTE_TRIES = 11       # ...asked again on the lines after it while it is not (written late, NFS)
-FILE_WAIT_S = 10          # ...and on the server's tick (idle()) when no line comes: given up after this long
+NAVROUTE_WINDOW_S = 5     # NavRoute.json must be the one this NavRoute event wrote (EDMC's check): stamped no earlier
+FILE_LATE_S = 30          # ...and no later than this after it: the game can write a file well after its line (a fleet
+#                           carrier's first market of a docking: no commodity went, the author, 2026-10-11)
+NAVROUTE_TRIES = 11       # ...asked again on the lines after it while it is not (written late, NFS), when there is no
+#                           clock (a catch-up's lines); live, the wait is timed
+FILE_WAIT_S = 35          # ...and on the server's tick (idle()) and later lines: given up after this long
 SIGNAL_QUIET_S = 3        # a batch of FSSSignalDiscovered lines goes this long after its last line with none after it
 SIGNAL_MAX_S = 300        # ...and dropped on the tick when it waited this long (EDDN stopped building meanwhile)
 
@@ -147,11 +150,15 @@ def _wait_check(session, key, filename, line=True):
     except (OSError, ValueError):
         data = None
     a, b = _seconds((data or {}).get("timestamp")) if isinstance(data, dict) else None, _seconds(wait["ts"])
-    if a is None or b is None or abs(a - b) > NAVROUTE_WINDOW_S or (wait["market"] is not None
-                                                                       and data.get("MarketID") != wait["market"]):
-        late = wait["since"] is not None and session.now is not None and session.now - wait["since"] > FILE_WAIT_S
-        if wait["tries"] >= NAVROUTE_TRIES or late:
+    if a is None or b is None or not -NAVROUTE_WINDOW_S <= a - b <= FILE_LATE_S \
+            or (wait["market"] is not None and data.get("MarketID") != wait["market"]):
+        timed = wait["since"] is not None and session.now is not None
+        if (session.now - wait["since"] > FILE_WAIT_S) if timed else wait["tries"] >= NAVROUTE_TRIES:
             session.pending.pop(key, None)
+            if timed:   # live: say so, with what the file held (a wait that ends unsent is otherwise silent)
+                got = data if isinstance(data, dict) else {}
+                print(f"EDDN: {filename} was not written for the line of {wait['ts']} (the file says "
+                      f"{got.get('timestamp') or 'nothing readable'}{', market ' + str(got.get('MarketID')) if got.get('MarketID') else ''}): not sent")
         return None
     session.pending.pop(key, None)
     return data
@@ -449,8 +456,8 @@ def idle(session, software_version, test=False):
         wait = session.pending.get(key)
         if not wait or not wait.get("origin"):
             continue
-        if wait["since"] is not None and session.now is not None and session.now - wait["since"] > FILE_WAIT_S:
-            session.pending.pop(key, None)   # waited too long (EDDN stopped building meanwhile): not sent late
+        if wait["since"] is not None and session.now is not None and session.now - wait["since"] > FILE_WAIT_S + 60:
+            session.pending.pop(key, None)   # waited far too long (EDDN stopped building meanwhile): not sent late
             continue
         origin = wait["origin"]
         data = _wait_check(session, key, filename, line=False)

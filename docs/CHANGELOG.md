@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · EDDN: a carrier's market written late still goes
+- Docked at the carrier and opened the market: no commodity message; the second visit's went (the author). The EDDN
+  builder is right (a replay of the journal sends it); the file was not: Outrider took Market.json only when stamped
+  within 5 s of the Market line and gave up after 10 s, and the game seems to write a carrier's first market of a docking
+  late (the data comes from its server). A companion file stamped up to 30 s after its line now counts (`FILE_LATE_S`),
+  the live wait lasts 35 s (`FILE_WAIT_S`; a catch-up keeps its line count), and a wait that ends unsent says so on the
+  console with what the file held ("EDDN: Market.json was not written for the line of ... (the file says ...)"), so
+  the next miss can be told apart.
+
 ## 2026-10-11 · 🎯 beside your carrier; Here's heading stands down for the map
 - The Carrier tile (and the folded tiles line) has a 🎯 beside your carrier's system when it is elsewhere (the author):
   auto-target puts that system in the galaxy map, through the same countdown run as a route's 🎯 (POST

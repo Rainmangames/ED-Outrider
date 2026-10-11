@@ -463,6 +463,35 @@ class StationData(unittest.TestCase):
         self.assertEqual(E.idle(self.s, "v"), [])
         self.assertNotIn("shipyard", self.s.pending)                  # given up
 
+    def test_a_carrier_market_written_late(self):
+        """The first market of a carrier docking: Market.json can be stamped seconds after the Market line (the server's
+        data), so no commodity went (the author, 2026-10-11). A file up to FILE_LATE_S after its line is that one; an
+        older file never is; a wait that ends unsent says so."""
+        import io
+        import contextlib
+        from outrider.core import iso_ts, ts_seconds
+        t = ts_seconds(self.t)
+        self.s.source, self.s.now = "J.log:700", 7000.0
+        self.file("Market.json", {"timestamp": iso_ts(t - 60), "event": "Market", "Items": []})   # the last visit's
+        self.assertEqual(E.build(self.ev("Market", StationType="FleetCarrier"), self.s, "v"), [])
+        self.s.now = 7012.0
+        self.file("Market.json", {"timestamp": iso_ts(t + 12), "event": "Market", "StationType": "FleetCarrier", "Items": []})
+        [(name, env, origin)] = E.idle(self.s, "v")
+        self.assertEqual((name, origin, env["message"]["timestamp"]), ("commodity", "J.log:700", iso_ts(t + 12)))
+        # the next docking, and the file never comes: given up after FILE_WAIT_S, and said
+        for n in ("Undocked", "Docked"):
+            self.s.feed(self.ev(n))
+            E.build(self.ev(n), self.s, "v")
+        self.s.now = 8000.0
+        self.file("Market.json", {"timestamp": iso_ts(t - 60), "event": "Market", "Items": []})
+        E.build(self.ev("Market", StationType="FleetCarrier"), self.s, "v")
+        self.s.now = 8000.0 + E.FILE_WAIT_S + 1
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(E.idle(self.s, "v"), [])
+        self.assertNotIn("commodity", self.s.pending)
+        self.assertIn(f"Market.json was not written for the line of {self.t} (the file says {iso_ts(t - 60)}, market 128)", out.getvalue())
+
     def test_empty_bracket_kept(self):
         """A bracket the game writes as "" ("not normally sold here") goes as "", not 0 (EDDN's schema)."""
         self.file("Market.json", {"event": "Market", "Items": [
