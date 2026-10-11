@@ -4485,7 +4485,7 @@ function renderChecklist() {
   if (!geo) st.innerHTML = `${esc(where)}: <b>${inM}</b> of ${s.possible} possible species found · <b>${clPct(s.completion)}</b> complete ${pctWhat}` +
     (extra ? ` · ${extra} found where the rules say ${extra === 1 ? "it cannot" : "they cannot"} grow` : "") +
     ` · <span class="cl-sold">${s.sold} sold</span>` +
-    ` · <span class="cl-aboard">${s.aboard} aboard</span>` + (s.lost ? ` · <span class="cl-lost">${s.lost} lost</span>` : "") +
+    ` · <span class="cl-aboard" title="species you carry unsold samples of (a colour of one may be sold already)">${s.aboard} aboard</span>` + (s.lost ? ` · <span class="cl-lost">${s.lost} lost</span>` : "") +
     (s.logged ? ` · <span class="cl-logged">${s.logged} logged</span>` : "") + ` · colours ${s.colours_found} of ${s.colours}` +
     (s.elsewhere ? ` · <span class="clelse">${s.elsewhere} more found in other regions</span>` : "");
   const html = d.genera.map(g => {

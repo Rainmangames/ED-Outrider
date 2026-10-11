@@ -105,6 +105,9 @@ class Checklist(unittest.TestCase):
         self.assertEqual((a["state"], [v["state"] for v in a["variants"]["list"]]), ("sold", ["sold", "aboard"]))
         s = everywhere["summary"]
         self.assertEqual((s["possible"], s["found"], s["sold"], s["logged"]), (4, 4, 1, 3))
+        # Arcus is sold (Teal) and aboard (Emerald): it counts as aboard too (the author, 2026-10-11)
+        self.assertEqual(s["aboard"], 1)
+        self.assertEqual(cl.table(SPECIES, 1, region_ok, runs, codex, 3)["summary"]["aboard"], 0)   # Emerald is region 2's
         self.assertEqual(s["colours_found"], 4)   # Teal, Emerald, Gold, the tubers' own one (Araneamus's run has no colour)
 
     def test_the_server_has_it(self):

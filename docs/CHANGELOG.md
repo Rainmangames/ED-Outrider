@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Exo-Biology checklist: "aboard" counts what you carry
+- The checklist's header counted each species once by its best state, so a new colour of a species sold before (Gold
+  Vesicula aboard, Cyan sold) was not "aboard": it said "0 aboard" with eleven species' samples in the hold (the
+  author). "Aboard" now counts every species you carry unsold samples of in the region (its hover says so); sold, lost
+  and logged stay as they were.
+
 ## 2026-10-11 · The start-up log says why the journals are read again
 - A start that reads every journal again said nothing about it, only a slower "journals up to date in ..." (the
   author). It now says so first, with why: "re-reading every journal once: the journal reader changed (version 48 ->

@@ -152,6 +152,7 @@ def table(species_list, region, region_ok, runs, codex, region_count, value_of=N
 
     species_list, names = merge_species(species_list)
     got, got_colour, n_runs, anywhere = {}, {}, {}, {}
+    carried = set()   # species with samples aboard here, whatever else you did with them (a colour sold before)
 
     def note(key, colour, r, state):
         if key is None:
@@ -160,6 +161,8 @@ def table(species_list, region, region_ok, runs, codex, region_count, value_of=N
         if not here(r):
             return
         got[key] = best(got.get(key), state)
+        if state == "aboard":
+            carried.add(key)
         if colour:
             got_colour[(key, colour)] = best(got_colour.get((key, colour)), state)
 
@@ -204,7 +207,10 @@ def table(species_list, region, region_ok, runs, codex, region_count, value_of=N
             totals["colours_found"] += found
             if state:
                 totals["found"] += 1
-                totals[state] += 1
+                totals[state] += 1 if state != "aboard" else 0
+            # aboard: every species you carry unsold samples of, not only those with nothing better (a new colour of
+            # a species sold before is aboard too: the author, 2026-10-11); sold, lost and logged stay best-state counts
+            totals["aboard"] += 1 if key in carried else 0
     totals["completion"] = round(100 * done / totals["possible"], 2) if totals["possible"] else None
     out = [{"genus": g, "species": sorted(rows, key=lambda x: x["short"])} for g, rows in sorted(genera.items())]
     return {"genera": out, "summary": totals}
