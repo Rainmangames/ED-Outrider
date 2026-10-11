@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Inara uploads, part E: community goals
+- Every community goal you take part in (exploration and biology goals too: the author, 2026-10-11): the goal (name,
+  place, expiry, tier reached and the top tier, contributors, total; Inara keeps each goal's page from what the apps
+  send) then your progress (contribution, percentile band and its reward, top rank). The game writes CommunityGoal often
+  while you are signed up (1,593 times in the author's journals): each goal goes only when its figures changed.
+
 ## 2026-10-11 · Inara uploads, part D: the fleet and stored modules
 - Ships bought (the old one stored where you are, or sold), sold (on a rebuy too), swapped (the old one stored; the
   Loadout that follows marks the new one current), sent elsewhere (with the transfer time) and renamed.

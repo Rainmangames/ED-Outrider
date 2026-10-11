@@ -345,6 +345,32 @@ class Fleet(unittest.TestCase):
         self.assertEqual(data(f(dict(mods, timestamp=ts(60), Items=[])), "setCommanderStorageModules"), [[]])   # all fitted again: emptied
 
 
+class CommunityGoals(unittest.TestCase):
+    """Batch E: every goal taken part in (exploration and biology ones too), the goal then your progress, changed only."""
+
+    def test_goal_and_progress(self):
+        f = Feed()
+        f(*login())
+        cg = {"timestamp": ts(5), "event": "CommunityGoal", "CurrentGoals": [{
+            "CGID": 849, "Title": "Frontline Solutions Calls for Critical Supplies to Complete Runner Production", "SystemName": "HIP 58412",
+            "MarketName": "Pawelczyk Dock", "Expiry": "2026-06-18T09:00:00Z", "IsComplete": True, "CurrentTotal": 195710083,
+            "PlayerContribution": 24, "NumContributors": 20866, "TopTier": {"Name": "Tier 5", "Bonus": ""}, "TopRankSize": 10,
+            "PlayerInTopRank": False, "TierReached": "Tier 4", "PlayerPercentileBand": 100, "Bonus": 50000000}]}
+        got = f(cg)
+        self.assertEqual(names(got), ["setCommunityGoal", "setCommanderCommunityGoalProgress"])   # the goal first, as Inara asks
+        self.assertEqual(data(got, "setCommunityGoal")[0], {
+            "communitygoalGameID": 849, "communitygoalName": "Frontline Solutions Calls for Critical Supplies to Complete Runner Production",
+            "starsystemName": "HIP 58412", "stationName": "Pawelczyk Dock", "goalExpiry": "2026-06-18T09:00:00Z", "tierReached": 4, "tierMax": 5,
+            "topRankSize": 10, "isCompleted": True, "contributorsNum": 20866, "contributionsTotal": 195710083})
+        self.assertEqual(data(got, "setCommanderCommunityGoalProgress")[0], {"communitygoalGameID": 849, "contribution": 24,
+                                                                              "percentileBand": 100, "percentileBandReward": 50000000,
+                                                                              "isTopRank": False})
+        self.assertEqual(f(dict(cg, timestamp=ts(60))), [])     # written again, nothing changed: nothing sent
+        more = json.loads(json.dumps(cg))
+        more["timestamp"], more["CurrentGoals"][0]["PlayerContribution"] = ts(90), 30
+        self.assertEqual(names(f(more)), ["setCommanderCommunityGoalProgress"])   # only your part moved
+
+
 class Batching(unittest.TestCase):
     def test_release_points(self):
         f = Feed()

@@ -444,7 +444,41 @@ def _fleet(ev, session, t, sent):
     return out
 
 
-BUILDERS = (_travel, _ranks, _credits, _ship_now, _reputation, _inventory, _fleet)
+def _tier(text):
+    """'Tier 4' -> 4 (the journal says it in words), else None."""
+    try:
+        return int(str(text).split()[-1])
+    except (TypeError, ValueError, IndexError):
+        return None
+
+
+def _goals(ev, session, t, sent):
+    """Community goals (any kind: exploration and biology ones too): per goal you take part in, the goal (Inara keeps
+    every goal's page from what the apps send; it ignores this in development mode), then your progress; each only when
+    its figures changed (the game writes CommunityGoal often while you are signed up)."""
+    if ev.get("event") != "CommunityGoal":
+        return []
+    cmdr, out = session.cmdr, []
+    for g in ev.get("CurrentGoals") or []:
+        if not isinstance(g, dict) or g.get("CGID") is None:
+            continue
+        top = g.get("TopTier") if isinstance(g.get("TopTier"), dict) else {}
+        goal = _clean({"communitygoalGameID": g["CGID"], "communitygoalName": g.get("Title"), "starsystemName": g.get("SystemName"),
+                       "stationName": g.get("MarketName"), "goalExpiry": g.get("Expiry"), "tierReached": _tier(g.get("TierReached")),
+                       "tierMax": _tier(top.get("Name")), "topRankSize": g.get("TopRankSize"), "isCompleted": g.get("IsComplete"),
+                       "contributorsNum": g.get("NumContributors"), "contributionsTotal": g.get("CurrentTotal"),
+                       "completionBonus": top.get("Bonus") or None})
+        mine = _clean({"communitygoalGameID": g["CGID"], "contribution": g.get("PlayerContribution"),
+                       "percentileBand": g.get("PlayerPercentileBand"), "percentileBandReward": g.get("Bonus"),
+                       "isTopRank": g.get("PlayerInTopRank")})
+        if sent.changed(cmdr, f"goal:{g['CGID']}", goal):
+            out.append(_event(ev, "setCommunityGoal", goal))
+        if sent.changed(cmdr, f"goal_mine:{g['CGID']}", mine):
+            out.append(_event(ev, "setCommanderCommunityGoalProgress", mine))
+    return out
+
+
+BUILDERS = (_travel, _ranks, _credits, _ship_now, _reputation, _inventory, _fleet, _goals)
 # whole snapshots whose empty list means something (an emptied hold clears Inara's): sent even with no items
 EMPTY_OK = frozenset({"setCommanderInventoryCargo", "setCommanderInventoryMaterials", "setCommanderStorageModules"})
 
