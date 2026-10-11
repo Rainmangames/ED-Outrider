@@ -66,6 +66,11 @@ tr.scoopnext td.name::after { content: " ⛽ nearest scoopable"; color: var(--go
 #hereTable td.bio { white-space: normal; font-size: 12px; max-width: 320px; }
 #hereTable .sp { display: inline-block; margin-right: 6px; white-space: nowrap; }   /* "Bacterium 3/3 ✓ 38.9M" wraps between items, not inside one */ #hereTable .sp.done { color: var(--good); } #hereTable .sp.part { color: var(--warn); }
 #hereTable .fl { margin-right: 4px; }
+/* a species' colour word in that colour (hereBio().colours), mixed with the text colour so it reads on either theme;
+   its own rule, so a row's colour (done green, the bio highlight's purple) never covers it */
+#hereTable .vc { color: color-mix(in srgb, var(--vc) 80%, var(--text)); }
+@media (prefers-color-scheme: light) { #hereTable .vc { color: color-mix(in srgb, var(--vc) 55%, var(--text)); } }
+#hereTable td.rings { white-space: normal; }   /* "2", "2 mapped", "1 hotspot" stacked: no wider than its heading */
 tr.main td { font-weight: 500; }
 #histView { margin-top: 12px; } #histView .exports a { color: var(--info); }
 #histRows tr.sess { cursor: pointer; } #histRows tr.sess td:first-child::before { content: "▸ "; color: var(--muted); }

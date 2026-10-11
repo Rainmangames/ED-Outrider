@@ -734,6 +734,8 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <span class="hint">"small" is under 800 px high or 1200 px wide; ▴/▾ beside the tiles still folds or unfolds them, and makes that this device's choice</span></label>
       <label class="mod"><input type="checkbox" id="hereHideDone"> Here: leave out species you have finished
         <span class="hint">the bio column lists only what is still to do (a sample lost with the ship stays)</span></label>
+      <label class="mod"><input type="checkbox" id="hereColours"> Here: species in their colour
+        <span class="hint">in a codex line the colour's word in that colour ("Bacterium Alcyoneum - Red": "Red" in red)</span></label>
       <label class="mod">Here: leave out the bio of bodies with fewer than <input type="number" id="hereMinSig" min="0" max="20" step="1" style="width: 4em"> signals
         <span class="hint">0 shows them all; such a body says only its count, muted</span></label>
     </details>

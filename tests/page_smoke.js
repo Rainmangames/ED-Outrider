@@ -971,9 +971,38 @@ const settle = async maxMs => {
         o.noDss = !!nd && ndLf === "3 signals, not DSS'd · 24.8M–64.6M:" && !/ or |of these/.test(nd.textContent)
           && [...nd.querySelectorAll(".sp")].map(e => e.textContent).join("|") === "Concha ≤38.9M|Aleoida ≤16.9M|Tussock ≤8.8M"
           ? true : [ndLf, nd && nd.textContent];
+        // a finished species is its codex line with the value, not a second "3/3 ✓" line; coloured as its name says
+        // (switchable); the Rings cell stacks its lines to stay about its heading's width (the author, 2026-10-11)
+        const doneBody = () => Object.assign({}, fake, plain, {bio: 2, genera: ["Bacterium", "Stratum"], bio_guess: [], value_parts: {bio_factor: 1},
+          organics: [{genus: "Bacterium", species: "Bacterium Alcyoneum", variant: "Bacterium Alcyoneum - Red", samples: 3, done: true, lost: false, value: 8300000},
+                     {genus: "Stratum", species: "Stratum Tectonicas", variant: "Stratum Tectonicas - Grey", samples: 1, done: false, lost: false, value: 19010800}],
+          codex: [{name: "Bacterium Alcyoneum - Red", new: true}, {name: "Stratum Tectonicas - Grey"}],
+          rings: 2, rings_mapped: 2, hotspots: 1});
+        const hb1 = localStorage.getItem("hereBio");
+        localStorage.setItem("hereBio", JSON.stringify({colours: true}));
+        hereData = Object.assign({}, hd, {bodies: [doneBody()], tree: null}); renderHere();
+        let dc = document.querySelector('#hereRows tr[data-body="Fake 1"] td.bio');
+        const sp = dc ? [...dc.querySelectorAll(".sp")] : [], lf = e => e.querySelector(".lf") ? e.querySelector(".lf").textContent : e.textContent;
+        const fin = sp.find(e => /Alcyoneum/.test(e.textContent));
+        const rc = document.querySelector('#hereRows tr[data-body="Fake 1"] td.rings');
+        // only the colour's word is coloured (its own element, so a highlighted row's colour cannot cover it)
+        const word = fin && fin.querySelector(".vc");
+        const colOn = !!word && word.textContent === "Red" && word.style.getPropertyValue("--vc") === "#ff5a5a"
+          && [...dc.querySelectorAll(".vc")].map(e => e.textContent).join() === "Red,Grey";
+        localStorage.setItem("hereBio", JSON.stringify({colours: false})); renderHere();
+        dc = document.querySelector('#hereRows tr[data-body="Fake 1"] td.bio');
+        const colOff = !!dc && !dc.querySelector(".vc");
+        if (hb1 === null) localStorage.removeItem("hereBio"); else localStorage.setItem("hereBio", hb1);
+        o.finished = !!fin && sp.filter(e => /Bacterium/.test(e.textContent)).length === 1 && !dc.textContent.includes("3/3")
+          && fin.textContent.startsWith("📖 ") && lf(fin) === "Bacterium Alcyoneum - Red" && fin.querySelector(".sf").textContent === "Bacterium"
+          && fin.textContent.endsWith(" ✦ 8.3M")
+          && fin.title.startsWith("codex: Bacterium Alcyoneum - Red") && dc.textContent.includes("Stratum 1/3")
+          && sp.some(e => lf(e) === "Stratum Tectonicas - Grey") && colOn && colOff
+          && !!rc && rc.textContent === "22 mapped1 hotspot" && rc.title === "2 (2 mapped, 1 with hotspots)"
+          ? true : [fin && fin.textContent, fin && fin.title, colOn, colOff, rc && rc.textContent, dc && dc.textContent];
         if (hg === null) localStorage.removeItem("highG"); else localStorage.setItem("highG", hg);
         hereData = hd; hereKey = hk; renderHere();
-      } else { o.hereWrap = "no Here data"; o.here = "no Here data"; o.legend = "no Here data"; o.noDss = "no Here data"; }
+      } else { o.hereWrap = "no Here data"; o.here = "no Here data"; o.legend = "no Here data"; o.noDss = "no Here data"; o.finished = "no Here data"; }
       // F39: injections at cap: nothing is "limiting"; 3 left: the short material is
       const md = matData;
       const mat = craftable => ({rows: [{id: "polonium", name: "Polonium", count: craftable, cap: 150}], snapshot_ts: "2026-01-01T00:00:00Z", ts: "2026-01-01T00:00:00Z",
@@ -1053,7 +1082,7 @@ const settle = async maxMs => {
     w.setTimeout = realST; w.fetch = realFetch;
     w.eval("search = null; searchWant = 0; searchRefused = false; render()");
     w.speak = realSpeak; w.play = realPlay;
-    const want = {unwarned: null, kept: true, outage: true, spacing: true, spacing2: true, region: true, simFresh: true, hereWrap: true, here: true, legend: true, noDss: true, mat: true,
+    const want = {unwarned: null, kept: true, outage: true, spacing: true, spacing2: true, region: true, simFresh: true, hereWrap: true, here: true, legend: true, noDss: true, finished: true, mat: true,
                   streak: 2, nulls: ["{}", "ts"], impNull: "bioSort", saved: true, dock: "2026-01-01T01:00:00Z", hlRender: true, more: true};
     const want2 = {onbody: true, here: true, logError: null};
     const goodH = JSON.stringify(out) === JSON.stringify(want) && JSON.stringify(out2) === JSON.stringify(want2)
@@ -4496,7 +4525,7 @@ const settle = async maxMs => {
         .map(h => h.replace(/<[^>]+>/g, "").trim());
       [data.on_body, data.near_body] = keep; renderOnBody();
       return o; })()`);
-    const want = {tag: "🧬? 2 to check in the FSS🧬? 2", filters: '{"hideDone":true,"minSig":3}', why: true, over: true,
+    const want = {tag: "🧬? 2 to check in the FSS🧬? 2", filters: '{"hideDone":true,"minSig":3,"colours":true}', why: true, over: true,
                   stars: ["main sequence", "giant", "white dwarf (hydrogen-rich), variable", "white dwarf (carbon)", ""], forge: [true, ""],
                   counts: ["3/12 known · EDSM 5/12", "2 known · EDSM: not logged", ""]};
     const goodC = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;

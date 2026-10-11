@@ -561,13 +561,27 @@ document.getElementById("tilesBtn").onclick = () => {
 // Here's bio column on this device (store hereBio): leave out finished species, and the bio of bodies with fewer than
 // minSig signals (BioScan's display options)
 const hereBio = () => { const c = store.get("hereBio", null) || {};
-  return {hideDone: !!c.hideDone, minSig: Number.isInteger(c.minSig) && c.minSig > 0 ? Math.min(20, c.minSig) : 0}; };
+  return {hideDone: !!c.hideDone, minSig: Number.isInteger(c.minSig) && c.minSig > 0 ? Math.min(20, c.minSig) : 0,
+          colours: c.colours !== false}; };
 {
-  const hd = document.getElementById("hereHideDone"), ms = document.getElementById("hereMinSig");
-  const draw = () => { const c = hereBio(); hd.checked = c.hideDone; ms.value = c.minSig; };
-  const save = () => { store.set("hereBio", {hideDone: hd.checked, minSig: Math.max(0, Math.min(20, parseInt(ms.value, 10) || 0))}); draw(); if (data) renderHere(); };
-  hd.onchange = save; ms.onchange = save; draw();
+  const hd = document.getElementById("hereHideDone"), ms = document.getElementById("hereMinSig"), vc = document.getElementById("hereColours");
+  const draw = () => { const c = hereBio(); hd.checked = c.hideDone; ms.value = c.minSig; vc.checked = c.colours; };
+  const save = () => { store.set("hereBio", {hideDone: hd.checked, minSig: Math.max(0, Math.min(20, parseInt(ms.value, 10) || 0)),
+                                             colours: vc.checked}); draw(); if (data) renderHere(); };
+  hd.onchange = save; ms.onchange = save; vc.onchange = save; draw();
 }
+// A species' colour as the game names it ("Bacterium Alcyoneum - Red"): in Here's codex lines the colour's word is drawn
+// in it ("Red" in red) when hereBio().colours is on (the author, 2026-10-11: to try). The CSS mixes it with the theme's
+// text colour (.vc), so it reads on light and dark alike. To take the colours out: this, colourName's two uses in
+// rowHtml (back to esc(name)), the checkbox and .vc in page.css.
+const VARIANT_COLOURS = {Amethyst: "#b48cf0", Aquamarine: "#6fe3c8", Black: "#8a8f96", Blue: "#5b9dff", Brown: "#b07a4a",
+  Cobalt: "#5a82ff", Cyan: "#4fd8e8", Emerald: "#3ccf7f", Gold: "#e8c040", Green: "#5cc95c", Grey: "#a8adb3", Indigo: "#8a7dff",
+  Lemon: "#f0e868", Lilac: "#c8a2f0", Lime: "#a6e04a", Magenta: "#e85ad8", Maroon: "#c0506a", Mauve: "#c99ad6",
+  Mulberry: "#c25a8f", Ocher: "#d29a3a", Orange: "#ff9a3c", Peach: "#ffb48a", Pink: "#ff8fc0", Purple: "#b070e0",
+  Red: "#ff5a5a", Ruby: "#e8406a", Sage: "#a3bf8f", Silver: "#c8ccd2", Teal: "#3cc0b0", Turquoise: "#40e0d0",
+  White: "#f2f2f2", Yellow: "#f5d84a"};
+const colourName = name => { const m = /^(.* - )([A-Za-z]+)$/.exec(String(name || "")), c = m && VARIANT_COLOURS[m[2]];
+  return c && hereBio().colours ? `${esc(m[1])}<span class="vc" style="--vc: ${c}">${esc(m[2])}</span>` : esc(name); };
 const tilesModeEl = document.getElementById("tilesMode");
 const drawTilesMode = () => { tilesModeEl.value = tilesMode() || ""; };
 tilesModeEl.onchange = () => { store.set("tilesMode", tilesModeEl.value || null); drawTilesFold(); if (data) render(); };
@@ -2990,9 +3004,21 @@ function renderHere() {
     const guessOf = g => (b.bio_guess || []).find(x => x.genus === g), hb = hereBio();
     if (hb.minSig && b.bio && b.bio < hb.minSig) bio.push(`<span class="unk" title="fewer than ${hb.minSig} signals: left out (Settings, Display)">${b.bio} sig</span>`);
     const guessTxt = x => !x || !x.best ? "" : ` <span class="unk" title="likeliest by value: ${esc(x.species.join(" / "))}">(${esc(x.best.split(" ").slice(1).join(" "))}? ${credits(x.value * f)})</span>` + codexMark(x, h.region);
+    // a finished species is one line: its codex entry with what it pays ("📖 Bacterium Alcyoneum - Red ✦ 8.3M"), not
+    // "Bacterium 3/3 ✓ 8.3M" and the codex line again (the author, 2026-10-11)
+    const codexOf = o => b.codex.find(c => c.name === o.variant) || (o.species ? b.codex.find(c => c.name.startsWith(o.species + " - ")) : null);
+    const merged = new Set();
     for (const g of hb.minSig && b.bio && b.bio < hb.minSig ? [] : bioGenera(b)) {
       const o = b.organics.find(o => o.genus === g);
       if (hb.hideDone && o && o.done && !o.lost) continue;
+      if (o && o.done && !o.lost) {
+        const c = codexOf(o), name = c ? c.name : o.variant || o.species || g;
+        if (c) merged.add(c);
+        bio.push(`<span class="sp done" title="${c ? `codex: ${esc(name)} · analysed` : `${esc(name)}: analysed (no codex entry on this body)`}${colonyM(g) ? ` · samples ${colonyM(g)} m apart` : ""}">` +
+                 `${c ? "📖" : "✓"} ${dual(colourName(name), esc(g), {title: false})}${c ? (c.voucher ? " 💰" : c.new ? " ✦" : "") : ""}` +
+                 `${o.value ? ` <span class="unk">${credits(o.value * f)}</span>` : ""}</span>`);
+        continue;
+      }
       bio.push(o ? `<span class="sp ${o.lost ? "lost" : o.done ? "done" : "part"}" title="${esc(o.species || "")}${o.variant ? " · " + esc(o.variant) : ""}${o.lost ? " · lost with the ship, sample again" : ""}${colonyM(g) ? ` · samples ${colonyM(g)} m apart` : ""}">${esc(g)} ${o.lost ? "lost ✗" : `${o.samples}/3${o.done ? " ✓" : ""}`}${!o.lost && o.value ? ` <span class="unk">${credits(o.value * f)}</span>` : ""}</span>` +
                    // a run under way prices the species you logged (known from its first sample), like the pop-up and
                    // the panel; the predictor's guess is only for a lost run or one whose species has no price
@@ -3011,7 +3037,8 @@ function renderHere() {
         ? `<br>${opt ? "" : `<span class="unk">${dual("likely: ", "", {title: false})}</span>`}${gl.map(x => `<span class="sp" title="${esc(x.species.join(" / "))}">${esc(x.genus)} <span class="unk">≤${credits((x.value || 0) * f)}</span>${codexMark(x, h.region)}</span>`).join("")}` : ""));
     }
     // the codex name ("Bacterium Volu - Gold") repeats the run's species: a compact table shows only 📖 and its mark
-    const codex = b.codex.map(c => `<span class="sp" title="codex: ${esc(c.name)}">📖 ${dual(esc(c.name), "", {title: false})}${c.voucher ? " 💰" : c.new ? " ✦" : ""}</span>`).join("");
+    const codex = b.codex.filter(c => !merged.has(c)).map(c =>
+      `<span class="sp" title="codex: ${esc(c.name)}">📖 ${dual(colourName(c.name), "", {title: false})}${c.voucher ? " 💰" : c.new ? " ✦" : ""}</span>`).join("");
     const firsts = [b.first_discovered && `<span class="fl" title="first discovered">🏁</span>`, b.first_mapped && `<span class="fl" title="first mapped">🗺</span>`,
                     !b.first_mapped && b.mapped && `<span class="fl unk" title="mapped (not first)">🗺</span>`,
                     b.first_footfall && `<span class="fl" title="first footfall">👣</span>`, !b.scanned && `<span class="unk" title="known to Spansh, not scanned by you">—</span>`].filter(Boolean).join("");
@@ -3022,7 +3049,7 @@ function renderHere() {
       <td class="hide-sm c2hide">${b.type === "Planet" ? (atm ? sfText("atmosphere", atm) : b.landable ? dual("none · landable", "landable") : "") : ""}${b.stale_bio ? ` <span class="unk old" title="${esc(staleBodyTitle(b))}">${dual("landable? (old data)", "landable?", {title: `landable? (old data): ${staleBodyTitle(b)}`})}</span>` : ""}${b.bio_unknown ? ` <span class="warnc" title="${BIO_UNKNOWN_TITLE}">${dual("bio possible: check the FSS", "🧬?")}</span>` : ""}</td>
       <td class="bio">${bio.join(" ")}${geoTag(b)}${volcanoIcon(b)}${codex}${siteTags(b.sites)}${b.mining || (b.mined || []).length ? `<span class="sf2"> ${mineTag(b)}</span>` : ""}</td>
       <td class="num mine c2hide">${mineTag(b)}</td>
-      <td class="c2hide">${b.rings ? dual(esc(ringsText(b)), `${b.rings}${b.rings_mapped ? ` (${b.rings_mapped}🗺${b.hotspots < b.rings_mapped ? `, ${b.hotspots} hot` : ""})` : ""}`) : ""}</td>
+      <td class="c2hide rings"${b.rings ? ` title="${esc(ringsText(b))}"` : ""}>${b.rings ? `${b.rings}${b.rings_mapped ? `<div class="sub2 unk">${b.rings_mapped} mapped</div>${b.hotspots < b.rings_mapped ? `<div class="sub2 unk">${b.hotspots} hotspot${b.hotspots === 1 ? "" : "s"}</div>` : ""}` : ""}` : ""}</td>
       <td class="c2hide">${firsts}</td>
       <td class="num c2hide" title="${bodyValueTitle(b)}">${b.value_now ? credits(b.value_now) : ""}</td>
       <td class="num" title="${bodyValueTitle(b)}">${maxOf(b) ? credits(maxOf(b)) : ""}${b.value_now ? `<div class="sf2 sub2 unk">now ${credits(b.value_now)}</div>` : ""}</td></tr>`;
@@ -3076,14 +3103,14 @@ const HERE_LEGEND = [
   [(q, s) => s("🧬"), "🧬", "biological signals"],
   [q => q(".warnc"), "🧬?", "bio possible: check the FSS"],
   [q => q(".sp.part"), "1/3", "samples of a species taken (3 analyses it)"],
-  [q => q(".sp.done"), "✓", "species analysed"],
+  [(q, s, has) => has(".sp.done", "✓"), "✓", "species analysed"],
   [q => q(".sp.lost"), "✗", "samples lost with the ship: sample again"],
   [q => q('span.unk[title^="likeliest by value"]'), "?", "the likeliest species, not yet known"],
   [(q, s, has) => has("td.bio .sp", "≤"), "≤", "the most the likely species could pay"],
   [q => q(".cxgal"), `<span class="cxnew cxgal">✪</span>`, "new to your codex anywhere"],
   [(q, s, has) => q(".cxnew:not(.cxgal)") || has('.sp[title^="codex:"]', "✦"),
    `<span class="cxnew">✦</span>`, "new to your codex in this region"],
-  [q => q('.sp[title^="codex:"]'), "📖", "a codex entry you logged here"],
+  [q => q('.sp[title^="codex:"]'), "📖", "a codex entry you logged here (with what it paid once analysed)"],
   [(q, s, has) => has('.sp[title^="codex:"]', "💰"), "💰", "the codex paid for it"],
   [(q, s) => q(".sp.geo") || s("🪨"), "🪨", "geological signals"],
   [q => q(".volc, #hereSchematic .badges span[title]:not(.nb):not(.scoop):not(.unk)"), "🌋", "volcanism (brighter: landable, geological sites possible)"],

@@ -73,7 +73,9 @@ Command-line flags override the file for a single run:
   "up to". The ✦ "new to your codex" mark checks the colour variant when it can be told, and names it ("✦ Grey");
   ✪ is a species or colour in your codex nowhere at all ("✪ Cobalt"), worth more effort. A Bacterium's colour
   comes from a rare element in each body's own materials, so bodies in one system can differ. Each start checks GitHub for newer rules. Settings → Display can
-  leave out of Here's bio column the species you have finished and the bodies with few signals (this device).
+  leave out of Here's bio column the species you have finished and the bodies with few signals, and show each species'
+  colour word in that colour ("Red" in red; this device). A finished species is one line in Here: its codex entry with what it
+  pays ("📖 Bacterium Alcyoneum - Red ✦ 8.3M").
 - **Values are estimates** using the community tools' formula, bonuses included (the full-scan bonus too: 1,000 cr
   per body of a system you found complete while all of it was undiscovered). An NPC crew member's cut
   comes off automatically, based on what your past sales paid.

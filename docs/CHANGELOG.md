@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Here: one line per finished species, in its colour
+- Here listed a finished species twice: "Bacterium 3/3 ✓ 8.3M" and its codex line "📖 Bacterium Alcyoneum - Red ✦"
+  (the author). Now one line, the codex entry with what it pays ("📖 Bacterium Alcyoneum - Red ✦ 8.3M"; compact: the
+  genus); a species still being sampled keeps its "1/3" line and its codex line.
+- In codex lines the colour's word is drawn in that colour ("Bacterium Alcyoneum - Red": "Red" in red), mixed with the
+  theme's text colour so it reads on light and dark, and kept on a highlighted row; to try: Settings → Display → "Here:
+  species in their colour" turns it off (this device).
+- The Rings column stacks "2", "2 mapped", "1 hotspot" (the whole sentence on hover), so it is about as wide as its
+  heading and the bio column gets the room.
+
 ## 2026-10-11 · Review fixes: today's code
 A Fable review of everything written since v2026.10.21 (d7be805..2cb1e60): six bugs confirmed, all fixed.
 - Inara: snapshots dropped because the commander had no API key yet were still recorded as sent, so ranks, reputation,
