@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Review fixes: uploads
+- EDDN: logged in docked, the game's Location names the station as the Body ("Thorn Port", BodyType "Station"); a
+  later Docked at a planetary port then sent the station's name as its planet. A Location's body is now taken only
+  when it is a planet or a star, as EDMC does.
+- Switching an upload off forgets its mark: when the config file could not keep the switch, the next start found it
+  on and caught up everything played while it was off (up to a week for EDSM).
+- Three Outriders on one journal folder: the one taking over from a stopped sender rewinds to the sender's handover
+  mark, not to a third instance's that only followed (its mark at the journal's end skipped the stretch nobody sent).
+
 ## 2026-10-11 · Review fixes: voice and AI
 - The voice's answer when nothing matched ("I only know a few questions so far: ...") names the nearest station or
   carrier too; the list is built from one label per command (`outrider.ask.LABELS`), so a new one is never left out.

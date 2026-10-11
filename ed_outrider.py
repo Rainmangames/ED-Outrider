@@ -9865,7 +9865,7 @@ class State:
         # switched off (it leaves the hold because it is not wanted)
         took = [s for s in wanted if held_before and s in held_before and s not in self.lease_hold]
         if took:
-            theirs_all = outrider.uploads.lease_marks(LIVE_DIRS, self.leases.instance)
+            theirs_all = outrider.uploads.lease_marks(LIVE_DIRS, self.leases.instance, senders_only=True)
             for s in took:
                 theirs, mine = theirs_all.get(s), self.uploads_hub.marks.get(s)
                 if theirs and (mine is None or outrider.uploads.pos_key(theirs) < outrider.uploads.pos_key(mine)):
@@ -9954,6 +9954,11 @@ class State:
                     f"keep it: {out.get('error')}")
             print(f"uploads: {note}", file=sys.stderr)
         self.upload_status.pop(service, None)
+        if was and not on and self.uploads_hub.marks.pop(service, None) is not None:
+            # its mark goes: a next start that finds it on in the file (a write that failed) begins from then, as a
+            # switch-on does, never catching up what was played while it was off (review 2026-10-11)
+            self.uploads_hub.marks_dirty = True
+            self.uploads_hub.flush()
         if on and not was:
             pos, ts = self.upload_start_mark(service)
             if pos:

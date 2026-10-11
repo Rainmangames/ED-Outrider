@@ -305,11 +305,18 @@ class StateSwitches(unittest.TestCase):
         self.assertIn("port = 8030   # kept", text)
         self.assertIn("[eddn]\nenabled = true", text)
         self.assertIsNone(self.state.set_upload("eddn", True))
+        self.state.uploads_hub.set_mark("eddn", ("Journal.2026-10-01T000000.01.log", 100), "2026-10-01T00:00:00Z")
+        self.state.uploads_hub.flush()
+        self.assertIn("eddn", ed_outrider.meta_get(self.db, "upload_marks"))
         self.state.config_path = os.path.join(self.state.config_path, "not-a-folder", "x.toml")
         with unittest.mock.patch("sys.stderr"):
             note = self.state.set_upload("eddn", False)
         self.assertFalse(self.state.upload_on("eddn"))
         self.assertTrue(note.startswith("EDDN is off until Outrider stops, but the config file could not keep it"), note)
+        # its mark is gone with the switch: a next start reading enabled = true from the file starts from then, not from
+        # where it was switched off (review 2026-10-11)
+        self.assertNotIn("eddn", self.state.uploads_hub.marks)
+        self.assertNotIn("eddn", ed_outrider.meta_get(self.db, "upload_marks") or {})
 
     def test_not_among_server_settings(self):
         secs = [s["section"] for s in self.state.config_info()["sections"]]
@@ -663,6 +670,30 @@ class MarksAndCatchUp(unittest.TestCase):
         self.assertEqual([m["event"] for m in self.queued()], ["FSDJump"])   # Bsys, not lost
         self.state.refresh_leases()                                # nothing queued twice
         self.assertEqual(len(self.queued()), 1)
+
+    def test_take_over_with_a_third_instance_following(self):
+        """Three Outriders on one journal: A sends, this one and C follow. A stops; this one takes over and rewinds to A's
+        handover mark, not to C's (C only followed, its mark at the journal's end): the stretch after A's stop was sent
+        by nobody (review 2026-10-11)."""
+        self.write(header(now_ts(900)), loadgame(now_ts(899)))
+        at_a = os.path.getsize(self.path)
+        self.write(self.jump(800, "A"))
+        self.j.scan_dir(self.dir, commit_each=True, upload="catchup")
+        self.state.set_upload("eddn", True)
+        mark = [os.path.basename(self.path), at_a, now_ts(800)]
+        U.write_lease(self.dir, "aaaaaa0", {"host": "erangel", "services": ["eddn"], "wanted": ["eddn"], "beat": 1,
+                                            "marks": {"eddn": mark}})
+        self.state.refresh_leases()
+        self.assertFalse(self.state.upload_on("eddn"))
+        self.write(self.jump(30, "Bsys"))
+        end = [os.path.basename(self.path), os.path.getsize(self.path), now_ts(30)]
+        U.write_lease(self.dir, "zzzzzz9", {"host": "third", "services": [], "wanted": ["eddn"], "beat": 1,
+                                            "marks": {"eddn": end}})   # C: follows, its mark past Bsys
+        U.write_lease(self.dir, "aaaaaa0", {"host": "erangel", "services": [], "stopped": True, "marks": {"eddn": mark}})
+        self.j.scan_dir(self.dir, upload="live")
+        self.state.refresh_leases()
+        self.assertTrue(self.state.upload_on("eddn"))
+        self.assertEqual([m["event"] for m in self.queued()], ["FSDJump"])   # Bsys, from A's mark
 
     def test_cap(self):
         self.write(header(now_ts(9 * 86400)), loadgame(now_ts(9 * 86400 - 1)))

@@ -123,6 +123,25 @@ class JournalSchema(unittest.TestCase):
         [(_, env)] = E.build(dock, s, "v")
         self.assertNotIn("Body", env["message"])
 
+    def test_a_docked_location_is_no_body(self):
+        """Logged in docked: the game's Location names the station as the Body (BodyType "Station"). A planetary Docked
+        then sent the station's name as its planet (review 2026-10-11); a Location at a planet still gives its body."""
+        loc = {"timestamp": "2026-10-08T10:00:00Z", "event": "Location", "Docked": True, "StationName": "Thorn Port",
+               "StationType": "CraterPort", "MarketID": 3700000002, "StarSystem": "Smojooe AR-E b25-8",
+               "SystemAddress": 18264118102193, "StarPos": [-4177.09, -1.0, 3324.53],
+               "Body": "Thorn Port", "BodyID": 40, "BodyType": "Station"}
+        dock = {"timestamp": "2026-10-08T10:20:00Z", "event": "Docked", "StationName": "Thorn Port",
+                "StationType": "CraterPort", "StarSystem": "Smojooe AR-E b25-8", "SystemAddress": 18264118102193,
+                "MarketID": 3700000002}
+        s = session()
+        s.feed(loc)
+        [(_, env)] = E.build(dock, s, "v")
+        self.assertNotIn("Body", env["message"])
+        s = session()
+        s.feed(dict(loc, Docked=False, Body="Smojooe AR-E b25-8 A 1", BodyID=5, BodyType="Planet"))
+        [(_, env)] = E.build(dock, s, "v")
+        self.assertEqual((env["message"]["Body"], env["message"]["BodyType"]), ("Smojooe AR-E b25-8 A 1", "Planet"))
+
     def test_saa_signals_and_docked_and_location(self):
         s = session()
         s.feed(FSDJUMP)

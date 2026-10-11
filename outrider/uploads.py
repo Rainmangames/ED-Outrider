@@ -185,7 +185,11 @@ class Session:
             else:   # a Location or a carrier's jump: docked or not, at a body or not, as it says
                 docked = ev.get("Docked") and not ev.get("Taxi") and not ev.get("Multicrew")
                 self.market_id, self.station = (ev.get("MarketID"), ev.get("StationName")) if docked else (None, None)
-                if ev.get("BodyType") in ("Planet", "Star") or ev.get("Body"):
+                # a body you can be at, as EDMC takes it: docked, the game names the station as the Body ("Thorn
+                # Port", BodyType "Station"), which a planetary Docked would then send as its planet (review
+                # 2026-10-11); a line with no BodyType at all keeps its Body
+                bt = ev.get("BodyType")
+                if ev.get("Body") and (bt in ("Planet", "Star") or bt is None):
                     self.body, self.body_id = ev.get("Body"), ev.get("BodyID")
                 elif name == "Location":
                     self.body = self.body_id = None
@@ -788,9 +792,11 @@ def lease_owners(instance, wanted, sending, others):
     return out
 
 
-def lease_marks(journal_dirs, instance):
+def lease_marks(journal_dirs, instance, senders_only=False):
     """The furthest mark per service in the other instances' lease files, live or not (a stopped instance leaves its
-    file with no services and its last marks: a handover note). {service: [file, offset, ts]}."""
+    file with no services and its last marks: a handover note). {service: [file, offset, ts]}. senders_only: only the
+    leases that were sending that service, or stopped (a handover note): a live instance that only follows publishes
+    its mark too, at the journal's end, past the stretch nobody sent (review 2026-10-11)."""
     out = {}
     for d in journal_dirs:
         folder = os.path.join(d, LEASE_DIR)
@@ -808,6 +814,8 @@ def lease_marks(journal_dirs, instance):
             except (OSError, ValueError):
                 continue
             for service, mark in ((info or {}).get("marks") or {}).items() if isinstance(info, dict) else ():
+                if senders_only and not (info.get("stopped") or service in (info.get("services") or [])):
+                    continue
                 if service in SERVICES and isinstance(mark, list) and len(mark) >= 2 and isinstance(mark[1], int):
                     if service not in out or pos_key(mark) > pos_key(out[service]):
                         out[service] = list(mark[:3])
