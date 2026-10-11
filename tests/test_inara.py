@@ -125,6 +125,97 @@ class Travel(unittest.TestCase):
         self.assertEqual((got.get("isTaxiDropship"), "shipType" in got), (True, False))   # not the ship you own
 
 
+RANK = {"event": "Rank", "Combat": 5, "Trade": 11, "Explore": 10, "Soldier": 0, "Exobiologist": 7, "Empire": 12, "Federation": 12, "CQC": 1}
+PROGRESS = {"event": "Progress", "Combat": 6, "Trade": 98, "Explore": 35, "Soldier": 0, "Exobiologist": 51, "Empire": 7, "Federation": 13, "CQC": 11}
+LOADOUT = {"event": "Loadout", "Ship": "explorer_nx", "ShipID": 39, "ShipName": " ", "ShipIdent": "BR-03E", "ModulesValue": 21751050,
+           "HullHealth": 1.0, "UnladenMass": 1295.875, "CargoCapacity": 64, "MaxJumpRange": 82.96756,
+           "FuelCapacity": {"Main": 160.0, "Reserve": 1.14}, "Rebuy": 1087554,
+           "Modules": [{"Slot": "TinyHardpoint1", "Item": "hpt_heatsinklauncher_turret_tiny", "On": True, "Priority": 1,
+                        "AmmoInClip": 1, "AmmoInHopper": 2, "Health": 1.0},
+                       {"Slot": "FrameShiftDrive", "Item": "int_hyperdrive_overcharge_size5_class5", "On": True, "Priority": 0,
+                        "Health": 1.0, "Value": 5103950,
+                        "Engineering": {"Engineer": "Felicity Farseer", "EngineerID": 300100, "BlueprintID": 128673694,
+                                        "BlueprintName": "FSD_LongRange", "Level": 5, "Quality": 1.0,
+                                        "ExperimentalEffect": "special_fsd_heavy", "Modifiers": [
+                                            {"Label": "Mass", "Value": 26.0, "OriginalValue": 20.0, "LessIsGood": 1},
+                                            {"Label": "FSDOptimalMass", "Value": 2850.0, "OriginalValue": 1500.0, "LessIsGood": 0}]}}]}
+
+
+class Profile(unittest.TestCase):
+    """Batch C: every rank and its progress, engineers, Powerplay, credits and statistics once per session, the ship
+    flown and its loadout; each only when it changed since the profile last got it."""
+
+    def test_all_ranks_once(self):
+        f = Feed()
+        f(*login())
+        got = f(dict(RANK, timestamp=ts(1)), dict(PROGRESS, timestamp=ts(1)))
+        ranks, progress = data(got, "setCommanderRankPilot")
+        self.assertEqual({r["rankName"]: r["rankValue"] for r in ranks},
+                         {"combat": 5, "trade": 11, "explore": 10, "soldier": 0, "exobiologist": 7, "empire": 12, "federation": 12, "cqc": 1})
+        self.assertEqual({r["rankName"]: r["rankProgress"] for r in progress}["exobiologist"], 0.51)
+        self.assertEqual(f(*login(100), dict(RANK, timestamp=ts(101)), dict(PROGRESS, timestamp=ts(101))), [])   # next login: nothing new
+        got = f(dict(PROGRESS, timestamp=ts(200), Explore=36))
+        self.assertEqual(data(got, "setCommanderRankPilot"), [[{"rankName": "explore", "rankProgress": 0.36}]])   # only what moved
+        got = f({"timestamp": ts(300), "event": "Promotion", "Exobiologist": 8})
+        self.assertEqual(data(got, "setCommanderRankPilot"), [[{"rankName": "exobiologist", "rankValue": 8, "rankProgress": 0}]])
+
+    def test_engineers_and_powerplay(self):
+        f = Feed()
+        f(*login())
+        eng = {"timestamp": ts(1), "event": "EngineerProgress", "Engineers": [
+            {"Engineer": "Hera Tani", "EngineerID": 300090, "Progress": "Unlocked", "RankProgress": 0, "Rank": 5},
+            {"Engineer": "Liz Ryder", "EngineerID": 300080, "Progress": "Invited"}]}
+        self.assertEqual(data(f(eng), "setCommanderRankEngineer")[0],
+                         [{"engineerName": "Hera Tani", "rankStage": "Unlocked", "rankValue": 5},
+                          {"engineerName": "Liz Ryder", "rankStage": "Invited"}])
+        self.assertEqual(f(dict(eng, timestamp=ts(50))), [])
+        got = f({"timestamp": ts(60), "event": "EngineerProgress", "Engineer": "Liz Ryder", "EngineerID": 300080, "Progress": "Unlocked", "Rank": 1})
+        self.assertEqual(data(got, "setCommanderRankEngineer"), [[{"engineerName": "Liz Ryder", "rankStage": "Unlocked", "rankValue": 1}]])
+        pp = {"timestamp": ts(2), "event": "Powerplay", "Power": "Nakato Kaine", "Rank": 17, "Merits": 117279, "TimePledged": 27174494}
+        self.assertEqual(data(f(pp), "setCommanderRankPower"), [{"powerName": "Nakato Kaine", "rankValue": 17, "meritsValue": 117279}])
+        self.assertEqual(f({"timestamp": ts(3), "event": "PowerplayMerits", "Power": "Nakato Kaine", "MeritsGained": 50, "TotalMerits": 117329}), [])
+        self.assertEqual(data(f({"timestamp": ts(4), "event": "PowerplayRank", "Power": "Nakato Kaine", "Rank": 18}), "setCommanderRankPower"),
+                         [{"powerName": "Nakato Kaine", "rankValue": 18}])
+        self.assertEqual(data(f({"timestamp": ts(5), "event": "PowerplayLeave", "Power": "Nakato Kaine"}), "setCommanderRankPower"),
+                         [{"powerName": "Nakato Kaine", "rankValue": -1}])
+        self.assertEqual(data(f({"timestamp": ts(6), "event": "PowerplayDefect", "FromPower": "Nakato Kaine", "ToPower": "Aisling Duval"}),
+                              "setCommanderRankPower"), [{"powerName": "Aisling Duval", "rankValue": 1}])
+
+    def test_credits_and_statistics_once_per_session(self):
+        f = Feed()
+        f(*login())
+        stats = {"timestamp": ts(5), "event": "Statistics", "Bank_Account": {"Current_Wealth": 24695570786, "Spent_On_Ships": 1},
+                 "Exploration": {"Systems_Visited": 4000}}
+        got = f(stats)
+        self.assertEqual(data(got, "setCommanderCredits"), [{"commanderCredits": 24_000_000_000, "commanderLoan": 0, "commanderAssets": 24695570786}])
+        self.assertEqual(data(got, "setCommanderGameStatistics"), [{"Bank_Account": {"Current_Wealth": 24695570786, "Spent_On_Ships": 1},
+                                                                    "Exploration": {"Systems_Visited": 4000}}])
+        self.assertEqual(f({"timestamp": ts(9), "event": "MarketSell", "TotalSale": 5000}), [])   # never Outrider's own sums
+        self.assertEqual(f(*login(100), dict(stats, timestamp=ts(105))), [])                    # nothing changed
+        got = f(*login(200, Credits=25_000_000_000), dict(stats, timestamp=ts(205)))
+        self.assertEqual(data(got, "setCommanderCredits")[0]["commanderCredits"], 25_000_000_000)
+
+    def test_ship_and_loadout_when_changed(self):
+        f = Feed()
+        f(*login())
+        got = f(dict(LOADOUT, timestamp=ts(5)))
+        self.assertEqual(data(got, "setCommanderShip"), [{"shipType": "explorer_nx", "shipGameID": 39, "shipIdent": "BR-03E",
+                                                          "isCurrentShip": True, "shipModulesValue": 21751050, "shipRebuyCost": 1087554,
+                                                          "shipMaxJumpRange": 82.96756, "shipCargoCapacity": 64}])   # " ": no name
+        loadout = data(got, "setCommanderShipLoadout")[0]
+        self.assertEqual((loadout["shipType"], loadout["shipGameID"], len(loadout["shipLoadout"])), ("explorer_nx", 39, 2))
+        self.assertEqual(loadout["shipLoadout"][1], {
+            "slotName": "FrameShiftDrive", "itemName": "int_hyperdrive_overcharge_size5_class5", "itemValue": 5103950, "itemHealth": 1.0,
+            "isOn": True, "itemPriority": 0, "engineering": {
+                "blueprintName": "FSD_LongRange", "blueprintLevel": 5, "blueprintQuality": 1.0, "experimentalEffect": "special_fsd_heavy",
+                "modifiers": [{"name": "Mass", "value": 26.0, "originalValue": 20.0, "lessIsGood": True},
+                              {"name": "FSDOptimalMass", "value": 2850.0, "originalValue": 1500.0, "lessIsGood": False}]}})
+        self.assertEqual(f(dict(LOADOUT, timestamp=ts(50))), [])                        # the same again: nothing
+        other = dict(LOADOUT, timestamp=ts(60), Ship="mandalay", ShipID=74, Modules=LOADOUT["Modules"][:1])
+        self.assertEqual(names(f(other)), ["setCommanderShip", "setCommanderShipLoadout"])
+        self.assertEqual(names(f(dict(LOADOUT, timestamp=ts(70)))), ["setCommanderShip"])   # back to 39: current again, same loadout
+
+
 class Batching(unittest.TestCase):
     def test_release_points(self):
         f = Feed()

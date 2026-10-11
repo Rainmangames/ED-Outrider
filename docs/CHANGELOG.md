@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Inara uploads, part C: ranks, credits, statistics and the ship flown
+- Every rank and its progress (Combat, Trade, Exploration, CQC, Mercenary, Exobiologist, Federation, Empire; a
+  promotion at 0 %), the engineers (stage, rank), Powerplay (power, rank, merits at login; joining, leaving, defecting,
+  a new rank).
+- Credits once per session as the game says them at login (LoadGame's credits and loan, Statistics' wealth as the
+  assets): never Outrider's own sums, which Inara warns against; the game's statistics whole.
+- The ship flown (name, ident, values, rebuy, jump range, cargo; marked current) and its loadout with the engineering.
+- Only what changed since the commander's profile last got it (meta `inara_sent`): the game writes Rank, Progress,
+  Loadout and Statistics at every login and Loadout often, which would otherwise all go again.
+
 ## 2026-10-11 · Inara uploads, part B: the foundation and travel (project/PLAN-inara-2026-10-11.md)
 - A third uploader beside EDDN and EDSM, off by default: Settings -> Uploads switches it (`[inara] enabled`, hidden from
   the Server settings like the others) and takes an Inara API key per in-game commander (kept here; the page sees its

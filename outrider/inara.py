@@ -211,7 +211,118 @@ def _clean(data):
     return {k: v for k, v in data.items() if v is not None}
 
 
-BUILDERS = (_travel,)
+# the journal's rank names -> Inara's (Rank, Progress, Promotion): the Pilots' Federation's six and the two navies
+RANKS = {"Combat": "combat", "Trade": "trade", "Explore": "explore", "Soldier": "soldier", "Exobiologist": "exobiologist",
+         "CQC": "cqc", "Federation": "federation", "Empire": "empire"}
+
+
+def _ranks(ev, session, t, sent):
+    """Every rank and its progress (all of them: the author, 2026-10-11), engineers and Powerplay; only what changed
+    since this commander's profile last got it."""
+    name, cmdr = ev.get("event"), session.cmdr
+    out = []
+    if name in ("Rank", "Progress", "Promotion"):
+        items = []
+        for jn, inn in RANKS.items():
+            v = ev.get(jn)
+            if not isinstance(v, (int, float)) or isinstance(v, bool):
+                continue
+            if name == "Progress":
+                if sent.changed(cmdr, f"progress:{inn}", v):
+                    items.append({"rankName": inn, "rankProgress": round(v / 100, 4)})
+            else:
+                fresh = sent.changed(cmdr, f"rank:{inn}", v)
+                if name == "Promotion":   # a new rank starts at 0 %
+                    sent.changed(cmdr, f"progress:{inn}", 0)
+                    items.append({"rankName": inn, "rankValue": v, "rankProgress": 0})
+                elif fresh:
+                    items.append({"rankName": inn, "rankValue": v})
+        if items:
+            out.append(_event(ev, "setCommanderRankPilot", items))
+    elif name == "EngineerProgress":
+        rows = ev.get("Engineers") if isinstance(ev.get("Engineers"), list) else [ev] if ev.get("Engineer") else []
+        items = []
+        for e in rows:
+            if not isinstance(e, dict) or not e.get("Engineer"):
+                continue
+            item = _clean({"engineerName": e["Engineer"], "rankStage": e.get("Progress"),
+                           "rankValue": e.get("Rank") if isinstance(e.get("Rank"), int) and e.get("Rank") > 0 else None})
+            if len(item) > 1 and sent.changed(cmdr, f"engineer:{e['Engineer']}", item):
+                items.append(item)
+        if items:
+            out.append(_event(ev, "setCommanderRankEngineer", items))
+    elif name == "Powerplay" and ev.get("Power"):   # at login: the power, rank and merits
+        item = _clean({"powerName": ev["Power"], "rankValue": ev.get("Rank"), "meritsValue": ev.get("Merits")})
+        if sent.changed(cmdr, "power", item):
+            out.append(_event(ev, "setCommanderRankPower", item))
+    elif name in ("PowerplayRank", "PowerplayJoin", "PowerplayDefect", "PowerplayLeave"):
+        power = ev.get("ToPower") if name == "PowerplayDefect" else ev.get("Power")
+        rank = -1 if name == "PowerplayLeave" else ev.get("Rank") if name == "PowerplayRank" else 1
+        if power:
+            item = {"powerName": power, "rankValue": rank}
+            sent.changed(cmdr, "power", item)
+            out.append(_event(ev, "setCommanderRankPower", item))
+    return out
+
+
+def _credits(ev, session, t, sent):
+    """Credits once per session, as the game says them at login (LoadGame's Credits and Loan, Statistics' wealth as
+    the assets): Inara asks for figures we are sure of, never one sent on every change. And the game's statistics,
+    which Statistics carries whole."""
+    if ev.get("event") != "Statistics":
+        return []
+    out = []
+    bank = ev.get("Bank_Account") if isinstance(ev.get("Bank_Account"), dict) else {}
+    if isinstance(t.get("credits"), int):
+        item = _clean({"commanderCredits": t["credits"], "commanderLoan": t.get("loan") or 0,
+                       "commanderAssets": bank.get("Current_Wealth")})
+        if sent.changed(session.cmdr, "credits", item):
+            out.append(_event(ev, "setCommanderCredits", item))
+    stats = {k: v for k, v in ev.items() if k not in ("timestamp", "event")}
+    if stats and sent.changed(session.cmdr, "statistics", stats):
+        out.append(_event(ev, "setCommanderGameStatistics", stats))
+    return out
+
+
+def _module(m):
+    """A Loadout module as Inara's loadout item (its names), engineering included."""
+    item = _clean({"slotName": m.get("Slot"), "itemName": m.get("Item"), "itemValue": m.get("Value"),
+                   "itemHealth": m.get("Health"), "isOn": m.get("On"), "itemPriority": m.get("Priority"),
+                   "itemAmmoClip": m.get("AmmoInClip"), "itemAmmoHopper": m.get("AmmoInHopper")})
+    eng = m.get("Engineering")
+    if isinstance(eng, dict):
+        mods = [_clean({"name": x.get("Label"), "value": x.get("Value", x.get("ValueStr")),
+                        "originalValue": x.get("OriginalValue"),
+                        "lessIsGood": bool(x["LessIsGood"]) if "LessIsGood" in x else None})
+                for x in eng.get("Modifiers") or [] if isinstance(x, dict)]
+        item["engineering"] = _clean({"blueprintName": eng.get("BlueprintName"), "blueprintLevel": eng.get("Level"),
+                                      "blueprintQuality": eng.get("Quality"), "experimentalEffect": eng.get("ExperimentalEffect"),
+                                      "modifiers": mods or None})
+    return item
+
+
+def _ship_now(ev, session, t, sent):
+    """The ship flown (Loadout: at login, after outfitting, a swap): its properties, marked current, and its loadout;
+    each only when it changed since this commander's profile last got it (Loadout is written often)."""
+    if ev.get("event") != "Loadout" or ev.get("ShipID") is None:
+        return []
+    cmdr, sid = session.cmdr, ev["ShipID"]
+    name = (ev.get("ShipName") or "").strip() or None   # the game writes " " for no name
+    ship = _clean({"shipType": ev.get("Ship"), "shipGameID": sid, "shipName": name, "shipIdent": ev.get("ShipIdent") or None,
+                   "isCurrentShip": True, "shipHullValue": ev.get("HullValue"), "shipModulesValue": ev.get("ModulesValue"),
+                   "shipRebuyCost": ev.get("Rebuy"), "shipMaxJumpRange": ev.get("MaxJumpRange"),
+                   "shipCargoCapacity": ev.get("CargoCapacity"), "isHot": ev.get("Hot")})
+    out = []
+    current = sent.changed(cmdr, "current", sid)     # another ship than last sent: it is the current one again
+    if sent.changed(cmdr, f"ship:{sid}", ship) or current:
+        out.append(_event(ev, "setCommanderShip", ship))
+    loadout = [_module(m) for m in ev.get("Modules") or [] if isinstance(m, dict) and m.get("Slot") and m.get("Item")]
+    if loadout and sent.changed(cmdr, f"loadout:{sid}", loadout):
+        out.append(_event(ev, "setCommanderShipLoadout", {"shipType": ev.get("Ship"), "shipGameID": sid, "shipLoadout": loadout}))
+    return out
+
+
+BUILDERS = (_travel, _ranks, _credits, _ship_now)
 
 
 def build(ev, session, sent=None):
