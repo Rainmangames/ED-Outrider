@@ -21,6 +21,8 @@ notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts
     B": black holes, Wolf-Rayet, carbon, O-type and Herbig Ae/Be stars, supergiants, the rarer white dwarfs)
   - surface sites on a body: Guardian or Thargoid sites (said once the DSS has mapped the body: the journal names them
     only then) or an unknown planetary anomaly (said when the FSS finds it)
+  - an FSS signal worth a detour, new to the system: a Titan, a Guardian beacon, a generation ship, a listening post
+    (tourist beacons, number stations and memorials are shown on the page, not said)
 - low fuel where you cannot scoop, and a top-up worth taking before a dry stretch
 - docking where the station buys your data, and what you banked when you sold
 - a sale that left data aboard (Universal Cartographics sells 50 systems a page; at Vista Genomics, the species

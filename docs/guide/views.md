@@ -15,7 +15,9 @@ ground worth a Rhino. 🌀 N counts the notable stellar phenomena your FSS found
 for what they are), dimmed once you have been to them. ⭐ marks a rare star (a black hole, a Wolf-Rayet, a carbon,
 O-type or Herbig Ae/Be star, a supergiant, a rare white dwarf), from Spansh's records too, so you see it before you go. 🏛 👾 ❔
 mark Guardian sites, Thargoid sites and planetary anomalies on a system's bodies (your own scans: an anomaly shows once
-the FSS finds it, Guardian and Thargoid sites only once the DSS has mapped the body); Here tags the body itself.
+the FSS finds it, Guardian and Thargoid sites only once the DSS has mapped the body); Here tags the body itself. 📍
+counts FSS signals worth a detour: Titans, Guardian beacons, generation ships, listening posts, number stations, tourist
+beacons and memorials (hover for which).
 <br><br><img src="../images/nearby.png" alt="Nearby systems">
 </td>
 <td width="50%" valign="top">
@@ -122,7 +124,7 @@ follows your system's light mode. Each browser keeps its own choice, and the tab
 </p>
 
 **Now** is the cockpit view for a second monitor or a tablet, in big text: the system, the target, fuel,
-what to do next, the body you have targeted, any surface sites ("🏛 Guardian sites on 10 b"), any rare star here ("⭐ A black hole (main star)"), the notable stellar phenomena here ("🌀 Three notable stellar phenomena,
+what to do next, the body you have targeted, signals worth a detour ("📍 Titan Cocijo · 2 tourist beacons"), any surface sites ("🏛 Guardian sites on 10 b"), any rare star here ("⭐ A black hole (main star)"), the notable stellar phenomena here ("🌀 Three notable stellar phenomena,
 all in rings · 1 of 3 visited": each drop at one counts, since the journal cannot tell which of a kind's sites it was)
 and the nearest unvisited system. The target says how much of it is
 known ("3/12 known", Spansh's bodies of its count) and what EDSM has ("EDSM 5/12", or "not logged"): two databases

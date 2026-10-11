@@ -1225,7 +1225,8 @@ WANTED = tuple(f'"event":"{e}"'.encode()
 #     were dropped; the SRV's refinery and scoop stay out of the ship's hold; an older Location's relog is judged
 #     against the arrival before it (a legacy folder read late counted every login as a visit).
 # 43: a system's population (system_population) and own_firsts.bio_x5: no x5 bio bonus in populated systems.
-PARSER_VERSION = 47
+PARSER_VERSION = 48
+# 48: FSS signals worth a detour are kept (poi: Titans, Guardian beacons, generation ships, listening posts...)
 # 47: body signals keep Guardian, Thargoid, planetary anomaly and other counts (own_signals.sites)
 # 46: each drop at a notable stellar phenomenon is kept (phenomena_sites): "1 of 3 visited"
 # 45: notable stellar phenomena are counted (phenomena.n: the most in one FSS burst; the game writes several of a kind
@@ -1482,6 +1483,9 @@ CREATE TABLE IF NOT EXISTS phenomena (
 -- every drop counts as a site visited; visited = the drops, at most n (dropping twice at one site counts twice).
 -- Journal-derived.
 CREATE TABLE IF NOT EXISTS phenomena_sites (system INTEGER, kind TEXT, ts TEXT, site TEXT, PRIMARY KEY (system, kind, ts));
+-- FSS signals worth a detour (outrider's POI_KINDS: Titans, Guardian beacons, generation ships, listening posts, number
+-- stations, tourist beacons, memorials), one row per signal name. Journal-derived.
+CREATE TABLE IF NOT EXISTS poi (system INTEGER, kind TEXT, name TEXT, ts TEXT, PRIMARY KEY (system, kind, name));
 -- The firsts watch: what Spansh showed of a system holding your unsold first discoveries when last checked (see
 -- firsts_reported). reported_ts is the earliest report by someone else of a body you discovered (the first sighting);
 -- bodies how many of yours Spansh has from others, spansh_bodies of body_count the bodies it has in all. Live only
@@ -1545,7 +1549,7 @@ DELETE FROM journal_files; DELETE FROM visits; DELETE FROM jumps;
 DELETE FROM own_systems; DELETE FROM own_bodies; DELETE FROM own_signals; DELETE FROM own_ring_signals;
 DELETE FROM own_firsts; DELETE FROM own_mapped; DELETE FROM own_footfall; DELETE FROM sales; DELETE FROM deaths;
 DELETE FROM own_genera; DELETE FROM own_organic; DELETE FROM codex; DELETE FROM bio_sales;
-DELETE FROM own_barycentres; DELETE FROM phenomena; DELETE FROM phenomena_sites; DELETE FROM sale_events; DELETE FROM logins;
+DELETE FROM own_barycentres; DELETE FROM phenomena; DELETE FROM phenomena_sites; DELETE FROM poi; DELETE FROM sale_events; DELETE FROM logins;
 DELETE FROM own_mined; DELETE FROM meta WHERE key IN ('srv_state', 'vehicle', 'ship_marker', 'body_here');
 DELETE FROM fleet_loadouts; DELETE FROM cargo_events; DELETE FROM system_population;
 DELETE FROM meta WHERE key IN ('ship_cargo', 'cargo_dock');
@@ -2818,7 +2822,7 @@ class Journals:
                     print(f"uploads: a line was skipped ({type(e).__name__}: {e})", file=sys.stderr)
             elif self.uploads is not None and self.upload_mode:
                 self.uploads.forget()   # not following now: switched on again, it reads the file from its top
-            if any(w in line for w in WANTED) or b"Fixed_Event_Life" in line:
+            if any(w in line for w in WANTED) or b"Fixed_Event_Life" in line or any(w in line for w in POI_BYTES):
                 # where the line is (the file's name, so a twin copy in another folder gives the same key):
                 # tells apart sale pages written in the same second (sale_events)
                 self.line_source = f"{b}:{at}"
@@ -3534,6 +3538,8 @@ class Journals:
         code = ev.get("SignalName") if name == "FSSSignalDiscovered" else ev.get("Type")
         m = re.match(r"^\$Fixed_Event_Life_(\w+?);?$", code or "")
         if not m:
+            if name == "FSSSignalDiscovered":
+                self.handle_poi(ev, ts)
             return
         kind = m.group(1).lower()
         if name == "FSSSignalDiscovered":
@@ -3550,6 +3556,17 @@ class Journals:
         else:
             return
         self.dirty.add(system)
+
+    def handle_poi(self, ev, ts):
+        """An FSS signal worth a detour (poi_kind): kept per system; the rare kinds (POI_SPOKEN) are news the first time
+        a system has that signal, said with delight (live play only)."""
+        kind, name = poi_kind(ev)
+        system = ev.get("SystemAddress")
+        if not kind or system is None:
+            return
+        cur = self.db.execute("INSERT OR IGNORE INTO poi VALUES (?, ?, ?, ?)", (system, kind, name, ts))
+        if cur.rowcount and kind in POI_SPOKEN and live_event(ts):
+            self.moment("signal_poi", ts, system=str(system), poi=kind, name=name, what=poi_words(kind, name))
 
     def phenomenon_found(self, system, kind, ts):
         """One FSS line for a notable stellar phenomenon. The FSS lists a system's phenomena together, as identical lines
@@ -4674,6 +4691,43 @@ def surface_sites(records, system_name=None):
     """[{body, sites}] for the bodies with surface sites among a system's records (your own scans only)."""
     return [{"body": short_name(system_name, r.get("name")) if system_name else r.get("name"), "sites": r["sites"]}
             for r in records or [] if r.get("sites")]
+
+
+# FSS signals worth a detour (FSSSignalDiscovered; the reader lets these through by POI_BYTES): kind, matched how
+POI_BYTES = (b'"SignalType":"Titan"', b'"SignalType":"TouristBeacon"', b"$ListeningPost", b"$NumberStation",
+             b"Generation Ship", b"Guardian Beacon", b"Memorial")
+POI_SPOKEN = ("titan", "guardian_beacon", "generation_ship", "listening_post")   # the rest are shown, not said
+
+
+def poi_kind(ev):
+    """(kind, name) for an FSS signal worth a detour, else (None, None). Names as the game shows them."""
+    code, label, kind = ev.get("SignalName") or "", ev.get("SignalName_Localised") or ev.get("SignalName") or "", ev.get("SignalType")
+    if kind == "Titan":
+        return "titan", label
+    if "Generation Ship" in label:
+        return "generation_ship", label
+    if "Guardian Beacon" in label:
+        return "guardian_beacon", label
+    if code.startswith("$ListeningPost"):
+        return "listening_post", label
+    if code.startswith("$NumberStation"):
+        return "number_station", label
+    if kind == "TouristBeacon":
+        return "tourist", label
+    if kind == "Generic" and "Memorial" in label:
+        return "memorial", label
+    return None, None
+
+
+def poi_words(kind, name):
+    """'the Titan Cocijo', 'a Guardian beacon', 'a generation ship, the Thetis', 'a listening post'."""
+    if kind == "titan":
+        return f"the {name}" if name else "a Titan"
+    if kind == "generation_ship":
+        rest = (name or "").replace("Generation Ship", "").strip()
+        return f"a generation ship, the {rest}" if rest else "a generation ship"
+    return {"guardian_beacon": "a Guardian beacon", "listening_post": "a listening post", "number_station": "a number station",
+            "tourist": f"a tourist beacon, {name}" if name else "a tourist beacon", "memorial": name or "a memorial"}.get(kind, name or kind)
 
 
 def subtype_scoopable(subtype):
@@ -8379,6 +8433,7 @@ class State:
             leaving["base_known"] = base_known(base, source)
         return {"id64": str(id64), "name": name, "bodies": out, "tree": tree, "partial": partial, "region": region,
                 "phenomena": phenomena, "rare_stars": rare_stars(out),
+                "pois": [dict(r) for r in self.db.execute("SELECT kind, name FROM poi WHERE system=? ORDER BY ts", (id64,))],
                 "leaving": leaving,
                 "firsts": own_firsts(self.db, id64, name),
                 "value_now": sum(b["value_now"] for b in out), "value_max": sum(b["value_max"] for b in out),
@@ -9392,6 +9447,7 @@ class State:
         s["phenomena"] = [dict(r) for r in self.db.execute("SELECT kind, reached_ts, coalesce(n, 1) AS n, max((SELECT count(DISTINCT site) FROM phenomena_sites ps WHERE ps.system = phenomena.system AND ps.kind = phenomena.kind), reached_ts IS NOT NULL) AS visited FROM phenomena WHERE system=?", (id64,))]
         s["rare_stars"] = rare_stars(records, base["name"])   # from Spansh's records too: seen before you go
         s["sites"] = surface_sites(records, base["name"])     # Guardian, Thargoid, anomalies: your own scans
+        s["pois"] = [dict(r) for r in self.db.execute("SELECT kind, name FROM poi WHERE system=? ORDER BY ts", (id64,))]
         raws = {short_name(base["name"], r_["name"]): json.loads(r_["raw"]) for r_ in self.db.execute(
             "SELECT name, raw FROM own_bodies WHERE system=? AND raw IS NOT NULL", (id64,))}
         cur = system_curiosities(base["name"], records, raws)

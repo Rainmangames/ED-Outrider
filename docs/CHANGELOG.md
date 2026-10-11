@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · FSS signals worth a detour
+- The reader's filter threw away every FSS signal but the phenomena: Titans, Guardian beacons, generation ships,
+  listening posts, number stations, tourist beacons and memorials now pass and are kept per system (`poi`;
+  PARSER_VERSION 48: the next start re-reads the journals). Ordinary megaships are traffic, not destinations: left out.
+- A new alert under Discoveries, "Signals worth a detour": "the Titan Cocijo", "a Guardian beacon", "a generation ship,
+  the Thetis", "a listening post", the first time a system has it, with its own `signal_poi` lines in every
+  personality, all delighted (50 a list). Tourist beacons, number stations and memorials (common in the bubble) are
+  shown, not said.
+- 📍 on Nearby and Here counts them (which, on hover), and Now has a line ("📍 Titan Cocijo · 2 tourist beacons").
+
 ## 2026-10-11 · Surface sites: Guardian, Thargoid, planetary anomalies
 - Body signals other than biology, geology and mining were dropped: Guardian and Thargoid sites (the journal names them
   only once the DSS has mapped the body), the new planetary anomaly (the FSS names it; nobody has documented what it is

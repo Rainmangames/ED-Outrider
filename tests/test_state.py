@@ -425,6 +425,33 @@ class Batch2Server(unittest.TestCase):
         self.j.handle(sig(20, "SAASignalsFound", [("$SAA_SignalType_Guardian;", 2)]))
         self.assertEqual(len([m for m in self.j.moments if m["kind"] == "surface_site"]), 2)   # mapped again: nothing new
 
+    def test_signals_worth_a_detour(self):
+        """FSS signals worth a detour (a Titan, a listening post, tourist beacons...) were thrown away by the reader's
+        filter: now kept; the rare kinds said once (live), the common ones only shown."""
+        import tempfile, json as _j
+        now = time.time()
+        at = lambda s: ed_outrider.iso_ts(now - 60 + s)
+        d = tempfile.mkdtemp()
+        self.addCleanup(__import__("shutil").rmtree, d)
+        lines = [{"timestamp": at(0), "event": "FSDJump", "StarSystem": "HIP 8887", "SystemAddress": 11, "StarPos": [0, 0, 0]},
+                 {"timestamp": at(5), "event": "FSSSignalDiscovered", "SystemAddress": 11, "SignalName": "Titan Cocijo", "SignalType": "Titan"},
+                 {"timestamp": at(5), "event": "FSSSignalDiscovered", "SystemAddress": 11, "SignalName": "$ListeningPost:#index=1;",
+                  "SignalName_Localised": "Listening Post", "SignalType": "Generic"},
+                 {"timestamp": at(5), "event": "FSSSignalDiscovered", "SystemAddress": 11, "SignalName": "Europa Ice Geyser", "SignalType": "TouristBeacon"},
+                 {"timestamp": at(5), "event": "FSSSignalDiscovered", "SystemAddress": 11, "SignalName": "$USS_DegradedEmissions;", "SignalType": "USS"}]
+        with open(os.path.join(d, "Journal.2026-10-11T100000.01.log"), "w") as f:
+            for e in lines:
+                f.write(_j.dumps(e, separators=(",", ":")) + "\n")   # the game's own spacing, as the filter sees it
+        self.j.scan_dir(d)
+        rows = [tuple(r) for r in self.db.execute("SELECT kind, name FROM poi WHERE system=11 ORDER BY kind")]
+        self.assertEqual(rows, [("listening_post", "Listening Post"), ("titan", "Titan Cocijo"), ("tourist", "Europa Ice Geyser")])
+        said = [m["what"] for m in self.j.moments if m["kind"] == "signal_poi"]
+        self.assertEqual(said, ["the Titan Cocijo", "a listening post"])   # the tourist beacon is shown, not said
+        self.assertEqual(len(self.state.system_detail(11)["pois"]), 3)
+        self.j.handle(dict(lines[1], timestamp=at(30)))                     # the FSS lists it again
+        self.assertEqual(len([m for m in self.j.moments if m["kind"] == "signal_poi"]), 2)
+        self.assertIn("DELETE FROM poi", ed_outrider.RESET_JOURNAL_DATA)    # journal-derived
+
     def test_rare_stars_announced_and_shown(self):
         """A rare star (a black hole, a Wolf-Rayet...) resolved live is a "rare_star" moment, once; Nearby and Here list
         the rare stars, Spansh's included (seen before you go); common stars say nothing."""
