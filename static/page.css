@@ -175,6 +175,9 @@ main > #hereView.detail > #bodyPanel { position: sticky; top: calc(var(--head-h,
    is set to end at the window's bottom; the table keeps a few rows, and the map inside is sized by ovMapFit) */
 #ovHere #hereView.mapon { display: flex; flex-direction: column; height: 78vh; }
 #ovHere #hereView.mapon > #hereMain { flex: 1 1 0; overflow: auto; min-height: 140px; }
+/* with the map up, the firsts and the checklist under the system's name stand down: the room goes to the bodies (the
+   author, 2026-10-11) */
+#ovHere #hereView.mapon > #hereLeaving { display: none; }
 #ovMap { flex: 0 1 50%; min-height: 0; overflow: hidden; display: flex; gap: 12px; align-items: stretch; border-top: 2px solid var(--line); margin-top: 6px; padding-top: 6px; }
 #ovMap .smap { flex: 0 0 auto; } #ovMap canvas { display: block; touch-action: manipulation; }
 #ovMap .smap-legend { flex: 1 1 auto; min-width: 0; overflow: auto; font-size: 13px; }

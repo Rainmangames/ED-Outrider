@@ -294,6 +294,10 @@ document.getElementById("radiusSel").onchange = async e => {
 setInterval(() => { if (data) renderStrip(); }, 30000);
 // ---- carrier tile: where it is, the rendezvous maths, and a live countdown to a booked jump ----
 let carrierWarned = null;
+// 🎯 beside your carrier when it is in another system (the author, 2026-10-11): auto-target puts its system in the
+// galaxy map, as 🎯 on a route's row does; on the game PC only (it presses keys there)
+const carrierAim = c => c && !c.aboard && !c.here && c.system && !(c.decommission && c.decommission.done) && data.game_pc !== false
+  ? hwyAimBtn(c.system, "carrier", null, true) : "";
 function renderCarrier() {
   const c = data && data.carrier, cl = document.getElementById("carrierLine");
   const val = (v, title) => `<div class="val"${title ? ` title="${title}"` : ""}>${v}</div>`, ln = v => v ? `<div class="ln">${v}</div>` : "";
@@ -311,7 +315,8 @@ function renderCarrier() {
   }
   const fmtLy = d => d.toLocaleString("en-US", {maximumFractionDigits: 1});
   let where = c.aboard ? "<b>aboard</b>" : c.here ? "<b>in this system</b>"
-    : `<span class="copy" data-name="${esc(c.system)}" title="click to copy">${esc(c.system)}</span>` + (c.distance != null ? ` · <b>${fmtLy(c.distance)} ly</b>` : "");
+    : `<span class="copy" data-name="${esc(c.system)}" title="click to copy">${esc(c.system)}</span>` + (c.distance != null ? ` · <b>${fmtLy(c.distance)} ly</b>` : "")
+      + carrierAim(c);
   // the game was not running when a booked jump left: this is where it was booked to go
   if (c.assumed) where += ` <span class="unk" title="the booked jump's destination: the journal confirms it at your next login">(booked jump, not yet confirmed)</span>`;
   // straight-line lower bounds: the real route is never shorter
@@ -603,7 +608,7 @@ function tilesLineHtml() {
     const pl = c.planned, left = pl && pl.departure ? (Date.parse(pl.departure) - Date.now()) / 1000 : null;
     const where = c.aboard ? "aboard" : c.here ? "here" : c.distance != null ? ly(c.distance) : esc(c.system || "");
     const dep = left != null && left > 0 ? ` · departs in ${left >= 3600 ? `${Math.floor(left / 3600)} h ${Math.floor(left % 3600 / 60)} min` : `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, "0")}`}` : "";
-    out.push(bit(`carrier ${where}${dep}`, dep && left < 300 && !c.aboard ? "urgent" : "", c.name || "your fleet carrier"));
+    out.push(bit(`carrier ${where}${dep}`, dep && left < 300 && !c.aboard ? "urgent" : "", c.name || "your fleet carrier") + carrierAim(c));
   }
   const dl = tileLevel("tData");
   if (dl) out.push(bit(dataBit, dl, "the Data tile: unfold the tiles for the detail"));
@@ -2499,8 +2504,8 @@ function firstsHtml(f) {
     f.mapped && `${n(f.mapped, "body first mapped", "bodies first mapped")} · ${by(f.mapped_by)}`,
     f.footfall && n(f.footfall, "first footfall", "first footfalls") + " (credited on landing)",
   ].filter(Boolean);
-  const advice = {unsold: `<span class="unsold">sell at Universal Cartographics to claim what's unsold</span>`,
-                  lost: `<span class="lost">lost data can be re-earned by scanning those bodies again</span>`,
+  // nothing for unsold: players know to sell at Universal Cartographics (the author, 2026-10-11)
+  const advice = {lost: `<span class="lost">lost data can be re-earned by scanning those bodies again</span>`,
                   sold: `<span class="sold">all sold: the tags should be yours</span>`}[f.sale];
   return `<div class="sec firsts"><div class="lbl">Your firsts</div><ul>` +
     items.map(i => `<li>🏁 <span>${i}</span></li>`).join("") + (advice ? `<li>${advice}</li>` : "") + `</ul></div>`;
@@ -5205,10 +5210,10 @@ let hwyRun = null;   // the run this page started (test now, Target next, Retry)
 // 🎯 on a route system (the author, 2026-10-07): route "highway" | "survey" and its row, or (no route) the Highway's
 // Target next as before (the next system, off the route the nearest); `icon`: just 🎯 (a list's rows)
 function hwyAimBtn(name, route = null, index = null, icon = false) {
-  const key = route ? `${route}:${index}` : "next", r = hwyRun, mine = r && r.kind === "next" && !r.done && (r.key || "next") === key;
+  const key = route ? `${route}:${index ?? ""}` : "next", r = hwyRun, mine = r && r.kind === "next" && !r.done && (r.key || "next") === key;
   const label = !mine ? (icon ? "🎯" : "🎯 target") : r.n > 0 ? `🎯 in ${r.n} s` : "🎯 targeting…";
   return ` <button type="button" class="mini hwyaim${icon ? " icon" : ""}" data-aim="next"` +
-    (route ? ` data-route="${route}" data-index="${index}"` : "") + `${mine ? " disabled" : ""}` +
+    (route ? ` data-route="${route}"${index != null ? ` data-index="${index}"` : ""}` : "") + `${mine ? " disabled" : ""}` +
     ` title="target ${esc(name)} in the galaxy map${TABLET ? "" : ", 5 s from now: click back into the game meanwhile"}">${label}</button>`;
 }
 // the strip under the header: only on Overview, Nearby and Here, only with a route
@@ -5594,12 +5599,12 @@ async function hwyAutoStart(kind, aim = null) {
   try { r = await fetch(url, opts); j = await r.json(); }
   catch { show("could not reach Outrider"); return; }
   if (!r.ok) { show(`cannot ${w}: ${j.error || "?"}`); return; }
-  const mine = hwyRun = {seq: j.seq, kind, key: aim ? `${aim.route}:${aim.index}` : "next", system: j.system, n: j.in, dry: j.dry_run, done: false, msg: "",
+  const mine = hwyRun = {seq: j.seq, kind, key: aim ? `${aim.route}:${aim.index ?? ""}` : "next", system: j.system, n: j.in, dry: j.dry_run, done: false, msg: "",
                          at: Date.now()};
   const tick = () => {
     if (mine.done || mine !== hwyRun) return;
     mine.msg = mine.n > 0 ? `click into the game: targeting ${j.system} in ${mine.n} s${j.dry_run ? " (dry run)" : ""}` : `targeting ${j.system}…`;
-    drawHwyAuto(); renderHwyLine();
+    drawHwyAuto(); renderHwyLine(); renderCarrier(); renderTilesLine();   // the carrier's 🎯 counts down too
     if (view === "hwy") renderHwy();   // the list's 🎯 counts down too
     if (mine.n > 0) { mine.n--; setTimeout(tick, 1000); }
   };
@@ -5625,7 +5630,8 @@ document.addEventListener("click", e => {
   const b = e.target.closest("[data-aim]");
   if (!b) return;
   e.stopPropagation(); e.preventDefault();
-  if (!b.disabled) hwyAutoStart(b.dataset.aim, b.dataset.route ? {route: b.dataset.route, index: Number(b.dataset.index)} : null);
+  if (!b.disabled) hwyAutoStart(b.dataset.aim, b.dataset.route ? Object.assign({route: b.dataset.route},
+    b.dataset.index != null ? {index: Number(b.dataset.index)} : {}) : null);
 }, true);
 function renderHwy() {
   if (view !== "hwy") return;

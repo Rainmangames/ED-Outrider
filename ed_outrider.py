@@ -11830,10 +11830,27 @@ class State:
             return None, f"{r['system']} has no id64 to check the target against"
         return {"name": r["system"], "id64": r["id64"], "here": pos["id64"], "route": hw.get("id"), "index": nx}, None
 
+    def carrier_target(self):
+        """({name, id64, here, route: None}, None) for 🎯 beside your fleet carrier (the author, 2026-10-11): the system it
+        is in; or (None, why not)."""
+        c = self.journals.carrier or {}
+        if not c.get("id64"):
+            return None, "no fleet carrier in your journals"
+        if (self.carrier_decommission() or {}).get("done"):
+            return None, "your carrier is decommissioned"
+        pos = self.journals.pos
+        if not pos or pos.get("id64") is None:
+            return None, "your position is not known yet"
+        if c["id64"] == pos["id64"]:
+            return None, f"your carrier is in this system ({c.get('system')})"
+        return {"name": c.get("system") or str(c["id64"]), "id64": c["id64"], "here": pos["id64"], "route": None}, None
+
     def route_target(self, route, index):
         """({name, id64, here, route, index}, None) for 🎯 on a system of a route ("highway" or "survey": Road to Riches /
         Exomastery), or (None, why not): a row of the route plotted now, not the system you are in, with an id64 (the
-        target is checked against Status.json's Destination by id64)."""
+        target is checked against Status.json's Destination by id64). Route "carrier": your carrier's system."""
+        if route == "carrier":
+            return self.carrier_target()
         if route not in ("highway", "survey"):
             return None, "route must be highway or survey"
         if isinstance(index, bool) or not isinstance(index, int):
@@ -13789,10 +13806,12 @@ def make_app(state, hosts=None):
                                or not 0 <= cd <= 10):
             return web.json_response({"error": "countdown must be 0 to 10 seconds"}, status=400)
         aim = None
-        if "route" in body or "index" in body:   # 🎯 on a system of a route: {route: "highway" | "survey", index}
+        if body.get("route") == "carrier":       # 🎯 beside your carrier: its system
+            aim = ("carrier", None)
+        elif "route" in body or "index" in body:   # 🎯 on a system of a route: {route: "highway" | "survey", index}
             aim = (body.get("route"), body.get("index"))
             if aim[0] not in ("highway", "survey") or isinstance(aim[1], bool) or not isinstance(aim[1], int):
-                return web.json_response({"error": "route must be highway or survey, index a whole number"}, status=400)
+                return web.json_response({"error": "route must be highway, survey or carrier, index a whole number"}, status=400)
         out, status = state.start_autotarget_run("next", cd, aim)
         return web.json_response(out, status=status)
 

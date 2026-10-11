@@ -2157,6 +2157,32 @@ class HighwayAutoTarget(unittest.TestCase):
         self.assertEqual(len(self.game.writes), writes)
         self.assertEqual((self.state.autotarget_test["state"], self.state.autotarget_test["why"]), ("failed", "stopped"))
 
+    def test_aim_at_your_carrier(self):
+        """🎯 beside your fleet carrier (the author, 2026-10-11): its system, through the same run as a route's 🎯; not
+        with no carrier, in its system already, or decommissioned."""
+        import asyncio
+        from aiohttp.test_utils import TestClient, TestServer
+        self.state.honker, self.state.targeter = self.honker, self.targeter
+        self.j.status_json = self.status
+        C = self.state.carrier_target
+        self.assertEqual(C(), (None, "no fleet carrier in your journals"))
+        hwy_jump(self, 1, 101, "Neu A", 50)
+        self.j.carrier = {"id": 3700000001, "id64": 101, "system": "Neu A"}
+        self.assertEqual(C()[1], "your carrier is in this system (Neu A)")
+        self.j.carrier = {"id": 3700000001, "id64": self.game.systems["Bridge B"], "system": "Bridge B"}
+        self.assertEqual((C()[0]["name"], C()[0]["here"]), ("Bridge B", 101))
+        self.assertEqual(self.state.route_target("carrier", None), C())
+
+        async def go():
+            async with TestClient(TestServer(ed_outrider.make_app(self.state))) as c:
+                r = await c.post("/api/highway/target", json={"route": "carrier", "countdown": 0})
+                started = (r.status, await r.json())
+                await self.state.autotarget_test_task
+                return started, dict(self.state.autotarget_last)
+        started, last = asyncio.run(go())
+        self.assertEqual((started[0], started[1]["system"]), (200, "Bridge B"))
+        self.assertEqual((last["done"], last["system"]), (True, "Bridge B"))
+
     def test_supercharge_during_a_manual_run_starts_no_second(self):
         """Review 2026-10-08 #1: a supercharge while Target next (or 🎯, or the co-pilot's tap) is counting down or
         pressing keys started the automatic run as well, two galaxy-map sequences one behind the other, the second

@@ -1506,6 +1506,15 @@ const settle = async maxMs => {
       renderCarrier();
       o.without = document.getElementById("carrierLine").textContent;
       o.tritGone = !document.getElementById("carrierTrit");
+      // 🎯 beside it in another system, on the game PC (the author, 2026-10-11); none aboard or with no keys to press
+      const aim = () => [...document.querySelectorAll('#carrierLine button[data-aim="next"][data-route="carrier"]')].length;
+      const pc0 = data.game_pc, inside = aim();
+      data.carrier = Object.assign({}, data.carrier, {aboard: false, here: false, system: "Far Away", distance: 120.5});
+      data.game_pc = true; renderCarrier(); const away = aim();
+      data.game_pc = false; renderCarrier(); const noPc = aim();
+      data.game_pc = pc0;
+      o.aim = [inside, away, noPc];
+      data.carrier = Object.assign({}, data.carrier, {aboard: true, here: true, system: "Smojooe AR-E b25-8", distance: null});
       // decommissioning, then decommissioned: in red with the date, never a hidden tile
       data.carrier = Object.assign({}, data.carrier, {decommission: {ts: "2026-10-02T10:00:00Z", scrap_ts: "2026-10-09T12:00:00Z", refund: 4850000000, done: false}});
       renderCarrier();
@@ -1541,6 +1550,7 @@ const settle = async maxMs => {
     if (!/Tritium in Depot: 668 t/.test(got.with) || got.trit !== "Total Tritium: 14,199 t (151 jumps)") bad.push("tile with tritium");
     if (!/UC ✓ · Vista ✓ · 668 t tritium/.test(got.without) || !got.tritGone) bad.push("tile without");
     if (JSON.stringify(got.noTile) !== "[true,true]" || !got.tileBack) bad.push("no carrier tile");
+    if (JSON.stringify(got.aim) !== "[0,1,0]") bad.push("carrier 🎯 " + JSON.stringify(got.aim));
     if (!/Decommissioning: scrapped (Oct 9|9 Oct) · 4\.85B cr back/.test(got.pending[0]) || !/aboard/.test(got.pending[0]) || !got.pending[1] || !got.pending[2]) bad.push("decommissioning");
     if (!/Out Of The Blue.*Decommissioned (Oct 9|9 Oct)/.test(got.gone[0]) || /aboard/.test(got.gone[0]) || !got.gone[1]) bad.push("decommissioned");
     if (JSON.stringify(got.noCarrier) !== "[false,false]") bad.push("no carrier cargo");
@@ -2369,7 +2379,8 @@ const settle = async maxMs => {
       const box = document.getElementById("ovMap"), hv = document.getElementById("hereView"), cv = document.getElementById("ovMapCanvas");
       const size = (wd, ht) => { Object.defineProperty(box, "clientWidth", {value: wd, configurable: true});
                                  Object.defineProperty(box, "clientHeight", {value: ht, configurable: true}); };
-      const state = () => ({shown: !box.hidden, mapon: hv.classList.contains("mapon"), S: parseInt(cv.style.width) || 0, stack: box.classList.contains("stack"),
+      const state = () => ({shown: !box.hidden, mapon: hv.classList.contains("mapon"),
+                            leaving: getComputedStyle(document.getElementById("hereLeaving")).display !== "none", S: parseInt(cv.style.width) || 0, stack: box.classList.contains("stack"),
                             legend: document.getElementById("ovMapLegend").textContent.includes("ABC 1"), strip: !document.getElementById("obMap").hidden,
                             inHere: hv.contains(box) && document.getElementById("ovHere").contains(hv)});
       // the body you are on comes to the top of the list above the map when the map comes up, once (the author, 2026-10-11)
@@ -2401,7 +2412,7 @@ const settle = async maxMs => {
     const want = {
       fits: got.fits.every(inBox) && got.fits.slice(0, 4).every(f => f.beside && f.S === f.height && f.legendW >= 220) &&
         !got.fits[4].beside && got.fits[4].S === 300 && !got.fits[5].beside,
-      on: got.on.shown && got.on.mapon && got.on.inHere && !got.on.stack && got.on.S >= 160 && got.on.S <= 380 && got.on.legend && !got.on.strip,
+      on: got.on.shown && got.on.mapon && got.on.inHere && !got.on.leaving && got.closed.leaving === false && got.body.leaving && !got.on.stack && got.on.S >= 160 && got.on.S <= 380 && got.on.legend && !got.on.strip,
       narrow: got.narrow.shown && got.narrow.stack && got.narrow.S <= 300 && got.narrow.S > 0,
       body: !got.body.shown && !got.body.mapon && got.body.strip, closed: got.closed.shown && got.closed.mapon,
       off: !got.collapsed.shown && !got.off.shown && !got.off.mapon && !got.none.shown && !got.none.mapon,

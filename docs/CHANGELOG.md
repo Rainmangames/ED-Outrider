@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · 🎯 beside your carrier; Here's heading stands down for the map
+- The Carrier tile (and the folded tiles line) has a 🎯 beside your carrier's system when it is elsewhere (the author):
+  auto-target puts that system in the galaxy map, through the same countdown run as a route's 🎯 (POST
+  api/highway/target {route: "carrier"}; a route cleared does not stop it). Game PC only; none aboard, in its system or
+  decommissioned.
+- Here's firsts no longer end in "sell at Universal Cartographics to claim what's unsold": players know (the author).
+- With the surface map up in the Overview, the firsts and the checklist under the system's name are hidden, so the
+  room goes to the bodies; they come back with the map.
+
 ## 2026-10-11 · Overview: the map brings your body into view; a shorter Here legend
 - When the surface map comes up in the Overview's system pane, the body you are on is scrolled to the top of the list
   above it (the author); again when you are on another body, never while you scroll the list yourself. Only the list
