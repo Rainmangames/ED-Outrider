@@ -708,6 +708,9 @@ class Batch3Journal(unittest.TestCase):
         self.j.handle({"timestamp": "2026-01-01T00:00:00Z", "event": "HullDamage", "Health": 0.57, "PlayerPilot": True, "Fighter": False})
         self.j.handle({"timestamp": "2026-01-01T00:01:00Z", "event": "Repair", "Items": ["Paint"], "Cost": 2})
         self.assertEqual(self.j.hull["pct"], 57)
+        # "Wear" is the ship's integrity: a damaged hull's repair names "Hull" too (review 2026-10-11)
+        self.j.handle({"timestamp": "2026-01-01T00:01:30Z", "event": "Repair", "Items": ["Wear"], "Cost": 3134})
+        self.assertEqual(self.j.hull["pct"], 57)
         self.j.handle({"timestamp": "2026-01-01T00:02:00Z", "event": "Repair", "Items": ["Hull"], "Cost": 3134})
         self.assertEqual(self.j.hull["pct"], 100)
         self.j.handle({"timestamp": "2026-01-01T00:03:00Z", "event": "HullDamage", "Health": 0.5, "PlayerPilot": True, "Fighter": False})
@@ -780,6 +783,34 @@ class Batch3Server(unittest.TestCase):
         del self.state.bases[7]
         asyncio.run(self.state.ensure_records(7))                 # on demand: not asked again within the day
         self.assertEqual(calls, [7])
+
+    def test_a_codex_entry_without_a_body_is_on_no_body(self):
+        """A CodexEntry with no BodyID (a phenomenon found in space) was listed, voucher and all, on every body of the
+        system you had not scanned yourself (review 2026-10-11)."""
+        self.j.handle({"event": "FSDJump", "timestamp": "2026-01-01T00:00:00Z", "StarSystem": "Sys", "SystemAddress": 7,
+                       "StarPos": [0, 0, 0]})
+        self.j.handle({"timestamp": "2026-01-01T00:01:00Z", "event": "CodexEntry", "EntryID": 2100701, "Name": "$Codex_Ent_L_Clouds;",
+                       "Name_Localised": "Lagrange Cloud", "SystemAddress": 7, "System": "Sys", "IsNewEntry": True,
+                       "VoucherAmount": 2500, "NearestDestination": "$SAA_Unknown_Signal:#type=$SAA_SignalType_Stellar;"})
+        base = {"v": ed_outrider.CACHE_VERSION, "name": "Sys", "x": 0, "y": 0, "z": 0, "body_count": 2, "records": [
+            {"name": "Sys 1", "type": "Planet", "subtype": "Icy body", "full": True},
+            {"name": "Sys 2", "type": "Planet", "subtype": "Rocky body", "full": True}]}
+        self.state.bases[7] = ("spansh", base)
+        bodies = [b for b in self.state.system_detail(7)["bodies"] if b.get("type") == "Planet"]
+        self.assertEqual([(b["name"], b["codex"]) for b in bodies], [("Sys 1", []), ("Sys 2", [])])
+
+    def test_dump_replaces_an_edsm_stand_in(self):
+        """A system first found through EDSM (find_system's fallback) and later filled from Spansh's dump is Spansh's:
+        it kept the edsm marker, so spansh_verdict ignored it (review 2026-10-11)."""
+        import asyncio
+        sp, _ = self.fake_spansh({"system": {"bodyCount": 1, "bodies": [
+            {"name": "Sys A", "type": "Star", "subType": "K (Yellow-Orange) Star", "solarMasses": 0.8}]}})
+        stand_in = ed_outrider.base_from_edsm({"name": "Sys", "coords": {"x": 0, "y": 0, "z": 0},
+                                               "primaryStar": {"type": "K (Yellow-Orange) Star", "isScoopable": True}})
+        self.assertEqual(ed_outrider.cached_source(stand_in), "edsm")
+        got = asyncio.run(sp.full_records(7, "u1", stand_in))
+        self.assertNotIn("edsm", got)
+        self.assertEqual(ed_outrider.cached_source(got), "spansh")
 
     def test_dump_body_count_is_kept(self):   # F53
         import asyncio

@@ -1276,6 +1276,17 @@ class BatchEExobio(unittest.TestCase):
         return {"event": "ScanOrganic", "timestamp": ts, "SystemAddress": addr, "Body": body_id, "ScanType": kind,
                 "Genus": f"$Codex_Ent_{genus}_Genus_Name;", "Genus_Localised": genus, "Species": species, "Species_Localised": name}
 
+    def test_a_species_not_in_the_price_list_is_priced_from_the_rules(self):
+        """Radicoida Unicus is missing from the Vista Genomics list: the unsold estimate counted it as 0 ("not priced")
+        while My Samples priced it from the bio rules; both use the rules' figure now (review 2026-10-11)."""
+        ev = lambda e: (T(e["timestamp"]), None, e)
+        unicus = "$Codex_Ent_Ingensradices_Unicus_Name;"
+        events = [ev(self.organic("2026-01-03T00:01:00Z", 1, "Analyse", unicus, "Radicoida Unicus"))]
+        bio = outrider.unsold.analyse(events, ARGS)["exobiology"]
+        self.assertEqual(bio["unknown_species"], [])
+        self.assertEqual(bio["base_value"], outrider.bio.species_value("Radicoida Unicus"))
+        self.assertGreater(bio["base_value"], 0)
+
     # ---- P8: per-run pricing ----
     def test_per_run_pricing(self):
         ev = lambda e: (T(e["timestamp"]), None, e)
@@ -1537,6 +1548,21 @@ class BatchEExobio(unittest.TestCase):
                        "SystemAddress": 3, "StarClass": "K"})
         said = [m for m in self.j.moments if m["kind"] == "jumponium"]
         self.assertEqual((said[-1]["system"], said[-1]["jumponium"]["body"]), (2, "1"))
+
+    def test_jumponium_of_a_system_left_by_carrier_is_not_said_elsewhere(self):
+        """Left without an FSD charge (a carrier jump, a respawn): the body found there is not announced at the next
+        charge, in another system (review 2026-10-11)."""
+        for move in ("CarrierJump", "Location"):
+            self.j.moments.clear()
+            self.mats_login()
+            self.j.handle(self.rich("2026-01-01T00:02:00Z", 3, 1.3))
+            self.j.handle({"event": move, "timestamp": "2026-01-01T00:05:00Z", "StarSystem": "Two", "SystemAddress": 2,
+                           "StarPos": [0, 0, 5]})
+            self.j.handle({"event": "FSSAllBodiesFound", "timestamp": "2026-01-01T00:06:00Z", "SystemName": "Two",
+                           "SystemAddress": 2, "Count": 3})
+            self.j.handle({"event": "StartJump", "timestamp": "2026-01-01T00:07:00Z", "JumpType": "Hyperspace",
+                           "StarSystem": "Three", "SystemAddress": 3, "StarClass": "K"})
+            self.assertEqual([m for m in self.j.moments if m["kind"] == "jumponium"], [], move)
 
     def test_jumponium_silent_when_counts_are_stale(self):
         self.mats_login(snap_ts="2025-12-31T00:00:00Z")   # the login wrote no Materials line: yesterday's counts

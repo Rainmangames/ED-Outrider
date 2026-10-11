@@ -2,6 +2,24 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Review fixes: journal data and values
+- A station repair of "Wear" alone no longer sets the hull to 100 %: wear is the ship's integrity, and a damaged
+  hull's repair names "Hull" beside it (checked against the author's journals, 2023-2025).
+- A jumponium body found in a system you left without an FSD charge (a carrier jump, a respawn) is no longer
+  announced at the next charge, in another system.
+- A codex entry with no body (a phenomenon found in space) is no longer shown, voucher and all, on every body of the
+  system you have not scanned yourself.
+- A system first found through EDSM and later filled from Spansh's data is Spansh's: it kept EDSM's mark, so the
+  arrival verdict was never refined from it.
+- `--restore` with the database file gone but its rollback journal left sets the journal aside: SQLite would have
+  rolled it into the restored database.
+- An older Docked read late (a legacy folder imported after the live one) no longer moves the market a carrier
+  transfer is filed under.
+- Exo-Biology checklist: Concha Biconcavis shows 19,010,800 cr (the price list), not BioScan's placeholder 16,777,215;
+  the unsold estimate prices a species missing from the price list (Radicoida Unicus) from the bio rules, as My Samples
+  does, instead of "not priced".
+- No journal re-read: the fixes apply from the next lines read.
+
 ## 2026-10-11 · Review fixes: config and launchers
 - A config value of the wrong type is reported at start and the default kept, as the example file says: a boolean
   for a number (`module_warn = true` read as 1, `radius = true` as 1 ly) and a non-text `db`, `backup_dir`, `voice`,

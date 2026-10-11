@@ -307,6 +307,17 @@ class CargoState(unittest.TestCase):
         with open(os.path.join(self.dir, "Market.json"), "w", encoding="utf-8") as f:
             json.dump(dict(fx["market"], event="Market"), f)
 
+    def test_an_older_dock_read_late_does_not_move_the_market(self):
+        """A legacy folder's old Docked imported after the live one (review 2026-10-11): the market a CargoTransfer is
+        filed under stays the newer dock's."""
+        dock = lambda ts, mid: {"timestamp": ts, "event": "Docked", "StationName": "S", "StationType": "FleetCarrier",
+                                "MarketID": mid, "StarSystem": "X", "SystemAddress": 1}
+        self.j.handle(dock("2026-10-01T00:00:00Z", 7))
+        self.j.handle(dock("2025-01-01T00:00:00Z", 99))   # read late, from long ago
+        self.assertEqual(self.j.cargo_dock, 7)
+        self.j.handle(dock("2026-10-02T00:00:00Z", 8))    # a newer one still moves it
+        self.assertEqual(self.j.cargo_dock, 8)
+
     def test_summary_rereads_the_same(self):
         fx, _, _ = real()
         self.feed(self.j, fx)

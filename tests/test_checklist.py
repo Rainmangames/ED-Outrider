@@ -110,6 +110,29 @@ class Checklist(unittest.TestCase):
     def test_the_server_has_it(self):
         self.assertIs(ed_outrider.outrider.checklist, cl)
 
+    def test_value_from_the_price_list(self):
+        """The rules carry BioScan's figure, a placeholder for Concha Biconcavis (16,777,215): the row shows the price
+        list's, as My Samples and the predictions do (review 2026-10-11)."""
+        sp = [{"id": "$C1;", "genus": "Concha", "name": "Concha Biconcavis", "value": 16_777_215, "rulesets": [{}], "colors": None},
+              {"id": "$Z1;", "genus": "Zz", "name": "Not Priced", "value": 1234, "rulesets": [{}], "colors": None}]
+        t = rows(cl.table(sp, 1, region_ok, [], [], 3, value_of=outrider.bio.species_value))
+        self.assertEqual(t["Concha Biconcavis"]["value"], 19_010_800)
+        self.assertEqual(t["Not Priced"]["value"], 1234)            # not in the list: the rules' own
+        import types
+        import unittest.mock
+        seen = {}
+        real = cl.table
+
+        def spy(*a, **k):
+            seen.update(k)
+            return real(*a, **k)
+        db = ed_outrider.open_db(":memory:")
+        self.addCleanup(db.close)
+        state = ed_outrider.State(db, ed_outrider.Journals(db), types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+        with unittest.mock.patch.object(cl, "table", spy):
+            state.checklist("all")
+        self.assertIs(seen.get("value_of"), outrider.bio.species_value)   # the server's checklist uses it
+
     def test_completion(self):
         """Each possible species scores the share of its colours found there (any state), averaged over the region's
         possible species: half of every species is 50% with none finished (the author's measure, 2026-10-09)."""

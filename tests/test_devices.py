@@ -537,6 +537,21 @@ class BatchGHonkBackups(unittest.TestCase):
             self.assertIn("also in the zip, not restored: speech.json", lines[-1])
             self.assertFalse([f for f in os.listdir(d) if f.endswith(".part")])
 
+    def test_restore_sets_a_stray_journal_aside(self):
+        """The database file gone (deleted by hand after a crash), its rollback journal left: SQLite would roll that
+        journal into the restored file. It is set aside too (review 2026-10-11)."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            dbp = os.path.join(d, "x.sqlite")
+            with open(dbp + "-journal", "w") as f:
+                f.write("left over")
+            z = self.make_zip(d, rows=10)
+            lines = ed_outrider.restore_backup(z, dbp, "127.0.0.1", 0, now=0)
+            stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(0))
+            self.assertFalse(os.path.exists(dbp + "-journal"))
+            self.assertTrue(os.path.exists(f"{dbp}.pre-restore-{stamp}-journal"))
+            self.assertTrue(any("stray x.sqlite-journal" in line for line in lines), lines)
+
     def test_restore_a_database_not_named_sqlite(self):   # F33
         import tempfile, zipfile
         with tempfile.TemporaryDirectory() as d:

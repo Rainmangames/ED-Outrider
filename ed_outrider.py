@@ -3097,6 +3097,10 @@ class Journals:
             if self.pos and self.pos["id64"] != id64:
                 self.prev = self.pos
                 meta_set(self.db, "prev", self.prev)
+                # a jumponium body not said in the system left (a carrier jump, a respawn: no StartJump flushed it)
+                # would be announced at the next FSD charge, somewhere else
+                if self.jumponium and self.jumponium["system"] != id64:
+                    self.jumponium = None
             # a relog keeps the arrival's ts: the briefing and the FSS warning are once per arrival, not per login
             self.pos = {"name": ev.get("StarSystem"), "id64": id64, "x": x, "y": y, "z": z,
                         "ts": self.pos["ts"] if relog else ts}
@@ -3597,7 +3601,8 @@ class Journals:
             if name == "Undocked" and not ev.get("Taxi") and not ev.get("Multicrew"):
                 self.trade_left_stop(ev, ts)   # a trade stop left with part of its trades made
             at = ev.get("MarketID") if name == "Docked" and not ev.get("Taxi") and not ev.get("Multicrew") else None
-            if at != self.cargo_dock:
+            # an older dock read late (a legacy folder imported after the live one) must not move it back
+            if self.fresh("cargo_dock", ts) and at != self.cargo_dock:
                 self.cargo_dock = at
                 meta_set(self.db, "cargo_dock", at)
             return
@@ -3691,9 +3696,11 @@ class Journals:
                 meta_set(self.db, "hull", self.hull)
             return
         if name in ("RepairAll", "Repair"):
-            # current journals list what was repaired (Items: ["Hull"], ["Wear"], ["Paint"]...); older ones say Item
+            # current journals list what was repaired (Items: ["Hull"], ["Wear"], ["Paint"]...); older ones say Item.
+            # "Wear" is the ship's integrity, not its hull: a damaged hull's repair lists "Hull" beside it (the
+            # author's journals, 2023-2025: every wear-only repair was made at 100 % hull)
             items = ev.get("Items") if isinstance(ev.get("Items"), list) else [ev["Item"]] if ev.get("Item") else []
-            if (name == "RepairAll" or any(str(i).lower() in ("hull", "all", "wear") for i in items)) \
+            if (name == "RepairAll" or any(str(i).lower() in ("hull", "all") for i in items)) \
                     and ts >= (self.hull or {}).get("ts", ""):
                 self.hull = {"pct": 100, "ts": ts}
                 meta_set(self.db, "hull", self.hull)
@@ -5194,6 +5201,7 @@ class Spansh:
             records.append(r)
         base = dict(base, records=records, body_count=system.get("bodyCount") or base.get("body_count"))
         base.pop("no_dump", None)
+        base.pop("edsm", None)   # Spansh's dump now: an EDSM stand-in it replaces is no longer EDSM's (cached_source)
         self.store(id64, updated_at, base)
         return base
 
@@ -8191,7 +8199,8 @@ class State:
                 "bio_potential": bio_val,
                 # undecided before the DSS: every genus it could be, and the range ("Stratum or Bacterium")
                 "bio_options": bio_options(r, star, ctx, {o["genus"] for o in held}) if r.get("bio") and not known_genera else None,
-                "organics": organics.get(bid, []), "codex": codex.get(bid, []),
+                # a codex entry with no body (a phenomenon in space) is no unscanned body's: those have bid None too
+                "organics": organics.get(bid, []), "codex": codex.get(bid, []) if bid is not None else [],
                 "scanned": bid is not None, "first_discovered": first_disc, "mapped": is_mapped,
                 "first_mapped": first_map, "map_state": map_state, "footfall": bool(f and f["foot_ts"]),
                 "first_footfall": bool(f and f["was_footfalled"] == 0 and f["foot_ts"]),
@@ -8894,7 +8903,8 @@ class State:
                          "region": region_of(r["system"]), "state": state})
         codex = [{"name": c["name"], "region": number.get((c["region"] or "").lower())}
                  for c in self.db.execute("SELECT name, region FROM codex")]
-        out = outrider.checklist.table(R["species"], region, outrider.bio.ruleset_region_ok, runs, codex, count)
+        out = outrider.checklist.table(R["species"], region, outrider.bio.ruleset_region_ok, runs, codex, count,
+                                         value_of=outrider.bio.species_value)
         done = outrider.checklist.completion(R["species"], outrider.bio.ruleset_region_ok, runs, codex, count)
         return dict(out, kind="bio", regions=[{"id": i, "name": n, "completion": done.get(i)} for i, n in enumerate(names) if n],
                     completion_all=done["all"], here=here, region=region, region_name=names[region] if region else None), 200
@@ -14108,6 +14118,12 @@ def restore_backup(zip_path, db_path, host, port, now=None):
                     if os.path.exists(db_path + ext):
                         os.replace(db_path + ext, aside + ext)
                 lines.append(f"the old database is kept as {aside}")
+            else:   # the file itself gone, its journal left: SQLite would roll that into the restored file
+                for ext in ("-journal", "-wal", "-shm"):
+                    if os.path.exists(db_path + ext):
+                        os.replace(db_path + ext, f"{db_path}.pre-restore-{stamp}{ext}")
+                        lines.append(f"a stray {os.path.basename(db_path + ext)} was set aside as "
+                                     f"{db_path}.pre-restore-{stamp}{ext}")
             os.replace(tmp, db_path)
         finally:
             try:

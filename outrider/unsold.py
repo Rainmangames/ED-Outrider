@@ -457,6 +457,19 @@ def species_value(codex_species_name):
     return best[1], best[2]
 
 
+def rules_value(name):
+    """A species' value from the bio rules (outrider.bio.species_value's fallback), or None: imported here, since bio
+    imports this module, and optional, since this file also runs on its own."""
+    try:
+        from . import bio
+    except ImportError:
+        return None
+    try:
+        return bio.species_value(name) if name else None
+    except Exception:   # noqa: BLE001 -- unreadable rules: unpriced, as before
+        return None
+
+
 def analyse(events, args):
     odyssey = not args.no_odyssey
 
@@ -753,6 +766,8 @@ def analyse(events, args):
     for ev in organics:
         value, name = species_value(ev.get("Species", ""))
         label = ev.get("Species_Localised") or name or ev.get("Species", "?")
+        if value is None:   # not in the price list (Radicoida Unicus): the bio rules' figure, as My Samples prices it
+            value = rules_value(ev.get("Species_Localised"))
         if value is None:
             bio_unknown.append(label)
             value = 0
