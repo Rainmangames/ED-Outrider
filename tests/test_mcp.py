@@ -138,6 +138,13 @@ class Registry(unittest.TestCase):
         self.assertEqual((bd["bio_predicted"][0]["likeliest"], bd["gravity_g"], bd["mining_odds"]["top"][0]["name"]),
                          ("Bacterium Volu", 0.12, "Platinum"))
         self.assertIn("error", run("body_detail", {"name": "A 1", "system_id64": "12; drop"}))
+        # a name that matches no body: said, not an empty record (review 2026-10-11)
+        empty = {"system": "Start", "full_name": "Start A 9", "row": None, "own": None, "spansh": None}
+
+        async def no_body(path, params):
+            return empty if path == "/api/body" else json.loads(json.dumps(FIX[path]))
+        bd = asyncio.run(tools.call("body_detail", {"name": "A 9"}, no_body))
+        self.assertIn("no body called 'A 9'", bd.get("error", ""))
         us = run("unsold_data")
         self.assertEqual(([x["name"] for x in us["unsold_firsts"]], us["lost_firsts_systems"], us["cartographic"]["estimated_payout"]),
                          (["Unsold Two", "Unsold One"], 1, 600))

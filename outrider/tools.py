@@ -210,6 +210,8 @@ async def body_detail(get, args, rows):
     d = await get("/api/body", {"system": sid, "name": name})
     if d.get("error"):
         return {"error": d["error"]}
+    if not (d.get("row") or d.get("own") or d.get("spansh")):   # the name matched nothing: say so, not an empty body
+        return {"error": f"no body called {name!r} is known in {d.get('system') or 'that system'}"}
     b = d.get("row") or {}
     out = _body_brief(b)
     out.update({"system": d.get("system"), "full_name": d.get("full_name"), "radius_km": rnd(b.get("radius_km"), 0),

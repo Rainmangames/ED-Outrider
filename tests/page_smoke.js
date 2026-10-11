@@ -1150,6 +1150,10 @@ const settle = async maxMs => {
     w.eval('speak("A find.", {kind: "find"})'); await sleep(20); w.eval('speak("Hull at 40 percent.", {kind: "hull", tag: "hull"})');
     await sleep(400);
     w.eval("speechOn = false"); w.eval('alertOut("codex", "Codex entry", "", {say: "Codex."})'); w.eval("speechOn = true");
+    // this screen set never to speak: the transcript says so, not "another window speaks" (review 2026-10-11)
+    const savedMode = w.eval('localStorage.getItem("speakMode")');
+    w.eval('localStorage.setItem("speakMode", JSON.stringify("never"))'); w.eval('alertOut("codex", "Codex never", "", {say: "Codex."})');
+    w.eval(savedMode === null ? 'localStorage.removeItem("speakMode")' : `localStorage.setItem("speakMode", ${JSON.stringify(savedMode)})`);
     got.fates = JSON.parse(w.eval(`JSON.stringify(speechLog.map(e => [e.words, e.fate]))`));
     const fate = words => (got.fates.find(f => f[0] === words) || [])[1];
     const heatFates = got.fates.filter(f => f[0] === "Heat damage.").map(f => f[1]).sort().join("|");
@@ -1171,7 +1175,8 @@ const settle = async maxMs => {
     for (const k of Object.keys(want)) if (JSON.stringify(got[k]) !== JSON.stringify(want[k])) bad.push(k);
     const fatesOk = fate("Old find.") === "dropped: waited over 20 s" && heatFates === "refused: said under 30 s ago|said"
       && fate("Tank at 40.") === "replaced by a newer scoop" && fate("Tank full.") === "said" && fate("A find.") === "cut short by danger"
-      && fate("Hull at 40 percent.") === "said" && fate("Codex entry") === "silent: speech off";
+      && fate("Hull at 40 percent.") === "said" && fate("Codex entry") === "silent: speech off"
+      && fate("Codex never") === "silent: this screen never speaks (Settings)";
     if (!fatesOk) bad.push("fates");
     if (!(got.drawn === got.fates.length && got.drawnSaid >= 3 && got.copyLines === got.fates.length)) bad.push("drawn");
     const goodS2 = !bad.length && errors.length === before;

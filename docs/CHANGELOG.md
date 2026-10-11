@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Review fixes: voice and AI
+- The voice's answer when nothing matched ("I only know a few questions so far: ...") names the nearest station or
+  carrier too; the list is built from one label per command (`outrider.ask.LABELS`), so a new one is never left out.
+- The AI's `body_detail` tool says when no body by that name is known, instead of answering an empty body.
+- Spoken lines: with this screen set never to speak (or a tablet not playing alerts), a line's fate says so; it
+  blamed "another window".
+- The voice lab opens on a speech file whose top level is not an object (it said so and stopped).
+
 ## 2026-10-11 · Review fixes: routes
 - Plot Route: Clear route while a Road to Riches, Exomastery or trade plot runs into an empty slot stops that plot. It
   posted to the Highway's clear instead: "Route cleared." while the plot ran on, or your Highway route deleted.

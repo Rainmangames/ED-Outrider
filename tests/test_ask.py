@@ -237,3 +237,14 @@ class Endpoint(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class KnownQuestions(unittest.TestCase):
+    def test_every_command_is_named(self):
+        """What the voice says it knows lists every command it answers: "the nearest station" was left out
+        (review 2026-10-11)."""
+        import outrider.ask as ask
+        self.assertEqual(set(ask.LABELS), set(ask.COMMANDS))
+        said = ask.known_questions()
+        for label in ask.LABELS.values():
+            self.assertIn(label, said)

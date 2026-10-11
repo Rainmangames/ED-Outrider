@@ -1675,7 +1675,7 @@ function alertOut(kind, title, body, {sound, say, delay = 0, tag = null, still =
     linePlain = true;
     try { addCaption((typeof say === "function" ? say() : say) || title); } catch { addCaption(title); } finally { linePlain = false; }
   }
-  setFate(entry, !loud ? "silent: another window speaks" : !speechOn ? "silent: speech off" : UNSPOKEN.has(kind) ? "not spoken (the arrival is)"
+  setFate(entry, !loud ? `silent: ${hushReason()}` : !speechOn ? "silent: speech off" : UNSPOKEN.has(kind) ? "not spoken (the arrival is)"
     : quiet ? (typeof quiet === "string" ? quiet : "merged into another line (quiet)")
     : hush && alertSpeak[kind] ? "silent: hushed" : "silent: not ticked to speak");
   return notified;
@@ -1763,7 +1763,10 @@ function clearForJump() {
   dropFates(before, speechItems, "dropped: the FSD charged for a jump");
   if (speechNow && speechNow.prio !== 0 && speechNow.kind !== "manual") { setFate(speechPlaying, "cut short: the FSD charged"); speechNow.stop(); }
 }
-const hushReason = () => !speechOn ? "speech off" : "another window speaks";
+// why this window says nothing: speech off, this screen set never to speak (Settings), or another window speaks
+const hushReason = () => !speechOn ? "speech off"
+  : speakMode() === "never" ? (TABLET ? "this tablet does not play alerts (Settings)" : "this screen never speaks (Settings)")
+  : "another window speaks";
 let lastSaid = null;   // the last line actually said (the words, not the queue item): the co-pilot's "say again"
 // a hush began: what is queued or playing below danger goes (lines asked for in this window stay)
 function cutForHush() {
@@ -8344,7 +8347,7 @@ async function prepareLostLine() {
 // Its fate goes in the dialog's Spoken lines like any line, so a silent one says why.
 async function sayLost() {
   const entry = logSpeech({kind: "connection", words: LOST_TEXT});
-  if (!(speechOn && speakerHere())) { toast(LOST_TEXT); setFate(entry, !speechOn ? "silent: speech off" : "silent: another window speaks"); return ""; }
+  if (!(speechOn && speakerHere())) { toast(LOST_TEXT); setFate(entry, `silent: ${hushReason()}`); return ""; }
   const ctx = await runningAudio();   // paused audio starts again if this page has had a click since it loaded
   if (!ctx) {
     toast(LOST_TEXT + " (click the page once so it may play sound)");

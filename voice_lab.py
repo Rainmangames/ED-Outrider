@@ -207,6 +207,8 @@ def load_lines(path=None):
     path = path or configured_speech_file()
     with open(path, encoding="utf-8") as f:
         doc = json.load(f)
+    if not isinstance(doc, dict):   # a list or a string at the top: said in the lab (Lab catches ValueError), no crash
+        raise ValueError("the speech file must hold one JSON object")
     lines, _ = outrider.speech.apply_bans(doc.get("lines") or {}, outrider.speech.read_bans(outrider.speech.banned_path(path)))
     return doc.get("styles") or {}, lines
 

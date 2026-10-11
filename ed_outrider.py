@@ -5884,8 +5884,7 @@ class State:
                 return {"error": f"the AI layer failed ({type(e).__name__})", "code": "ai_error"}, 502
         else:
             matched = "none"
-            words = ("I only know a few questions so far: a status report, fuel, unsold data, the next jump, what's left "
-                     "here, the nearest unvisited system, hush and unhush.")
+            words = outrider.ask.known_questions()
         words = outrider.tts.clip_text(words)
         self.copilot_action(action, words)
         return {"answer": words, "spoken": self.speaker_present(), "matched": matched, "command": cmd}, 200

@@ -22,6 +22,19 @@ TEXT_MAX = 500
 # in the order questions are matched: nearest_dock before fuel, unsold, next_jump and whats_left, whose single words
 # ("fuel") are in its questions too ("nearest station with fuel" asked for the fuel gauge: the sweep of 2026-10-09)
 COMMANDS = ("unhush", "hush", "nearest_dock", "next_jump", "status_report", "fuel", "unsold", "whats_left", "nearest_unvisited")
+# what the voice says it knows when nothing matched: one label per command, in the order said (a test checks every
+# command has one, so a new command is never left out of the list)
+LABELS = {"status_report": "a status report", "fuel": "fuel", "unsold": "unsold data", "next_jump": "the next jump",
+          "whats_left": "what's left here", "nearest_unvisited": "the nearest unvisited system",
+          "nearest_dock": "the nearest station or carrier", "hush": "hush", "unhush": "unhush"}
+
+
+def known_questions():
+    """'I only know a few questions so far: ...' from LABELS."""
+    labels = list(LABELS.values())
+    return f"I only know a few questions so far: {', '.join(labels[:-1])} and {labels[-1]}."
+
+
 # "nearest station", "nearest Vista"...: the words of the question narrow the search (a whole phrase is needed in
 # ask.json, never a bare "nearest": the author, 2026-10-08)
 NEAREST_WORDS = {"vista": "Vista", "genomics": "Vista", "cartographics": "UC", "cartographic": "UC", "repair": "Repair",
