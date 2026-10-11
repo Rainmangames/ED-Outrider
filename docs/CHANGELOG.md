@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Review fixes: Mining sites opens its body in Here
+- Materials -> Mining sites' 🔍 opened the body under its full name ("Smojooe AR-E b25-8 ABC 3 d") while Here and the
+  body panel go by the short one ("ABC 3 d"): the row was not marked, the panel missed Here's facts and did not
+  refresh after a scan. It passes the short name, as the Log's 🔍 does. (A lead from the review's re-check.)
+
 ## 2026-10-11 · Review fixes: uploads
 - EDDN: logged in docked, the game's Location names the station as the Body ("Thorn Port", BodyType "Station"); a
   later Docked at a planetary port then sent the station's name as its planet. A Location's body is now taken only

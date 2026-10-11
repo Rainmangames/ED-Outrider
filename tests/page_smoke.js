@@ -2506,6 +2506,7 @@ const settle = async maxMs => {
       o.row1 = [...rows[0].cells].map(td => td.textContent.trim()).join(" | ");
       o.row2 = [...rows[1].cells].map(td => td.textContent.trim()).join(" | ");
       o.forgets = el.querySelectorAll("[data-forget]").length;
+      o.goto = el.querySelector(".goto[data-body]").dataset.body;   // Here's own (short) name, as the Log's link gives
       o.restock = document.getElementById("matSynth").textContent.replace(/\\s+/g, " ").trim();
       window.confirm = () => false; el.querySelector("[data-forget]").click(); await new Promise(r => setTimeout(r, 50));
       o.declined = posted.length;
@@ -2518,7 +2519,7 @@ const settle = async maxMs => {
     })()`));
     w.fetch = realFetch; delete w.posted;
     const want = {served: Array.isArray(served.mining_sites) && served.synthesis.some(r => r.name === "Mining rig restock"),
-      head: got.head, row1: /^ABC 3 d 🔍Smojooe AR-E b25-8⌖ \| Water 10 t · Methanol Monohydrate Crystals 20 t2 rigs · 1 unmarked · L3 · (30 Sep|Sep 30) \| 0 ly \| forget$/.test(got.row1),
+      head: got.head, goto: got.goto === "ABC 3 d", row1: /^ABC 3 d 🔍Smojooe AR-E b25-8⌖ \| Water 10 t · Methanol Monohydrate Crystals 20 t2 rigs · 1 unmarked · L3 · (30 Sep|Sep 30) \| 0 ly \| forget$/.test(got.row1),
       row2: /^4 d 🔍LTT 4961⌖ \| Gold 22 t(26 Sep|Sep 26) \| 41.2 ly \| $/.test(got.row2), forgets: got.forgets === 1,
       restock: /×2 ?Mining rig restock Iron 10\/3 · Nickel 5\/2 · Mechanical Equipment 4\/1/.test(got.restock),
       forget: got.declined === 0 && got.posted && got.posted[0] === "api/sites/forget" &&

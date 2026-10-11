@@ -4051,7 +4051,7 @@ function matSitesHtml(list) {
     list.map(s => {
       const spots = [s.rigs ? plural(s.rigs, "rig") : "", s.unmarked ? `${s.unmarked} unmarked` : ""].filter(Boolean).join(" · ");
       const detail = [spots, s.locations.map(n => "L" + n).join(" "), s.last ? shortDay(s.last) : ""].filter(Boolean).join(" · ");
-      return `<tr><td><b>${esc(s.body)}</b>${s.body_name ? ` <span class="goto" data-body="${esc(s.body_name)}" data-bsys="${esc(s.id)}" title="open ${esc(s.body)} in Here">🔍</span>` : ""}` +
+      return `<tr><td><b>${esc(s.body)}</b>${s.body_name ? ` <span class="goto" data-body="${esc(s.body)}" data-bsys="${esc(s.id)}" title="open ${esc(s.body)} in Here">🔍</span>` : ""}` +
         `<div>${s.system ? `<span class="name" data-name="${esc(s.system)}" title="click to copy">${esc(s.system)}</span><span class="goto" data-goto="${esc(s.id)}" title="open in Here">⌖</span>` : `<span class="unk">unknown system</span>`}</div></td>` +
         `<td>${s.minerals.map(x => `${esc(x.name)} ${x.tons} t`).join(" · ")}${detail ? `<div class="unk">${esc(detail)}</div>` : ""}</td>` +
         `<td class="num">${s.distance != null ? s.distance + " ly" : ""}</td>` +
