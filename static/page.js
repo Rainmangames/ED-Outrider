@@ -2405,7 +2405,7 @@ function bmIcon(id, name, bms) {
     ` title="${b ? "" : "bookmark this system"}">${b ? "★" : "☆"}</span>`;
 }
 
-// the unit is picked by what the value rounds to: 999,600 is "1.0M", not "1000k"
+// the unit is picked by what the value rounds to: 999,600 is "1.0M", not "1000k" (outrider/overlay.py credits() copies this)
 const credits = n => n >= 999.95e6 ? (n / 1e9).toFixed(2) + "B" : n >= 999.5e3 ? (n / 1e6).toFixed(1) + "M"
                     : n >= 999.5 ? Math.round(n / 1e3) + "k" : String(Math.round(n));
 // Your own thresholds for the unsold-data warning; the server's defaults apply until you change them.
@@ -7896,8 +7896,9 @@ async function overlayPost(path, body) {
   try {
     const j = await apiJson(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
     overlayNote = j.error || j.note || "";
+    // api/overlay answers the whole state (its layout too), api/overlay/layout the layout: told apart by the path
     if (!j.error && data.overlay) {
-      if (j.layout) data.overlay.layout = j.layout;
+      if (/\/layout$/.test(path)) { if (j.layout) data.overlay.layout = j.layout; }
       else { delete j.note; data.overlay = j; }
     }
   } catch (err) {
@@ -7909,7 +7910,8 @@ async function overlayPost(path, body) {
 document.getElementById("overlayBox").addEventListener("change", e => {
   const t = e.target;
   if (t.dataset.ov === "enabled") overlayPost("api/overlay", {enabled: t.checked});
-  else if (t.dataset.ov) overlayPost("api/overlay", {[t.dataset.ov]: t.value});
+  // a select keeps the focus, which holds renderOverlay off: let go, so the server's answer (its note) is drawn
+  else if (t.dataset.ov) { t.blur(); overlayPost("api/overlay", {[t.dataset.ov]: t.value}); }
   else if (t.dataset.ovpanel) overlayPost("api/overlay", {panels: {[t.dataset.ovpanel]: t.checked}});
   else if (t.dataset.ovlay) {
     const k = t.dataset.k, v = k === "corner" ? t.value : Number(t.value) / 100;

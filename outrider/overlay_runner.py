@@ -25,6 +25,7 @@ from . import ROOT
 
 REQUIREMENTS = os.path.join(ROOT, "requirements-overlay.txt")
 CRASHES_MAX = 5          # crashes in a row before it stops trying (until the overlay is switched off and on again)
+HEALTHY_S = 60           # a window that ran this long was not a start-up crash: its stop starts a new count
 BACKOFF_S = (5, 10, 30, 60, 120)
 STOP_WAIT_S = 3          # s for the window to close when asked before it is killed
 NO_WINDOW_ENV = "OUTRIDER_NO_OVERLAY_WINDOW"
@@ -45,7 +46,7 @@ class OverlayRunner:
                  pip=subprocess.run, background=True):
         self.url, self.popen, self.has_qt, self.python, self.root = url, popen, has_qt, python or sys.executable, root
         self.log, self.clock, self.pip, self.background = log, clock, pip, background
-        self.proc, self.crashes, self.next_try = None, 0, 0.0
+        self.proc, self.crashes, self.next_try, self.started_at = None, 0, 0.0, 0.0
         self.state, self.why = "off", None
         self.installing, self.install_error = False, None
 
@@ -69,6 +70,8 @@ class OverlayRunner:
                 self.state, self.why = "running", None
                 return
             self.proc = None
+            if self.clock() - self.started_at >= HEALTHY_S:   # "in a row": a stop after hours of drawing is a first
+                self.crashes = 0
             self.crashes += 1
             self.log(f"overlay window: it stopped (exit {code})")
             if self.crashes >= CRASHES_MAX:
@@ -93,7 +96,7 @@ class OverlayRunner:
             self.proc = None
             self.state, self.why = "failed", f"could not start it: {e}"
             return
-        self.state, self.why = "starting", None
+        self.state, self.why, self.started_at = "starting", None, self.clock()
         self.log(f"overlay window: started (pid {getattr(self.proc, 'pid', '?')})")
 
     def stop(self):
@@ -125,6 +128,10 @@ class OverlayRunner:
                     lines = (r.stderr or r.stdout or "").strip().splitlines()
                     self.install_error = (lines[-1] if lines else f"pip exited {r.returncode}")[:300]
                     self.log(f"overlay window: installing PyQt6 failed: {self.install_error}")
+                elif not self.has_qt():   # pip said yes, but this Python still cannot import it (a --user or
+                    # target install elsewhere): said once, not installed again every tick
+                    self.install_error = f"pip finished but PyQt6 still cannot be imported by {self.python}"
+                    self.log(f"overlay window: {self.install_error}")
                 else:
                     self.log("overlay window: PyQt6 installed")
                     self.state = "off"   # the next tick starts the window

@@ -2,6 +2,21 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Review fixes: the overlay
+- The overlay's figures are written as the page writes them: 999,999 was "1000k" (the page: "1.0M"), 999.95M
+  "1000.0M", 1.25B "1.2B" (`overlay.credits` follows page.js `credits`).
+- A station or a mining site targeted in game is no body: the body panel kept to the body you are near (it vanished),
+  and Now no longer says "➜ Harper Dock · nothing to do here" or a raw `$SAA_Unknown_Signal` name; a mining site's
+  planet is matched by its id, as the page's Now view does.
+- The overlay window's feed survives a connection cut mid-answer (an `http.client` error is not an OSError): it ended
+  and the last panels stayed drawn over the game.
+- The runner: a window that drew for a minute or more and then stopped starts a new count (five stops over days of
+  play no longer gave up for good: "five times in a row"); a pip run that succeeds while this Python still cannot
+  import PyQt6 is reported once, not run again every few seconds.
+- Settings -> In-game overlay: the answer to a switch (theme, text size, on/off, test panels) was taken for a layout
+  answer and dropped until the next poll; and after a pick from a list the server's note was never drawn (the list
+  kept the focus, which holds the redraw off).
+
 ## 2026-10-11 · Version 2026.10.21
 - The in-game overlay (six panels, Arrange mode, themes, PyQt6 installed automatically; game PC only), GPL-3.0-or-later,
   the Exo-Biology genus ✓, EDDN's biology samples (scanorganic/1) and parity with EDMC (planetary Docked's body, no

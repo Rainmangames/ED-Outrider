@@ -98,16 +98,16 @@ def body(name, dist, **kw):
 
 
 DETAIL = {"name": "Test Sector AB-C d1-2", "bodies": [
-    {"name": "A", "type": "Star", "subtype": "K (Yellow-Orange) Star", "dist_ls": 0, "value_parts": {"carto_left": 0}},
-    body("A 3", 900, notable="WW", terraformable=True, subtype="Water world", value_parts={"carto_left": 2_400_000}),
-    body("A 1", 300, value_parts={"carto_left": 90_000}),                                        # small: not listed
-    body("B 1", 50, subtype="Icy body", value_parts={"bio_left": 19_000_000}, genera=["Stratum"],
+    {"name": "A", "body_id": 0, "type": "Star", "subtype": "K (Yellow-Orange) Star", "dist_ls": 0, "value_parts": {"carto_left": 0}},
+    body("A 3", 900, body_id=9, notable="WW", terraformable=True, subtype="Water world", value_parts={"carto_left": 2_400_000}),
+    body("A 1", 300, body_id=7, value_parts={"carto_left": 90_000}),                                        # small: not listed
+    body("B 1", 50, body_id=12, subtype="Icy body", value_parts={"bio_left": 19_000_000}, genera=["Stratum"],
          bio_guess=[{"genus": "Stratum", "codex_new": True, "codex_galaxy_new": True, "variants": ["Stratum Tectonicas - Lime"],
                      "codex_have": []}]),
-    body("B 2", 70, subtype="Rocky body", value_parts={"bio_left": 4_000_000}, organics=[
+    body("B 2", 70, body_id=13, subtype="Rocky body", value_parts={"bio_left": 4_000_000}, organics=[
         {"genus": "Bacterium", "samples": 1, "done": False, "lost": False}]),
-    body("C 1", 20, mapped=True, value_max=3_000_000, value_parts={"carto_left": 0}),
-    body("C 2", 25, value_parts={"carto_left": 600_000}, curiosities=[{"tag": "close ring", "why": "x"}]),
+    body("C 1", 20, body_id=20, mapped=True, value_max=3_000_000, value_parts={"carto_left": 0}),
+    body("C 2", 25, body_id=21, value_parts={"carto_left": 600_000}, curiosities=[{"tag": "close ring", "why": "x"}]),
 ]}
 
 
@@ -133,11 +133,14 @@ class SystemPanel(unittest.TestCase):
         self.assertIsNone(O.system_panel({"name": "Empty", "bodies": [body("A 1", 10)]}, pal))   # nothing worth it: no panel
 
     def test_credits(self):
-        self.assertEqual([O.credits(v) for v in (950, 59_400, 2_400_000, 1_230_000_000, None)], ["950", "59k", "2.4M", "1.2B", "0"])
+        self.assertEqual([O.credits(v) for v in (950, 59_400, 2_400_000, 1_230_000_000, None)], ["950", "59k", "2.4M", "1.23B", "0"])
+        # as page.js credits(): the unit follows what the figure rounds to (review 2026-10-11)
+        self.assertEqual([O.credits(v) for v in (999_999, 999_600, 999_950_000, 1_250_000_000, 999.6, 2_500)],
+                         ["1.0M", "1.0M", "1.00B", "1.25B", "1k", "3k"])
 
 
 class BodyPanel(unittest.TestCase):
-    B = body("B 1", 50, subtype="Icy body", landable=True, gravity=0.42, atmosphere="Thin Neon atmosphere", temperature=27.4,
+    B = body("B 1", 50, body_id=12, subtype="Icy body", landable=True, gravity=0.42, atmosphere="Thin Neon atmosphere", temperature=27.4,
              first_discovered=True, geo=2, value_parts={"carto_left": 1_200_000, "bio_left": 20_000_000, "bio_factor": 5},
              genera=["Stratum", "Bacterium"],
              bio_guess=[{"genus": "Stratum", "best": "Stratum Tectonicas", "value": 3_800_000, "codex_galaxy_new": True,
@@ -352,6 +355,30 @@ class Runner(unittest.TestCase):
         setup("[overlay]\nenabled = true\n", qt=True, wmctrl=False, platform="win32")
         self.assertEqual(said, [])
         self.assertEqual(self.R.main(["--port", "8026", "--config", os.path.join(tmp.name, "none.toml"), "--setup"]), 0)   # Outrider's own arguments pass
+
+    def test_pip_ok_without_pyqt_is_not_repeated(self):
+        """pip answers 0 but this Python still cannot import PyQt6 (a --user or target install elsewhere): said once,
+        not a new pip run on every tick (review 2026-10-11)."""
+        self.qt, self.pip_answer = False, (0, "")
+        for _ in range(4):
+            self.run.tick(True)
+        self.assertEqual(len(self.pips), 1)
+        st = self.run.status()
+        self.assertEqual(st["state"], "install_failed")
+        self.assertIn("still cannot be imported", st["why"])
+
+    def test_a_stop_after_a_healthy_run_starts_a_new_count(self):
+        """'Five times in a row' (the guide): a window that drew for a while and then stopped is not a start-up crash,
+        so stops spread over days of play never add up to giving up (review 2026-10-11)."""
+        self.run.tick(True)
+        for n in range(self.R.CRASHES_MAX + 2):
+            self.t += self.R.HEALTHY_S + 1                            # it ran a good while
+            self.started[-1].code = 1
+            self.run.tick(True)
+            self.assertEqual(self.run.status()["state"], "restarting", n)
+            self.t += self.R.BACKOFF_S[0]                             # always the first, shortest wait
+            self.run.tick(True)
+        self.assertEqual(len(self.started), self.R.CRASHES_MAX + 3)
 
     def test_crashes_back_off_then_give_up(self):
         self.run.tick(True)
@@ -693,10 +720,32 @@ class Server(unittest.TestCase):
         self.assertEqual([p["items"][0]["runs"][0][0] for p in self.state.overlay_panels(now=1010)], ["B 1"])   # near it
         st.update(destination={"System": 77, "Body": 9, "Name": "Test Sector AB-C d1-2 A 3"})
         self.assertEqual([p["items"][0]["runs"][0][0] for p in self.state.overlay_panels(now=1010)], ["A 3"])   # targeted wins
+        # a station or a mining site targeted is no body: the one you are near stays (review 2026-10-11)
+        st.update(destination={"System": 77, "Body": 40, "Name": "Harper Dock"})
+        self.assertEqual([p["items"][0]["runs"][0][0] for p in self.state.overlay_panels(now=1010)], ["B 1"])
+        st.update(destination={"System": 77, "Body": 13, "Name": "$SAA_Unknown_Signal:#type=$PlanetaryMiningLocation_Name;:#index=3;"})
+        self.assertEqual([p["items"][0]["runs"][0][0] for p in self.state.overlay_panels(now=1010)], ["B 2"])   # its planet
+        st.update(destination={"System": 77, "Body": 9, "Name": "Test Sector AB-C d1-2 A 3"})
         st["flags"] = ship | ed_outrider.FLAG_LANDED                                                    # landed: the radar's
         self.assertEqual(self.state.overlay_panels(now=1010), [])
         st.update(flags=ship, destination=None, body=None)                                             # nothing near
         self.assertEqual(self.state.overlay_panels(now=1010), [])
+
+    def test_now_heads_only_for_a_body_of_this_system(self):
+        """Now's heading-to line: a targeted station or mining site is no body (the page's Now view matches by body id
+        too), so no "➜ Harper Dock · nothing to do here" and no raw $SAA_ name (review 2026-10-11)."""
+        self.state.journals.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(1000), "StarSystem": "Test Sector AB-C d1-2",
+                                    "SystemAddress": 77, "StarPos": [0, 0, 0]})
+        self.state.system_detail = lambda id64: DETAIL if id64 == 77 else None
+        st = {"live": True, "flags": ed_outrider.FLAG_SUPERCRUISE | ed_outrider.FLAG_IN_MAIN_SHIP, "gui_focus": 0}
+        self.state.journals.status_json = st
+        info = lambda: self.state.overlay_now_info(self.state.journals.pos, 1010)
+        st["destination"] = {"System": 77, "Body": 40, "Name": "Harper Dock"}
+        self.assertEqual((info()["destination"], info()["destination_ls"]), (None, None))
+        st["destination"] = {"System": 77, "Body": 13, "Name": "$SAA_Unknown_Signal:#type=$PlanetaryMiningLocation_Name;:#index=3;"}
+        self.assertEqual((info()["destination"], info()["destination_ls"]), ("B 2", 70))   # the site's planet
+        st["destination"] = {"System": 77, "Body": 9, "Name": "Test Sector AB-C d1-2 A 3"}
+        self.assertEqual((info()["destination"], info()["destination_ls"]), ("A 3", 900))
 
     def test_radar_on_a_body(self):
         self.state.overlay_cfg.update(enabled=True, system_panel=False, body_panel=False)

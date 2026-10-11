@@ -6655,6 +6655,8 @@ class State:
         bodies = {b.get("name"): b for b in (detail or {}).get("bodies") or []}
         ob = self.on_body() or self.near_body()
         dest = self.destination()
+        # a body of this system by its id, as the page's Now view finds it: a targeted station or mining site is none
+        dest = dest and next((b for b in bodies.values() if b.get("body_id") == dest["body_id"]), None)
         a = self.arrival if self.arrival and self.arrival.get("id64") == str(pos["id64"]) else None
         t = self.target
         return {"name": pos.get("name"), "now": now, "arrival": a,
@@ -6667,7 +6669,7 @@ class State:
                 "detail_ready": detail is not None, "leaving": (detail or {}).get("leaving"),
                 "value_now": (self.systems.get(pos["id64"]) or {}).get("value_now"),
                 "destination": dest["name"] if dest else None,
-                "destination_ls": (bodies.get(dest["name"]) or {}).get("dist_ls") if dest else None,
+                "destination_ls": dest.get("dist_ls") if dest else None,
                 "this_session": self.this_session(), "last_session": self.last_session()}
 
     def overlay_panels(self, now=None):
@@ -6698,9 +6700,11 @@ class State:
         if cfg.get("body_panel") and pos and flags & FLAG_IN_MAIN_SHIP and not flags & (FLAG_LANDED | FLAG_IN_SRV) \
                 and not (st.get("flags2") or 0) & 1:
             dest = self.destination()
-            name = dest["name"] if dest else short_name(pos["name"], st["body"]) if st.get("body") else None
-            detail = self.overlay_detail(pos["id64"]) if name else None
-            b = next((x for x in (detail or {}).get("bodies") or [] if x.get("name") == name), None)
+            near = short_name(pos["name"], st["body"]) if st.get("body") else None
+            bodies = (self.overlay_detail(pos["id64"]) or {}).get("bodies") or [] if dest or near else []
+            # the targeted body by its id (a station or mining site targeted is no body: the one you are near then)
+            b = next((x for x in bodies if dest and x.get("body_id") == dest["body_id"]), None) \
+                or next((x for x in bodies if near and x.get("name") == near), None)
             p = outrider.overlay.body_panel(b, pal, cfg["text_size"], HIGH_GRAVITY,
                                             outrider.bio.colony_table() if outrider.bio else None) if b else None
             if p:

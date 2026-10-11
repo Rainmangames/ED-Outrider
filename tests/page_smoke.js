@@ -4215,8 +4215,12 @@ const settle = async maxMs => {
   {
     const w = dom.window, before = errors.length, real = w.fetch, posted = [];
     const json = body => Promise.resolve({ok: true, status: 200, headers: {get: () => "application/json"}, json: async () => body});
+    // as the server answers: api/overlay/layout the layout, api/overlay the whole state (its layout too), with a note
+    let ovNote = null;
     w.fetch = (u, o) => /api\/overlay/.test(String(u)) && o && o.method === "POST"
-      ? (posted.push([String(u).replace(/.*api\//, ""), JSON.parse(o.body)]), json({layout: w.eval("data.overlay.layout")})) : real(u, o);
+      ? (posted.push([String(u).replace(/.*api\//, ""), JSON.parse(o.body)]),
+         json(/layout$/.test(String(u)) ? {layout: w.eval("data.overlay.layout")}
+              : Object.assign({}, w.eval("data.overlay"), JSON.parse(o.body), ovNote ? {note: ovNote} : {}))) : real(u, o);
     const saved = w.eval("JSON.stringify(data.overlay || null)");
     w.eval(`data.overlay = {enabled: true, theme: "elite", text_size: "normal", panels: {system: true, body: false, radar: true},
       window: false, test: 0, arrange: 0, runner: {state: "no_qt", why: null}, layout: {system: {corner: "nw", x: 0.02, y: 0.16, scale: 1, bg: 0.65, alpha: 1},
@@ -4240,6 +4244,13 @@ const settle = async maxMs => {
     box.querySelector('[data-ovact="test"]').click();
     await sleep(100);
     got.note = /cannot run yet/.test(w.eval("overlayNote"));   // nothing can draw yet: the button says why
+    // a theme picked from its list: the select keeps the focus, yet the server's answer and its note are drawn
+    // (before the fix the whole-state answer was taken for a layout answer: the theme stayed the old one)
+    ovNote = "the config file could not keep it";
+    const th = box.querySelector('[data-ov="theme"]');
+    th.focus(); th.value = "default"; th.dispatchEvent(new w.Event("change", {bubbles: true}));
+    await sleep(100);
+    got.themeNote = /could not keep it/.test(box.textContent) && box.querySelector('[data-ov="theme"]').value === "default";
     got.posted = posted;
     w.fetch = real;
     // the PyQt6 install's popup: shown while installing, then the outcome, then gone (a state it never had: hidden)
@@ -4250,8 +4261,8 @@ const settle = async maxMs => {
     got.popup = [step("off"), step("installing"), step("starting"), step("installing"), step("install_failed"), step("off")]
       .map(t => t.replace(/ .*/, "") + (/installed/.test(t) ? " installed" : /failed/.test(t) ? " failed" : ""));
     w.eval(`data.overlay = JSON.parse(${JSON.stringify(saved)}); overlayNote = ""; overlayDrawn = ""; renderOverlay();`);
-    const want = {rows: 6, body: "120", off: true, theme: "elite", nowin: true, nowName: true, inRows: true, tip: true, dimmed: true, wrapped: true, help: true, note: true,
-                  posted: [["overlay/layout", {radar: {x: 0.3}}], ["overlay", {test: true}]],
+    const want = {rows: 6, body: "120", off: true, theme: "elite", nowin: true, nowName: true, inRows: true, tip: true, dimmed: true, wrapped: true, help: true, note: true, themeNote: true,
+                  posted: [["overlay/layout", {radar: {x: 0.3}}], ["overlay", {test: true}], ["overlay", {theme: "default"}]],
                   venv: true, popup: ["", "⟳Installing", "✓ installed", "⟳Installing", "Installing failed", ""]};
     const ok = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && ok;

@@ -305,12 +305,17 @@ def text_panel(pid, title, rows, pal, width=400, size="normal", subtitle=None):
 # ---- what the panels say ----
 
 def credits(v):
-    """Credits as the page writes them: 950, 59k, 2.4M, 1.2B."""
+    """Credits as the page writes them (page.js `credits`): 950, 59k, 2.4M, 1.23B. The unit is picked by what the
+    value rounds to, so 999,600 is "1.0M", not "1000k"."""
     v = float(v or 0)
-    for div, unit, digits in ((1e9, "B", 1), (1e6, "M", 1), (1e3, "k", 0)):
-        if abs(v) >= div:
-            return f"{v / div:.{digits}f}{unit}"
-    return f"{v:.0f}"
+    a = abs(v)
+    if a >= 999.95e6:
+        return f"{v / 1e9:.2f}B"
+    if a >= 999.5e3:
+        return f"{v / 1e6:.1f}M"
+    if a >= 999.5:
+        return f"{_half_up(v / 1e3)}k"
+    return str(_half_up(v))
 
 
 def body_what(b):

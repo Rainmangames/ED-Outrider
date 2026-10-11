@@ -6,6 +6,7 @@ when PyQt6 is installed (into a picture, never on screen).
 Run all: python3 -m unittest discover tests (or scripts/verify.sh).
 """
 import io
+import http.client
 import json
 import logging
 import os
@@ -250,6 +251,24 @@ class ClientAndFeed(unittest.TestCase):
         self.assertIsNone(feed.data)   # nothing stale stays on screen
         self.assertEqual(feed.seq, 2)
         self.assertIn("connection refused", feed.error)
+
+        # Outrider killed while answering: the cut-off body is an http.client error, not an OSError; the feed thread
+        # must live on and drop the panels (review 2026-10-11)
+        feed.client.opener = op
+        feed.fetch_once()
+        self.assertEqual(feed.seq, 3)
+
+        class Cut:
+            def open(self, req, timeout=None):
+                raise http.client.IncompleteRead(b"{")
+        feed.client.opener = Cut()
+        logging.getLogger("outrider.overlay_window").disabled = True
+        try:
+            feed.fetch_once()
+        finally:
+            logging.getLogger("outrider.overlay_window").disabled = False
+        self.assertEqual((feed.data, feed.seq), (None, 4))
+        self.assertIsNotNone(feed.error)
 
     def test_config_url(self):
         with tempfile.TemporaryDirectory() as tmp:

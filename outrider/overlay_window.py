@@ -21,6 +21,7 @@ The layout maths, the colours and the HTTP client are plain Python (tested witho
 run_window() and paint().
 """
 import argparse
+import http.client
 import json
 import logging
 import os
@@ -241,7 +242,8 @@ class Feed:
     def fetch_once(self):
         try:
             got = self.client.view(self.data["version"] if self.data else None)
-        except (OSError, RuntimeError, ValueError, urllib.error.URLError) as e:
+        except (OSError, RuntimeError, ValueError, urllib.error.URLError, http.client.HTTPException) as e:
+            # HTTPException: a connection cut mid-answer (IncompleteRead, BadStatusLine) is none of the others
             with self._lock:
                 if self.error != str(e):
                     log.warning("overlay: %s", e)
@@ -531,7 +533,7 @@ def run_window(client, title_hint=None):   # pragma: no cover - needs a display;
             def run():
                 try:
                     fn(*args)
-                except (OSError, RuntimeError, ValueError) as e:
+                except (OSError, RuntimeError, ValueError, http.client.HTTPException) as e:
                     log.warning("overlay: %s", e)
                 self.saved_at = feed.seq   # the next answer after this one carries the change: the edits can go
             threading.Thread(target=run, daemon=True).start()
