@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Tidier bio lists for bodies not DSS'd
+- Here's bio cell for signals not identified yet read "3 signals, not DSS'd", then "3 of these, 24.8M to 64.6M:", then
+  each genus on a line ending in "or" (the author: clean it up). Now one line for the count and the range ("3 signals,
+  not DSS'd · 24.8M–64.6M:"), then the genera with their best price dimmed, without "or" between them.
+
 ## 2026-10-11 · No overlay while the game loads
 - After a crash the game writes no Shutdown and leaves Status.json saying live with the dead session's flags; the
   relaunched game does not rewrite it until the session is in, so the overlay drew the old panels over the loading

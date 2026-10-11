@@ -3003,10 +3003,12 @@ function renderHere() {
     const unk = hb.minSig && b.bio && b.bio < hb.minSig ? null : bioUnknown(b);
     if (unk) {
       const {opt, list: gl} = unk;
-      // compact: "2 sig, no DSS" / "+1 sig", and the options' range without the words
-      const unkShort = bioGenera(b).length ? `+${unk.n} sig` : `${unk.n} sig, no DSS`;
-      bio.push((bio.length ? "<br>" : "") + `<span class="unk">${dual(unk.label, unkShort)}</span>` + (gl.length
-        ? `<br><span class="unk">${opt ? dual(`${optLabel(unk.n, opt, f)}: `, `${credits(opt.low * f)}–${credits(opt.high * f)}: `) : dual("likely: ", "", {title: false})}</span>${gl.map(x => `<span class="sp" title="${esc(x.species.join(" / "))}">${esc(x.genus)} ≤${credits((x.value || 0) * f)}${codexMark(x, h.region)}</span>`).join(opt ? `<span class="unk"> or </span>` : "")}` : ""));
+      // one line for the count and the range ("3 signals, not DSS'd · 24.8M–64.6M:"; compact: "3 sig, no DSS · ..."), then
+      // what they could be, without "or" between each: the count already says how many of them are there
+      const range = opt ? ` · ${credits(opt.low * f)}–${credits(opt.high * f)}` : "", colon = gl.length ? ":" : "";
+      const unkShort = (bioGenera(b).length ? `+${unk.n} sig` : `${unk.n} sig, no DSS`) + range + colon;
+      bio.push((bio.length ? "<br>" : "") + `<span class="unk">${dual(unk.label + range + colon, unkShort)}</span>` + (gl.length
+        ? `<br>${opt ? "" : `<span class="unk">${dual("likely: ", "", {title: false})}</span>`}${gl.map(x => `<span class="sp" title="${esc(x.species.join(" / "))}">${esc(x.genus)} <span class="unk">≤${credits((x.value || 0) * f)}</span>${codexMark(x, h.region)}</span>`).join("")}` : ""));
     }
     // the codex name ("Bacterium Volu - Gold") repeats the run's species: a compact table shows only 📖 and its mark
     const codex = b.codex.map(c => `<span class="sp" title="codex: ${esc(c.name)}">📖 ${dual(esc(c.name), "", {title: false})}${c.voucher ? " 💰" : c.new ? " ✦" : ""}</span>`).join("");

@@ -961,9 +961,19 @@ const settle = async maxMs => {
         hereData = Object.assign({}, hd, {bodies: [Object.assign({}, fake, plain, {bio: 0, genera: [], organics: [], bio_guess: [], codex: []})], tree: null});
         renderHere();
         o.legend = shown && used === "1/3 ✦ 📖" && lg.hidden && icons().length === 0 ? true : [shown, used, lg.hidden, icons()];
+        // a body not DSS'd: the count and range on one line, then the genera, no " or " between each (the author, 2026-10-11)
+        const gen = (genus, value) => ({genus, value, species: [genus + " One"]});
+        hereData = Object.assign({}, hd, {bodies: [Object.assign({}, fake, plain, {bio: 3, genera: [], organics: [], bio_guess: [], codex: [],
+          bio_options: {low: 24800000, high: 64600000, genera: [gen("Concha", 38900000), gen("Aleoida", 16900000), gen("Tussock", 8800000)]}})], tree: null});
+        renderHere();
+        const nd = document.querySelector('#hereRows tr[data-body="Fake 1"] td.bio');
+        const ndLf = nd ? [...nd.querySelectorAll(".lf")].map(e => e.textContent).join("|") : "";
+        o.noDss = !!nd && ndLf === "3 signals, not DSS'd · 24.8M–64.6M:" && !/ or |of these/.test(nd.textContent)
+          && [...nd.querySelectorAll(".sp")].map(e => e.textContent).join("|") === "Concha ≤38.9M|Aleoida ≤16.9M|Tussock ≤8.8M"
+          ? true : [ndLf, nd && nd.textContent];
         if (hg === null) localStorage.removeItem("highG"); else localStorage.setItem("highG", hg);
         hereData = hd; hereKey = hk; renderHere();
-      } else { o.hereWrap = "no Here data"; o.here = "no Here data"; o.legend = "no Here data"; }
+      } else { o.hereWrap = "no Here data"; o.here = "no Here data"; o.legend = "no Here data"; o.noDss = "no Here data"; }
       // F39: injections at cap: nothing is "limiting"; 3 left: the short material is
       const md = matData;
       const mat = craftable => ({rows: [{id: "polonium", name: "Polonium", count: craftable, cap: 150}], snapshot_ts: "2026-01-01T00:00:00Z", ts: "2026-01-01T00:00:00Z",
@@ -1043,7 +1053,7 @@ const settle = async maxMs => {
     w.setTimeout = realST; w.fetch = realFetch;
     w.eval("search = null; searchWant = 0; searchRefused = false; render()");
     w.speak = realSpeak; w.play = realPlay;
-    const want = {unwarned: null, kept: true, outage: true, spacing: true, spacing2: true, region: true, simFresh: true, hereWrap: true, here: true, legend: true, mat: true,
+    const want = {unwarned: null, kept: true, outage: true, spacing: true, spacing2: true, region: true, simFresh: true, hereWrap: true, here: true, legend: true, noDss: true, mat: true,
                   streak: 2, nulls: ["{}", "ts"], impNull: "bioSort", saved: true, dock: "2026-01-01T01:00:00Z", hlRender: true, more: true};
     const want2 = {onbody: true, here: true, logError: null};
     const goodH = JSON.stringify(out) === JSON.stringify(want) && JSON.stringify(out2) === JSON.stringify(want2)
