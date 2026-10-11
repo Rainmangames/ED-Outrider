@@ -1201,6 +1201,7 @@ function nowArea() {
   const r = document.getElementById("tabMain").getBoundingClientRect();
   return {vw: r.width || innerWidth, vh: (r.bottom || innerHeight) + (window.scrollY || 0)};
 }
+let ovMapRevealed = null;   // the body whose row the Overview's map last brought into view (renderSurface)
 function renderSurface() {
   const s = data && data.surface, show = surfaceShows(s), cfg = surfaceCfg();
   const box = document.getElementById("nowMap"), strip = document.getElementById("obMap"), nv = document.getElementById("nowView");
@@ -1242,6 +1243,19 @@ function renderSurface() {
     const L = surfaceLayout(s, cfg, F.S);
     drawSurface(document.getElementById("ovMapCanvas"), L, F.S < 200);
     setSurfLegend(legend, s, L, cfg);
+  }
+  // the body you are on brought to the top of the list above the map when the map comes up (or you are on another
+  // body): the author, 2026-10-11. Only then: afterwards the list stays where you scroll it. Tried again on the next
+  // render while its row is not drawn yet.
+  const ovKey = onOv && s.body ? `${s.system}|${s.body_id}|${s.body}` : null;
+  if (!ovKey) ovMapRevealed = null;
+  else if (ovKey !== ovMapRevealed) {
+    const row = [...document.querySelectorAll("#hereRows tr[data-body]")].find(r => r.dataset.body === s.body);
+    if (row) {
+      const list = document.getElementById("hereMain");
+      revealIn(row, "start", list.scrollHeight > list.clientHeight ? list : null);
+      ovMapRevealed = ovKey;
+    }
   }
   const onStrip = show && cfg.strip && view !== "now" && !onOv;
   strip.hidden = !onStrip;
@@ -1442,10 +1456,11 @@ function applyAppMode() {
 // the pane an element scrolls in (app mode), or null for the window
 const paneOf = el => appOn() && el && el.closest ? el.closest(".pane") : null;
 // Bring an element into view: in app mode inside its pane, under the pane's sticky table heading, never by scrolling
-// the window; otherwise the window, as before. block: "nearest" (only if it is out of view) or "start".
-function revealIn(el, block = "nearest") {
+// the window; otherwise the window, as before. block: "nearest" (only if it is out of view) or "start". box: the box
+// that scrolls, when it is not a pane (the Overview's list above its map), so the window stays put.
+function revealIn(el, block = "nearest", box = null) {
   if (!el || el.closest("[hidden]")) return;   // in a hidden table (Here's schematic mode): no box to scroll to (F17)
-  const p = paneOf(el);
+  const p = box || paneOf(el);
   if (!p) { if (el.scrollIntoView) el.scrollIntoView({block}); return; }
   const table = el.closest("tbody") && el.closest("table"), head = table && table.tHead ? table.tHead.offsetHeight : 0;
   const pr = p.getBoundingClientRect(), er = el.getBoundingClientRect();
@@ -3087,9 +3102,10 @@ let lastDestKey = null;
 // Here's footer (the author, 2026-10-10): what the icons mean, for the icons the list or the schematic shows now and
 // only those (none shown: no footer). It sits under the scrolling list, so it stays in view. Each entry: [test, the
 // icon as shown, what it means]; a test gets q(selector) over the parts shown, s(glyph) for the schematic's badges
-// (their plain text: a dim 🗺 there is a span) and has(selector, text) for a shown element with that text
+// (their plain text: a dim 🗺 there is a span) and has(selector, text) for a shown element with that text. A few words
+// each, no explanations in brackets (the author, 2026-10-11: the line got too long); the cells' own hovers say more.
 const HERE_LEGEND = [
-  [(q, s) => q(".cur"), "🔭", "something unusual (hover it)"],
+  [(q, s) => q(".cur"), "🔭", "something unusual"],
   [q => q(".nb.ELW"), `<span class="nb ELW">ELW</span>`, "Earth-like world"],
   [q => q(".nb.WW"), `<span class="nb WW">WW</span>`, "water world"],
   [q => q(".nb.AW"), `<span class="nb AW">AW</span>`, "ammonia world"],
@@ -3099,12 +3115,12 @@ const HERE_LEGEND = [
   [q => q(".belt"), "⋯", "asteroid belts"],
   [(q, s) => q('.fl[title="first discovered"]') || s("🏁"), "🏁", "first discovered by you"],
   [(q, s) => q('.fl[title="first mapped"]') || s("🗺"), "🗺", "first mapped by you"],
-  [q => q('.fl.unk[title^="mapped"], #hereSchematic .badges > span.unk'), `<span class="unk">🗺</span>`, "mapped (not first)"],
+  [q => q('.fl.unk[title^="mapped"], #hereSchematic .badges > span.unk'), `<span class="unk">🗺</span>`, "mapped, not first"],
   [(q, s) => q('.fl[title="first footfall"]') || s("👣"), "👣", "first footfall"],
-  [q => q('span.unk[title^="known to Spansh"]'), "—", "not scanned by you (Spansh knows it)"],
+  [q => q('span.unk[title^="known to Spansh"]'), "—", "not scanned by you"],
   [(q, s) => s("🧬"), "🧬", "biological signals"],
   [q => q(".warnc"), "🧬?", "bio possible: check the FSS"],
-  [q => q(".sp.part"), "1/3", "samples of a species taken (3 analyses it)"],
+  [q => q(".sp.part"), "1/3", "samples of a species taken"],
   [(q, s, has) => has(".sp.done", "✓"), "✓", "species analysed"],
   [q => q(".sp.lost"), "✗", "samples lost with the ship: sample again"],
   [q => q('span.unk[title^="likeliest by value"]'), "?", "the likeliest species, not yet known"],
@@ -3112,14 +3128,14 @@ const HERE_LEGEND = [
   [q => q(".cxgal"), `<span class="cxnew cxgal">✪</span>`, "new to your codex anywhere"],
   [(q, s, has) => q(".cxnew:not(.cxgal)") || has('.sp[title^="codex:"]', "✦"),
    `<span class="cxnew">✦</span>`, "new to your codex in this region"],
-  [q => q('.sp[title^="codex:"]'), "📖", "a codex entry you logged here (with what it paid once analysed)"],
+  [q => q('.sp[title^="codex:"]'), "📖", "a codex entry you logged here"],
   [(q, s, has) => has('.sp[title^="codex:"]', "💰"), "💰", "the codex paid for it"],
   [(q, s) => q(".sp.geo") || s("🪨"), "🪨", "geological signals"],
-  [q => q(".volc, #hereSchematic .badges span[title]:not(.nb):not(.scoop):not(.unk)"), "🌋", "volcanism (brighter: landable, geological sites possible)"],
-  [(q, s) => q(".minec") || s("⛏"), "⛏", "planetary mining locations (hover for the likely minerals)"],
-  [q => q(".site-guardian"), "🏛", "Guardian sites (the DSS's map found them)"],
-  [q => q(".site-thargoid"), "👾", "Thargoid sites (the DSS's map found them)"],
-  [q => q(".site-anomaly"), "❔", "a planetary anomaly (the FSS found it; nobody knows what it is yet)"],
+  [q => q(".volc, #hereSchematic .badges span[title]:not(.nb):not(.scoop):not(.unk)"), "🌋", "volcanism"],
+  [(q, s) => q(".minec") || s("⛏"), "⛏", "planetary mining locations"],
+  [q => q(".site-guardian"), "🏛", "Guardian sites"],
+  [q => q(".site-thargoid"), "👾", "Thargoid sites"],
+  [q => q(".site-anomaly"), "❔", "a planetary anomaly"],
   [q => q(".site-other"), "📡", "other surface signals the game does not name"],
 ];
 function drawHereLegend() {

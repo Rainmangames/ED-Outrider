@@ -2372,7 +2372,17 @@ const settle = async maxMs => {
       const state = () => ({shown: !box.hidden, mapon: hv.classList.contains("mapon"), S: parseInt(cv.style.width) || 0, stack: box.classList.contains("stack"),
                             legend: document.getElementById("ovMapLegend").textContent.includes("ABC 1"), strip: !document.getElementById("obMap").hidden,
                             inHere: hv.contains(box) && document.getElementById("ovHere").contains(hv)});
-      size(640, 380); render(); o.on = state();
+      // the body you are on comes to the top of the list above the map when the map comes up, once (the author, 2026-10-11)
+      const hd0 = hereData, rv0 = revealIn, shown = [];
+      hereData = Object.assign({}, hd0 && !hd0.error ? hd0 : {}, {id64: "5", name: "ABC", leaving: null, phenomena: [], tree: null,
+        bodies: ["ABC 2", "ABC 1"].map((name, i) => ({name, body_id: i + 2, type: "Planet", subtype: "Rocky body", genera: [], bio: 0, geo: 0,
+          organics: [], codex: [], curiosities: [], bio_guess: [], value_parts: {bio_factor: 1}, mining: 0}))});
+      revealIn = (el, block, box) => { if (block === "start") shown.push(el.dataset.body + " " + block + " " + (box ? box.id : "-")); };
+      size(640, 380); renderHere(); render(); o.on = state();
+      render(); o.revealOnce = shown.slice();
+      data.surface = {...data.surface, show: false, down: undefined}; render();
+      data.surface = {...data.surface, show: true, down: true}; render(); o.revealAgain = shown.length;
+      revealIn = rv0; hereData = hd0;
       size(300, 400); render(); o.narrow = state();
       size(640, 380);
       selectedBody = "ABC 1"; render(); o.body = state();
@@ -2395,7 +2405,8 @@ const settle = async maxMs => {
       narrow: got.narrow.shown && got.narrow.stack && got.narrow.S <= 300 && got.narrow.S > 0,
       body: !got.body.shown && !got.body.mapon && got.body.strip, closed: got.closed.shown && got.closed.mapon,
       off: !got.collapsed.shown && !got.off.shown && !got.off.mapon && !got.none.shown && !got.none.mapon,
-      hereView: !got.hereView.shown && !got.hereView.mapon && got.hereView.strip};
+      hereView: !got.hereView.shown && !got.hereView.mapon && got.hereView.strip,
+      reveal: got.revealOnce.length === 1 && got.revealOnce[0].startsWith("ABC 1 start") && got.revealAgain === 2};
     const good = Object.values(want).every(Boolean) && errors.length === before;
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| overview surface map |", good ? "lower half of the system pane, sized to the box, the body panel takes the spot while open, hidden when the map is off" : JSON.stringify({want, got}), errors.slice(before));

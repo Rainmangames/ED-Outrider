@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Overview: the map brings your body into view; a shorter Here legend
+- When the surface map comes up in the Overview's system pane, the body you are on is scrolled to the top of the list
+  above it (the author); again when you are on another body, never while you scroll the list yourself. Only the list
+  moves, not the window.
+- Here's icon legend drops the explanations in brackets ("something unusual (hover it)", "samples of a species taken
+  (3 analyses it)", "planetary mining locations (hover for the likely minerals)"...): the line got too long (the
+  author). The cells' own hovers still explain.
+
 ## 2026-10-11 · Here: Rings before ⛏
 - Here's long bio lines ran into the ⛏ column next to them (the author). Rings now comes first: few bodies with bio have
   rings, so the cell beside the bio column is usually empty and gives it room.
