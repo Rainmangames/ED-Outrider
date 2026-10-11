@@ -371,6 +371,90 @@ class CommunityGoals(unittest.TestCase):
         self.assertEqual(names(f(more)), ["setCommanderCommunityGoalProgress"])   # only your part moved
 
 
+class MissionsCombatFriendsSuits(unittest.TestCase):
+    """Batch E2 (parity with EDMC's Inara plugin): missions and permits, the combat log, friends, suit loadouts. Shapes
+    from the author's journals; PVPKill, Friends and MissionFailed, which they never wrote, from the journal manual."""
+
+    def setUp(self):
+        self.f = Feed()
+        self.f(*login(), {"timestamp": ts(1), "event": "Location", "Docked": True, "StationName": "Hub", "MarketID": 5,
+                          "StarSystem": "HIP 8825", "SystemAddress": 3382253228738, "StarPos": [0, 0, 0]})
+
+    def test_missions_and_permits(self):
+        acc = {"timestamp": ts(10), "event": "MissionAccepted", "Faction": "Revolutionary Party of HIP 8825",
+               "Name": "Mission_PassengerBulk_Evacuation_POLITICIAN_LEAVING", "LocalisedName": "117 Politicians Require Evacuation",
+               "DestinationSystem": "Cephei Sector CQ-Y b3", "DestinationStation": "Ronald Reagan Memorial", "Expiry": "2026-05-02T19:19:28Z",
+               "Wing": False, "Influence": "++", "Reputation": "++", "Reward": 6044860, "PassengerCount": 117, "PassengerVIPs": False,
+               "PassengerWanted": False, "PassengerType": "Politician", "MissionID": 1053233941}
+        self.assertEqual(data(self.f(acc), "addCommanderMission"), [{
+            "missionName": "Mission_PassengerBulk_Evacuation_POLITICIAN_LEAVING", "missionGameID": 1053233941, "influenceGain": "++",
+            "reputationGain": "++", "starsystemNameOrigin": "HIP 8825", "stationNameOrigin": "Hub",
+            "minorfactionNameOrigin": "Revolutionary Party of HIP 8825", "missionExpiry": "2026-05-02T19:19:28Z",
+            "starsystemNameTarget": "Cephei Sector CQ-Y b3", "stationNameTarget": "Ronald Reagan Memorial", "passengerType": "Politician",
+            "passengerCount": 117, "passengerIsVIP": False, "passengerIsWanted": False}])
+        done = {"timestamp": ts(20), "event": "MissionCompleted", "Faction": "Revolutionary Party of HIP 8825", "MissionID": 1053233941,
+                "Reward": 2234860, "PermitsAwarded": ["Sirius"],
+                "MaterialsReward": [{"Name": "SecurityFirmware", "Name_Localised": "Security Firmware Patch", "Count": 16}],
+                "FactionEffects": [{"Faction": "Interplanetary Explorations", "Effects": [], "Influence": [
+                    {"SystemAddress": 7266413716873, "Trend": "UpGood", "Influence": "++"}, {"SystemAddress": 1, "Influence": "+++"}],
+                    "ReputationTrend": "UpGood", "Reputation": "++"}]}
+        got = self.f(done)
+        self.assertEqual(names(got), ["addCommanderPermit", "setCommanderMissionCompleted"])
+        self.assertEqual(data(got, "addCommanderPermit"), [{"starsystemName": "Sirius"}])
+        self.assertEqual(data(got, "setCommanderMissionCompleted")[0], {
+            "missionGameID": 1053233941, "rewardCredits": 2234860, "rewardPermits": [{"starsystemName": "Sirius"}],
+            "rewardMaterials": [{"itemName": "SecurityFirmware", "itemCount": 16}],
+            "minorfactionEffects": [{"minorfactionName": "Interplanetary Explorations", "influenceGain": "+++", "reputationGain": "++"}]})
+        self.assertEqual(data(self.f({"timestamp": ts(30), "event": "MissionAbandoned", "Name": "x", "MissionID": 7}),
+                              "setCommanderMissionAbandoned"), [{"missionGameID": 7}])
+        self.assertEqual(data(self.f({"timestamp": ts(31), "event": "MissionFailed", "Name": "x", "MissionID": 8}),
+                              "setCommanderMissionFailed"), [{"missionGameID": 8}])
+
+    def test_combat(self):
+        got = self.f({"timestamp": ts(10), "event": "Died", "KillerName": "$LUASC_Scenario_Warzone_NPC_SpecOps_A;",
+                      "KillerName_Localised": "Spec Ops Wing Alpha", "KillerShip": "ferdelance", "KillerRank": "Elite"})
+        self.assertEqual(data(got, "addCommanderCombatDeath"), [{"starsystemName": "HIP 8825", "opponentName": "Spec Ops Wing Alpha"}])
+        got = self.f({"timestamp": ts(11), "event": "Died", "Killers": [{"Name": "Cmdr A", "Ship": "x"}, {"Name": "Cmdr B", "Ship": "y"}]})
+        self.assertEqual(data(got, "addCommanderCombatDeath"), [{"starsystemName": "HIP 8825", "wingOpponentNames": ["Cmdr A", "Cmdr B"]}])
+        got = self.f({"timestamp": ts(12), "event": "Interdicted", "Submitted": True, "Interdictor": "Helena Sigurj", "IsPlayer": False, "Faction": "Sobek Boys"})
+        self.assertEqual(data(got, "addCommanderCombatInterdicted"),
+                         [{"starsystemName": "HIP 8825", "opponentName": "Helena Sigurj", "isPlayer": False, "isSubmit": True}])
+        got = self.f({"timestamp": ts(13), "event": "Interdiction", "Success": True, "IsPlayer": False, "Faction": "Society of Ngalinn"})
+        self.assertEqual(data(got, "addCommanderCombatInterdiction"),
+                         [{"starsystemName": "HIP 8825", "opponentName": "Society of Ngalinn", "isPlayer": False, "isSuccess": True}])
+        got = self.f({"timestamp": ts(14), "event": "EscapeInterdiction", "Interdictor": "Ezekiel", "IsPlayer": False})
+        self.assertEqual(data(got, "addCommanderCombatInterdictionEscape"), [{"starsystemName": "HIP 8825", "opponentName": "Ezekiel", "isPlayer": False}])
+        got = self.f({"timestamp": ts(15), "event": "PVPKill", "Victim": "Cmdr Loser", "CombatRank": 3})   # the manual's shape
+        self.assertEqual(data(got, "addCommanderCombatKill"), [{"starsystemName": "HIP 8825", "opponentName": "Cmdr Loser"}])
+        self.assertEqual(self.f({"timestamp": ts(16), "event": "Died"}), [])   # no one named: Inara needs a name
+
+    def test_friends(self):
+        fr = lambda n, st: {"timestamp": ts(n), "event": "Friends", "Status": st, "Name": "Cmdr Pal"}   # the manual's shape
+        self.assertEqual(data(self.f(fr(10, "Added")), "addCommanderFriend"), [{"commanderName": "Cmdr Pal", "gamePlatform": "pc"}])
+        self.assertEqual(self.f(fr(11, "Online"), fr(12, "Offline")), [])     # every login: once is enough
+        self.assertEqual(names(self.f(fr(13, "Lost"))), ["delCommanderFriend"])
+        self.assertEqual(names(self.f(fr(14, "Online"))), ["addCommanderFriend"])   # friends again
+        self.assertEqual(self.f(fr(15, "Requested")), [])
+
+    def test_suit_loadouts(self):
+        suit = {"timestamp": ts(10), "event": "SuitLoadout", "SuitID": 1826892828743577, "SuitName": "explorationsuit_class1",
+                "SuitName_Localised": "Artemis Suit", "SuitMods": [], "LoadoutID": 4293000001, "LoadoutName": "Xenobio",
+                "Modules": [{"SlotName": "PrimaryWeapon1", "SuitModuleID": 1826892921801189, "ModuleName": "wpn_m_sniper_plasma_charged",
+                             "ModuleName_Localised": "Manticore Executioner", "Class": 1, "WeaponMods": []}]}
+        self.assertEqual(data(self.f(suit), "setCommanderSuitLoadout"), [{
+            "loadoutGameID": 4293000001, "loadoutName": "Xenobio", "suitGameID": 1826892828743577, "suitType": "explorationsuit_class1",
+            "suitMods": [], "suitLoadout": [{"slotName": "PrimaryWeapon1", "itemName": "wpn_m_sniper_plasma_charged", "itemClass": 1,
+                                             "itemGameID": 1826892921801189}]}])
+        self.assertEqual(self.f(dict(suit, timestamp=ts(20))), [])     # worn again at the next disembark: nothing
+        got = self.f({"timestamp": ts(30), "event": "RenameSuitLoadout", "SuitID": 1826892828743577, "SuitName": "explorationsuit_class1",
+                      "LoadoutID": 4293000001, "LoadoutName": "Bio"})
+        self.assertEqual(data(got, "updateCommanderSuitLoadout"), [{"loadoutGameID": 4293000001, "loadoutName": "Bio",
+                                                                     "suitGameID": 1826892828743577, "suitType": "explorationsuit_class1"}])
+        self.assertEqual(names(self.f(dict(suit, timestamp=ts(40), LoadoutName="Bio"))), ["setCommanderSuitLoadout"])   # whole again
+        self.assertEqual(data(self.f({"timestamp": ts(50), "event": "DeleteSuitLoadout", "SuitID": 1, "SuitName": "x", "LoadoutID": 4293000001,
+                                      "LoadoutName": "Bio"}), "delCommanderSuitLoadout"), [{"loadoutGameID": 4293000001}])
+
+
 class Batching(unittest.TestCase):
     def test_release_points(self):
         f = Feed()

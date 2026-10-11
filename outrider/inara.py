@@ -478,7 +478,140 @@ def _goals(ev, session, t, sent):
     return out
 
 
-BUILDERS = (_travel, _ranks, _credits, _ship_now, _reputation, _inventory, _fleet, _goals)
+MISSION_FIELDS = (("missionExpiry", "Expiry"), ("starsystemNameTarget", "DestinationSystem"),
+                  ("stationNameTarget", "DestinationStation"), ("minorfactionNameTarget", "TargetFaction"),
+                  ("commodityName", "Commodity"), ("commodityCount", "Count"), ("targetName", "Target"),
+                  ("targetType", "TargetType"), ("killCount", "KillCount"), ("passengerType", "PassengerType"),
+                  ("passengerCount", "PassengerCount"), ("passengerIsVIP", "PassengerVIPs"),
+                  ("passengerIsWanted", "PassengerWanted"))
+
+
+def _items(rows):
+    return [{"itemName": x["Name"], "itemCount": x.get("Count", 1)} for x in rows or [] if isinstance(x, dict) and x.get("Name")]
+
+
+def _missions(ev, session, t, sent):
+    """The mission log: accepted (where, for whom, what), completed (rewards, permits, the factions' gains), failed,
+    abandoned; and a permit a mission awarded (Inara grants the rank permits itself)."""
+    name = ev.get("event")
+    if ev.get("MissionID") is None or name not in ("MissionAccepted", "MissionCompleted", "MissionFailed", "MissionAbandoned"):
+        return []
+    mid = ev["MissionID"]
+    if name == "MissionAccepted":
+        data = {"missionName": ev.get("Name"), "missionGameID": mid, "influenceGain": ev.get("Influence"),
+                "reputationGain": ev.get("Reputation"), "starsystemNameOrigin": session.system,
+                "stationNameOrigin": session.station, "minorfactionNameOrigin": ev.get("Faction")}
+        data.update({k: ev[j] for k, j in MISSION_FIELDS if j in ev})
+        return [_event(ev, "addCommanderMission", _clean(data))]
+    if name in ("MissionFailed", "MissionAbandoned"):
+        return [_event(ev, "setCommanderMission" + name[len("Mission"):], {"missionGameID": mid})]
+    out = [_event(ev, "addCommanderPermit", {"starsystemName": x}) for x in ev.get("PermitsAwarded") or [] if isinstance(x, str) and x]
+    data = {"missionGameID": mid, "donationCredits": ev.get("Donation"), "rewardCredits": ev.get("Reward")}
+    if ev.get("PermitsAwarded"):
+        data["rewardPermits"] = [{"starsystemName": x} for x in ev["PermitsAwarded"] if isinstance(x, str)]
+    if ev.get("CommodityReward"):
+        data["rewardCommodities"] = _items(ev["CommodityReward"])
+    if ev.get("MaterialsReward"):
+        data["rewardMaterials"] = _items(ev["MaterialsReward"])
+    effects = []
+    for f in ev.get("FactionEffects") or []:
+        if not isinstance(f, dict) or not f.get("Faction"):
+            continue
+        gains = [i.get("Influence") for i in f.get("Influence") or [] if isinstance(i, dict) and i.get("Influence")]
+        effects.append(_clean({"minorfactionName": f["Faction"], "influenceGain": max(gains, key=len) if gains else None,
+                               "reputationGain": f.get("Reputation") or None}))
+    if effects:
+        data["minorfactionEffects"] = effects
+    return out + [_event(ev, "setCommanderMissionCompleted", _clean(data))]
+
+
+def _opponent(ev, *keys):
+    """Who it was: the first of the event's names given (its readable form when the game wrote a code: an NPC's
+    "$LUASC_..._SpecOps_A;" is "Spec Ops Wing Alpha"), else a Thargoid, else None."""
+    for k in keys:
+        if ev.get(k):
+            return ev.get(k + "_Localised") or ev[k]
+    return "Thargoid" if ev.get("IsThargoid") or ev.get("isThargoid") else None
+
+
+def _combat(ev, session, t, sent):
+    """The combat log: deaths (the killer, or a wing's names), interdictions both ways and escapes, PvP kills (Inara
+    records only those). An event with no opponent named is not sent (Inara needs one)."""
+    name, system = ev.get("event"), session.system
+    data = None
+    if name == "Died":
+        killers = [k.get("Name") for k in ev.get("Killers") or [] if isinstance(k, dict) and k.get("Name")]
+        data = {"starsystemName": system, "wingOpponentNames": killers} if killers else \
+            {"starsystemName": system, "opponentName": _opponent(ev, "KillerName", "KillerShip")}
+        kind = "addCommanderCombatDeath"
+    elif name == "Interdicted":
+        data = {"starsystemName": system, "opponentName": _opponent(ev, "Interdictor", "Faction", "Power"),
+                "isPlayer": ev.get("IsPlayer"), "isSubmit": ev.get("Submitted")}
+        kind = "addCommanderCombatInterdicted"
+    elif name == "Interdiction":
+        data = {"starsystemName": system, "opponentName": _opponent(ev, "Interdicted", "Faction", "Power"),
+                "isPlayer": ev.get("IsPlayer"), "isSuccess": ev.get("Success")}
+        kind = "addCommanderCombatInterdiction"
+    elif name == "EscapeInterdiction":
+        data = {"starsystemName": system, "opponentName": _opponent(ev, "Interdictor", "Faction", "Power"), "isPlayer": ev.get("IsPlayer")}
+        kind = "addCommanderCombatInterdictionEscape"
+    elif name == "PVPKill":
+        data = {"starsystemName": system, "opponentName": ev.get("Victim")}
+        kind = "addCommanderCombatKill"
+    if not data or not (data.get("opponentName") or data.get("wingOpponentNames")):
+        return []
+    return [_event(ev, kind, _clean(data))]
+
+
+def _friends(ev, session, t, sent):
+    """Friends: a game friend added (or seen online) is one on Inara (which sends them a friend request there, as the
+    game's does); declined or lost, removed. Each friend once: Online comes at every login."""
+    if ev.get("event") != "Friends" or not ev.get("Name"):
+        return []
+    who, status = ev["Name"], ev.get("Status")
+    if status in ("Added", "Online"):
+        if sent.changed(session.cmdr, f"friend:{who}", True):
+            return [_event(ev, "addCommanderFriend", {"commanderName": who, "gamePlatform": "pc"})]
+    elif status in ("Declined", "Lost"):
+        sent.changed(session.cmdr, f"friend:{who}", False)
+        return [_event(ev, "delCommanderFriend", {"commanderName": who, "gamePlatform": "pc"})]
+    return []
+
+
+def _suit_modules(rows):
+    return [_clean({"slotName": x.get("SlotName"), "itemName": x.get("ModuleName"), "itemClass": x.get("Class"),
+                    "itemGameID": x.get("SuitModuleID"),
+                    "engineering": [{"blueprintName": m} for m in x.get("WeaponMods") or []] or None})
+            for x in rows or [] if isinstance(x, dict)]
+
+
+def _suits(ev, session, t, sent):
+    """Odyssey suit loadouts: the whole loadout when created or worn (SuitLoadout comes at every disembark: changed
+    ones only), a module equipped, renamed, deleted."""
+    name, cmdr = ev.get("event"), session.cmdr
+    lid = ev.get("LoadoutID")
+    if lid is None:
+        return []
+    base = _clean({"loadoutGameID": lid, "loadoutName": ev.get("LoadoutName"), "suitGameID": ev.get("SuitID"), "suitType": ev.get("SuitName")})
+    if name in ("SuitLoadout", "CreateSuitLoadout"):
+        data = dict(base, suitMods=ev.get("SuitMods") or [], suitLoadout=_suit_modules(ev.get("Modules")))
+        if sent.changed(cmdr, f"suit:{lid}", data):
+            return [_event(ev, "setCommanderSuitLoadout", data)]
+    elif name == "LoadoutEquipModule":
+        sent.changed(cmdr, f"suit:{lid}", None)   # changed: the next SuitLoadout goes whole
+        return [_event(ev, "updateCommanderSuitLoadout", dict(base, suitLoadout=_suit_modules([ev])))]
+    elif name == "LoadoutRemoveModule":
+        sent.changed(cmdr, f"suit:{lid}", None)
+    elif name == "RenameSuitLoadout":
+        sent.changed(cmdr, f"suit:{lid}", None)
+        return [_event(ev, "updateCommanderSuitLoadout", base)]
+    elif name == "DeleteSuitLoadout":
+        sent.changed(cmdr, f"suit:{lid}", None)
+        return [_event(ev, "delCommanderSuitLoadout", {"loadoutGameID": lid})]
+    return []
+
+
+BUILDERS = (_travel, _ranks, _credits, _ship_now, _reputation, _inventory, _fleet, _goals, _missions, _combat, _friends, _suits)
 # whole snapshots whose empty list means something (an emptied hold clears Inara's): sent even with no items
 EMPTY_OK = frozenset({"setCommanderInventoryCargo", "setCommanderInventoryMaterials", "setCommanderStorageModules"})
 

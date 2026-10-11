@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Inara uploads, part E2: missions, combat, friends and suits (parity with EDMC's plugin)
+- So a player using Outrider as their only connector loses nothing on their Inara profile (the author, 2026-10-11):
+  the mission log (accepted: where, for whom, what; completed: rewards, permits, the factions' gains; failed;
+  abandoned) and a mission's permits; the combat log (deaths with the killer or the wing's names, interdictions both
+  ways, escapes, PvP kills: Inara records only those); friends (added or seen online once, removed when declined or
+  lost; adding sends a friend request on Inara, as the game's does); Odyssey suit loadouts (whole when worn, changed
+  ones only: the game writes SuitLoadout at every disembark; equipped, renamed, deleted).
+- An NPC's code name ("$LUASC_..._SpecOps_A;") goes as its readable one ("Spec Ops Wing Alpha"). Unlike EDMC's
+  plugin, a renamed suit loadout sends its new name.
+
 ## 2026-10-11 · Inara uploads, part E: community goals
 - Every community goal you take part in (exploration and biology goals too: the author, 2026-10-11): the goal (name,
   place, expiry, tier reached and the top tier, contributors, total; Inara keeps each goal's page from what the apps
