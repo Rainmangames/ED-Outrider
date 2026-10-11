@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · No overlay while the game loads
+- After a crash the game writes no Shutdown and leaves Status.json saying live with the dead session's flags; the
+  relaunched game does not rewrite it until the session is in, so the overlay drew the old panels over the loading
+  screens, before the main menu and after it (the author). The reader now notes the newest game launch (a journal's
+  first part) or LoadGame and the newest Location (meta `game_load`, journal-derived): from one to the other the game is
+  loading and the overlay shows nothing.
+
 ## 2026-10-11 · Rare planet classes, and one line for curiosities
 - Rare planet classes are 🔭 curiosities now: water giants, helium-rich and helium gas giants, Sudarsky class V gas
   giants, and green gas giants (from their codex entry: the game says it nowhere else).

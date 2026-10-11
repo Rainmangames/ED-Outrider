@@ -1203,7 +1203,7 @@ CARGO_EVENTS = frozenset(CARGO_ONLY) | {"Cargo", "Docked", "Undocked", "CarrierS
 CARRIER_CARGO_EVENTS = ("CarrierStats", "CarrierTradeOrder", "CargoTransfer", "MarketBuy", "MarketSell")
 WANTED = tuple(f'"event":"{e}"'.encode()
                for e in POSITION_EVENTS + STAR_CLASS_EVENTS + SCAN_EVENTS + DATA_EVENTS + SHIP_EVENTS
-               + CMDR_EVENTS + MATERIAL_EVENTS + BODY_EVENTS + SRV_EVENTS + CARGO_ONLY + ("Loadout", "Shutdown"))
+               + CMDR_EVENTS + MATERIAL_EVENTS + BODY_EVENTS + SRV_EVENTS + CARGO_ONLY + ("Loadout", "Shutdown", "Fileheader"))
 
 # Bump when the journal parser learns new events: forces a one-off re-read of every journal.
 # 27: sale pages keyed by journal position (same-second 'Sell all' pages were dropped before); logins.
@@ -1554,7 +1554,8 @@ DELETE FROM own_barycentres; DELETE FROM phenomena; DELETE FROM phenomena_sites;
 DELETE FROM own_mined; DELETE FROM meta WHERE key IN ('srv_state', 'vehicle', 'ship_marker', 'body_here');
 DELETE FROM fleet_loadouts; DELETE FROM cargo_events; DELETE FROM system_population;
 DELETE FROM meta WHERE key IN ('ship_cargo', 'cargo_dock');
-DELETE FROM meta WHERE key IN ('ship', 'carrier', 'fuel_hist', 'last_scoop', 'commander', 'materials', 'last_session', 'cargo');
+DELETE FROM meta WHERE key IN ('ship', 'carrier', 'fuel_hist', 'last_scoop', 'commander', 'materials', 'last_session', 'cargo',
+                               'game_load');
 DELETE FROM meta WHERE key LIKE 'legacy:%' OR key IN ('pos', 'prev', 'jump_range', 'state_ts');
 """
 
@@ -2718,6 +2719,9 @@ class Journals:
         # newest event that is not part of loading into the game (the menu's Commander, Materials, Rank...):
         # where the last session ended, crash or not, for the login's "away 3 days"
         self.last_play_ts = self._play_saved = meta_get(db, "last_play_ts")
+        # {start: the newest game launch (Fileheader) or LoadGame, ready: the newest Location}: the game is still
+        # loading while start is the newer (see loading())
+        self.game_load = meta_get(db, "game_load") or {}
         self.docked = meta_get(db, "docked")    # {station, type, services, market_id, ts} while docked
         self.jump_range = meta_get(db, "jump_range")
         # {name, fid, credits (at the last LoadGame), login_ts, earned (exploration sales since)}
@@ -2858,6 +2862,10 @@ class Journals:
         name = ev.get("event")
         if name not in LOGIN_EVENTS and ts > (self.last_play_ts or ""):
             self.last_play_ts = ts
+        if name in ("Fileheader", "LoadGame", "Location"):
+            self.note_loading(name, ev, ts)
+            if name == "Fileheader":
+                return
         if name in ("FSSSignalDiscovered", "SupercruiseDestinationDrop"):
             self.handle_phenomenon(name, ev, ts)
             return
@@ -4115,6 +4123,21 @@ class Journals:
         before = self.db.execute("SELECT 1 FROM jumps WHERE id64=? AND ts < ? LIMIT 1", (system, row["ts"])).fetchone()
         verdict = "visited" if before else "known" if was_discovered else "new"
         self.db.execute("UPDATE jumps SET verdict=? WHERE ts=? AND id64=?", (verdict, row["ts"], system))
+
+    def note_loading(self, name, ev, ts):
+        """A game launch (a journal's first part: a long session's later parts continue it) or a LoadGame starts
+        loading; the session's Location ends it."""
+        key = "ready" if name == "Location" else "start"
+        if name == "Fileheader" and (ev.get("part") or 1) != 1:
+            return
+        if ts > self.game_load.get(key, ""):
+            self.game_load = dict(self.game_load, **{key: ts})
+            meta_set(self.db, "game_load", self.game_load)
+
+    def loading(self):
+        """The game is starting or loading a session: from its launch or LoadGame until the Location. A crashed game's
+        Status.json still says live with the old session's flags until the new session rewrites it."""
+        return self.game_load.get("start", "") > self.game_load.get("ready", "")
 
     def read_status(self, d):
         """Status.json: the live fuel gauge (rewritten by the game every few seconds)."""
@@ -6901,14 +6924,15 @@ class State:
 
     def overlay_panels(self, now=None):
         """The panels to draw now: the test panels while they show, else the ones switched on that have something to
-        say (none while [overlay] enabled is off, the game is not live, a map, the FSS, the SAA or the codex is open, or
-        in the hyperspace tunnel)."""
+        say (none while [overlay] enabled is off, the game is not live or still loading, a map, the FSS, the SAA or the
+        codex is open, or in the hyperspace tunnel)."""
         now = time.time() if now is None else now
         cfg, pal = self.overlay_cfg, self.overlay_palette()
         if now < self.overlay_test_until or now < self.overlay_arrange_until:
             return outrider.overlay.test_panels(pal, cfg["text_size"], cfg["radar_range"])
         st = self.journals.status_json or {}
-        if not cfg.get("enabled") or not st.get("live") or (st.get("gui_focus") or 0) in OVERLAY_HIDE_FOCUS \
+        if not cfg.get("enabled") or not st.get("live") or self.journals.loading() \
+                or (st.get("gui_focus") or 0) in OVERLAY_HIDE_FOCUS \
                 or (st.get("flags") or 0) & FLAG_FSD_JUMP:   # nothing in the hyperspace tunnel: the system is changing
             return []
         flags, pos, out = st.get("flags") or 0, self.journals.pos, []

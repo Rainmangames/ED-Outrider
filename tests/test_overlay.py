@@ -709,6 +709,32 @@ class Server(unittest.TestCase):
         self.state.overlay_cfg.update(system_panel=True, enabled=False)
         self.assertEqual(self.state.overlay_panels(now=1010), [])
 
+    def test_nothing_while_the_game_loads(self):
+        """After a crash the old Status.json still says live: the relaunched game's loading screens, before the menu
+        and after it, showed the dead session's panels until the new session's Location (the author, 2026-10-11)."""
+        j = self.state.journals
+        j.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(1000), "StarSystem": "Test Sector AB-C d1-2",
+                  "SystemAddress": 77, "StarPos": [0, 0, 0]})
+        self.state.system_detail = lambda id64: DETAIL if id64 == 77 else None
+        self.state.overlay_cfg.update(enabled=True)
+        j.status_json = {"live": True, "flags": ed_outrider.FLAG_SUPERCRUISE, "gui_focus": 0}   # the crashed session's
+        shown = lambda: [p["id"] for p in self.state.overlay_panels(now=1010)]
+        self.assertEqual(shown(), ["system"])
+        j.handle({"event": "Fileheader", "timestamp": ed_outrider.iso_ts(1100), "part": 1})       # relaunched
+        self.assertEqual(shown(), [])
+        j.handle({"event": "Location", "timestamp": ed_outrider.iso_ts(1200), "StarSystem": "Test Sector AB-C d1-2",
+                  "SystemAddress": 77, "StarPos": [0, 0, 0]})
+        self.assertEqual(shown(), ["system"])
+        j.handle({"event": "Fileheader", "timestamp": ed_outrider.iso_ts(1300), "part": 2})       # a long session's next file
+        self.assertEqual(shown(), ["system"])
+        j.handle({"event": "LoadGame", "timestamp": ed_outrider.iso_ts(1400), "Commander": "Test", "FID": "F1"})   # menu, then in
+        self.assertEqual(shown(), [])
+        # kept over a restart of Outrider (the reader resumes from its offsets)
+        self.assertTrue(ed_outrider.Journals(self.db).loading())
+        j.handle({"event": "Location", "timestamp": ed_outrider.iso_ts(1400), "StarSystem": "Test Sector AB-C d1-2",
+                  "SystemAddress": 77, "StarPos": [0, 0, 0]})   # the same second as the LoadGame: loaded
+        self.assertEqual(shown(), ["system"])
+
     def test_body_panel_shows_flying_near_or_heading_to(self):
         self.state.journals.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(1000), "StarSystem": "Test Sector AB-C d1-2",
                                     "SystemAddress": 77, "StarPos": [0, 0, 0]})
