@@ -11379,6 +11379,8 @@ class State:
         """"highway" or "riches": of the two routes, the one plotted last (None without either). With both, only that
         one copies its next system to the clipboard on arrival: one copy per jump, not two racing for it."""
         hw, rc = meta_get(self.db, "highway"), meta_get(self.db, "riches")
+        # a finished route left on screen copies nothing: the other one has the clipboard (review 2026-10-11)
+        hw, rc = (hw if hw and not hw.get("done_ts") else None), (rc if rc and not rc.get("done_ts") else None)
         if not (hw and rc):
             return "highway" if hw else "riches" if rc else None
         return "riches" if (rc.get("created_ts") or "") > (hw.get("created_ts") or "") else "highway"
@@ -11402,7 +11404,12 @@ class State:
                               time.time() - ts_seconds(rc["arrival_ts"]) <= HIGHWAY_LIVE_S):
             return False
         nx = self.riches_next(rc, rows)
-        if nx is None:
+        # a trade route's next stop in this same system (another station) is no jump: the first stop elsewhere is
+        # what the galaxy map wants, and moving on there by a trade copies nothing again (review 2026-10-11)
+        here = rows[rc["at"]]["system"] if rc["at"] < len(rows) else None
+        while nx is not None and nx < len(rows) and rows[nx]["system"] == here:
+            nx += 1
+        if nx is None or nx >= len(rows):
             return False
         name = rows[nx]["system"]
         try:

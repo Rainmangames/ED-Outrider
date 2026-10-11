@@ -288,6 +288,11 @@ class RichesRoute(unittest.TestCase):
         # cleared: Road to Riches has it again
         ed_outrider.meta_set(self.db, "highway", None)
         self.assertEqual(self.state.route_newest(), "riches")
+        # finished but left on screen: the other route has the clipboard (it went to neither)
+        ed_outrider.meta_set(self.db, "highway", {"id": "h", "created_ts": "2000-01-01T00:00:00Z", "at": 0})
+        rc = ed_outrider.meta_get(self.db, "riches")
+        ed_outrider.meta_set(self.db, "riches", dict(rc, done_ts="2026-01-01T00:00:00Z"))
+        self.assertEqual(self.state.route_newest(), "highway")
 
     # ---- the plot ----
 

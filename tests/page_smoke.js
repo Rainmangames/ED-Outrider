@@ -4211,6 +4211,24 @@ const settle = async maxMs => {
     allOk = allOk && goodS;
     console.log(goodS ? "OK" : "FAIL", "| settings |", goodS ? "12 folding sections, remembered; server settings from the config file (choices as a list); only changes sent" : JSON.stringify(got), errors.slice(before));
   }
+  // Plot Route: Clear route while a survey or trade plot runs into an empty slot stops that plot (it cleared the Highway)
+  {
+    const w = dom.window, d = w.document, before = errors.length, real = w.fetch, posted = [];
+    const json = body => Promise.resolve({ok: true, status: 200, headers: {get: () => "application/json"}, json: async () => body});
+    w.fetch = (u, o) => o && o.method === "POST" && /clear$/.test(String(u)) ? (posted.push(String(u).replace(/.*api\//, "")), json({ok: true}))
+      : /api\/(riches|highway)/.test(String(u)) ? json({route: null, plotting: {state: "idle"}}) : real(u, o);
+    const saved = w.eval("JSON.stringify([H.data || null, R.data || null])");
+    w.eval(`H.data = {route: {created_ts: "2026-01-01T00:00:00Z", rows: []}, plotting: {state: "idle"}};
+            R.data = {route: null, plotting: {state: "running", kind: "trade"}}; H.clearArmed = null;`);
+    const btn = d.getElementById("hwyClear");
+    btn.click(); await sleep(50); btn.click(); await sleep(300);
+    const got = {posted: posted.slice()};
+    w.fetch = real;
+    w.eval(`[H.data, R.data] = JSON.parse(${JSON.stringify(saved)});`);
+    const ok = JSON.stringify(got) === JSON.stringify({posted: ["riches/clear"]}) && errors.length === before;
+    allOk = allOk && ok;
+    console.log(ok ? "OK" : "FAIL", "| plot route: clear during a survey plot |", ok ? "the running plot is stopped, the Highway kept" : JSON.stringify(got), errors.slice(before));
+  }
   // Settings > In-game overlay: the switches and each panel's place from data.overlay; a change posts it (stubbed)
   {
     const w = dom.window, before = errors.length, real = w.fetch, posted = [];

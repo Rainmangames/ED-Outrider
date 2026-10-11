@@ -5395,7 +5395,10 @@ hEl("hwyClear").onclick = async () => {
     btn.textContent = "Click again to clear"; return;
   }
   clearTimeout(H.clearArmed); H.clearArmed = null; btn.textContent = "Clear route";
-  const rich = routeKind() === "rich" && ((R.data && R.data.route) || (R.data && R.data.plotting && R.data.plotting.state === "running"));
+  // the slot's route when it has one (and it is the one shown); with none, its plot while that is the one running
+  // (routeKind() is "rich" only with a route: a trade plot into an empty slot could not be stopped, review 2026-10-11)
+  const running = d => !!(d && d.plotting && d.plotting.state === "running");
+  const rich = R.data && R.data.route ? routeKind() === "rich" : running(R.data) && !running(H.data);
   let r;
   try { r = await apiJson(rich ? "api/riches/clear" : "api/highway/clear", {method: "POST", headers: {"Content-Type": "application/json"}, body: "{}"}); }
   catch (err) { r = {error: err.message}; }

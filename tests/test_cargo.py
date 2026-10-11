@@ -633,6 +633,18 @@ class TradeRoute(unittest.TestCase):
         self.market(-40, "MarketSell", r[0], "Biowaste")   # a stop in another system: never jumps the route back
         self.assertEqual(self.state.survey_summary()["at"], 2)
 
+    def test_two_stops_in_one_system_copy_the_next_system(self):
+        """Two stops in one system then one in another: arriving at the first copies the other system (it copied its own
+        system's name, and moving on by a trade never copied the next one: review 2026-10-11)."""
+        r = [dict(x) for x in self.rows]
+        r[1].update(system=r[0]["system"], id64=r[0]["id64"])   # the second stop in the first stop's system
+        copied = []
+        self.state.clipboard = types.SimpleNamespace(enabled=True, tool="wl-copy", copy=lambda text: copied.append(text) or True)
+        self.jump(-10, r[0]["id64"], r[0]["system"], 0)
+        self.state.riches_store(r, {"options": {}, "kind": "trade"})
+        self.state.riches_copy_next(force=True)
+        self.assertEqual(copied, [r[2]["system"]])
+
     def test_plot(self):
         self.jump(-100, self.rows[0]["id64"], "Sol", 0)
         sp = ed_outrider.Spansh(self.db)

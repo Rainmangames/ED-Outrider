@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Review fixes: routes
+- Plot Route: Clear route while a Road to Riches, Exomastery or trade plot runs into an empty slot stops that plot. It
+  posted to the Highway's clear instead: "Route cleared." while the plot ran on, or your Highway route deleted.
+- A finished survey or trade route left on screen no longer keeps the clipboard from the Highway (nothing was copied
+  for the rest of the Highway until it was cleared); a finished Highway likewise gives it back.
+- A trade route's clipboard copies the first stop in another system: with two stops in one system it copied the
+  system you were in, and the one after them never.
+
 ## 2026-10-11 · Review fixes: journal data and values
 - A station repair of "Wear" alone no longer sets the hull to 100 %: wear is the ship's integrity, and a damaged
   hull's repair names "Hull" beside it (checked against the author's journals, 2023-2025).
