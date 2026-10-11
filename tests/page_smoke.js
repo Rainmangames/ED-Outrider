@@ -2168,7 +2168,7 @@ const settle = async maxMs => {
       const th = [...document.querySelectorAll("#hereTable thead th")].map(t => t.textContent);
       const row = n => document.querySelector('#hereRows tr[data-body="' + n + '"]');
       const col = th.indexOf("⛏");
-      o.col = col > 0; o.cells = ["M 1", "M 2", "M 3"].map(n => row(n) ? row(n).querySelectorAll("td")[col].textContent.trim() : "missing");
+      o.col = col > 0 && th.indexOf("Rings") === col - 1; o.cells = ["M 1", "M 2", "M 3"].map(n => row(n) ? row(n).querySelectorAll("td")[col].textContent.trim() : "missing");
       const span = row("M 1").querySelector("[data-minepop]");
       span.dispatchEvent(new MouseEvent("mousemove", {bubbles: true, clientX: 10, clientY: 10}));
       o.pop = document.getElementById("pop").textContent;

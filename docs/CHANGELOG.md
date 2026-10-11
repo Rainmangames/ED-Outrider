@@ -2,6 +2,10 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Here: Rings before ⛏
+- Here's long bio lines ran into the ⛏ column next to them (the author). Rings now comes first: few bodies with bio have
+  rings, so the cell beside the bio column is usually empty and gives it room.
+
 ## 2026-10-11 · Exo-Biology checklist: "aboard" counts what you carry
 - The checklist's header counted each species once by its best state, so a new colour of a species sold before (Gold
   Vesicula aboard, Cyan sold) was not "aboard": it said "0 aboard" with eleven species' samples in the hold (the

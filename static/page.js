@@ -2997,6 +2997,8 @@ function renderHere() {
   if (showSch) sEl.innerHTML = schematicHtml(h);
   const dest = data.destination && posId() === h.id64 ? data.destination : null;
   const destBody = dest && h.bodies.find(b => b.body_id === dest.body_id);
+  // one cell per heading of #hereTable, in its order: Rings before ⛏ (the author, 2026-10-11: an empty Rings cell, the
+  // usual one, sits beside the bio column and gives its long lines room)
   const rowHtml = (b, ind = "") => {
     // the colony distance in the genus's tooltip (S1): the row's text stays as it is
     const ct = g => colonyM(g) ? ` title="${esc(g)}: samples ${colonyM(g)} m apart"` : "";
@@ -3048,8 +3050,8 @@ function renderHere() {
       <td class="num${b.gravity >= highGravity() ? " noscoop" : ""}">${b.gravity != null && b.type === "Planet" ? b.gravity.toFixed(2) : ""}${atm ? `<div class="sf2 atm2" title="${esc(atm)}">${esc(shortForm("atmosphere", atm))}</div>` : ""}</td>
       <td class="hide-sm c2hide">${b.type === "Planet" ? (atm ? sfText("atmosphere", atm) : b.landable ? dual("none · landable", "landable") : "") : ""}${b.stale_bio ? ` <span class="unk old" title="${esc(staleBodyTitle(b))}">${dual("landable? (old data)", "landable?", {title: `landable? (old data): ${staleBodyTitle(b)}`})}</span>` : ""}${b.bio_unknown ? ` <span class="warnc" title="${BIO_UNKNOWN_TITLE}">${dual("bio possible: check the FSS", "🧬?")}</span>` : ""}</td>
       <td class="bio">${bio.join(" ")}${geoTag(b)}${volcanoIcon(b)}${codex}${siteTags(b.sites)}${b.mining || (b.mined || []).length ? `<span class="sf2"> ${mineTag(b)}</span>` : ""}</td>
-      <td class="num mine c2hide">${mineTag(b)}</td>
       <td class="c2hide rings"${b.rings ? ` title="${esc(ringsText(b))}"` : ""}>${b.rings ? `${b.rings}${b.rings_mapped ? `<div class="sub2 unk">${b.rings_mapped} mapped</div>${b.hotspots < b.rings_mapped ? `<div class="sub2 unk">${b.hotspots} hotspot${b.hotspots === 1 ? "" : "s"}</div>` : ""}` : ""}` : ""}</td>
+      <td class="num mine c2hide">${mineTag(b)}</td>
       <td class="c2hide">${firsts}</td>
       <td class="num c2hide" title="${bodyValueTitle(b)}">${b.value_now ? credits(b.value_now) : ""}</td>
       <td class="num" title="${bodyValueTitle(b)}">${maxOf(b) ? credits(maxOf(b)) : ""}${b.value_now ? `<div class="sf2 sub2 unk">now ${credits(b.value_now)}</div>` : ""}</td></tr>`;
