@@ -382,29 +382,23 @@ class Batch2Server(unittest.TestCase):
         self.assertEqual(len([m for m in self.j.moments if m["kind"] == "phenomena"]), 1)
 
     def test_phenomena_sites_visited(self):
-        """Visited counts the distinct sites dropped at: the journal says only "a ring phenomenon", so the body the live
-        Status.json names as you drop tells them apart (the author, 2026-10-11: mark them done as you go)."""
+        """Visited counts the drops at a kind, at most how many the FSS found: the journal says only "a ring phenomenon",
+        and two sites can share a ring (the author, 2026-10-11), so nothing better tells them apart."""
         now = time.time()
         at = lambda s: ed_outrider.iso_ts(now - 60 + s)
         self.j.handle({"event": "FSDJump", "timestamp": at(0), "StarSystem": "Sys R", "SystemAddress": 7, "StarPos": [0, 0, 0]})
         for _ in range(3):
             self.j.handle({"event": "FSSSignalDiscovered", "timestamp": at(1), "SystemAddress": 7,
                            "SignalName": "$Fixed_Event_Life_Ring;", "SignalType": "Codex"})
-        drop = lambda s, body: (setattr(self.j, "status_json", {"live": True, "body": body, "ts": at(s)}),
-                                self.j.handle({"event": "SupercruiseDestinationDrop", "timestamp": at(s), "Type": "$Fixed_Event_Life_Ring;", "Threat": 0}))
+        drop = lambda s: self.j.handle({"event": "SupercruiseDestinationDrop", "timestamp": at(s), "Type": "$Fixed_Event_Life_Ring;", "Threat": 0})
         visited = lambda: self.state.system_detail(7)["phenomena"][0]["visited"]
-        drop(10, "Sys R 2")
+        drop(10)
         self.assertEqual(visited(), 1)
-        drop(20, "Sys R 2")                     # the same site again
-        self.assertEqual(visited(), 1)
-        drop(30, "Sys R 4")
+        drop(20)                                # another site (it may share the ring)
         self.assertEqual(visited(), 2)
-        drop(40, None)                          # no body named: the drop counts on its own
-        self.assertEqual(visited(), 3)
-        self.assertNotIn("phenomena_sites", ed_outrider.RESET_JOURNAL_DATA)   # live-only: the bodies cannot be read back
-        self.j.status_json = None               # a re-read of the same drops: nothing added
-        self.j.handle({"event": "SupercruiseDestinationDrop", "timestamp": at(10), "Type": "$Fixed_Event_Life_Ring;", "Threat": 0})
-        self.assertEqual(self.db.execute("SELECT count(*) FROM phenomena_sites").fetchone()[0], 4)
+        drop(10)                                # the same line read again: not another drop
+        self.assertEqual(visited(), 2)
+        self.assertIn("phenomena_sites", ed_outrider.RESET_JOURNAL_DATA)   # journal-derived: a re-read rebuilds it
 
     def test_rare_stars_announced_and_shown(self):
         """A rare star (a black hole, a Wolf-Rayet...) resolved live is a "rare_star" moment, once; Nearby and Here list

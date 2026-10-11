@@ -1225,7 +1225,8 @@ WANTED = tuple(f'"event":"{e}"'.encode()
 #     were dropped; the SRV's refinery and scoop stay out of the ship's hold; an older Location's relog is judged
 #     against the arrival before it (a legacy folder read late counted every login as a visit).
 # 43: a system's population (system_population) and own_firsts.bio_x5: no x5 bio bonus in populated systems.
-PARSER_VERSION = 45
+PARSER_VERSION = 46
+# 46: each drop at a notable stellar phenomenon is kept (phenomena_sites): "1 of 3 visited"
 # 45: notable stellar phenomena are counted (phenomena.n: the most in one FSS burst; the game writes several of a kind
 #     as identical lines, which the (system, kind) key had folded into one)
 NSP_BURST_S = 5   # s: the FSS's lines for a system's phenomena that count as one listing (they come in the same second)
@@ -1475,10 +1476,10 @@ CREATE TABLE IF NOT EXISTS sale_estimates (ts TEXT, kind TEXT, estimate INTEGER,
 -- the game writes them as identical lines, all in the same moment). Journal-derived.
 CREATE TABLE IF NOT EXISTS phenomena (
     system INTEGER, kind TEXT, ts TEXT, reached_ts TEXT, n INTEGER, PRIMARY KEY (system, kind));
--- Each drop at a phenomenon (SupercruiseDestinationDrop): the site it was, told apart by the body the live Status.json
--- named as you dropped (the journal says only "a ring phenomenon", not which of three), else the drop's own time
--- (counts each drop: an old journal read again, a cloud far from any body). Visited = the distinct sites, at most n.
--- Live-only (the bodies cannot be read back): a journal re-read adds only the drops it does not have.
+-- Each drop at a phenomenon (SupercruiseDestinationDrop). The journal says only "a ring phenomenon", not which of the
+-- system's three, and two sites can share a ring (the author, 2026-10-11: two in one ring held different things), so
+-- every drop counts as a site visited; visited = the drops, at most n (dropping twice at one site counts twice).
+-- Journal-derived.
 CREATE TABLE IF NOT EXISTS phenomena_sites (system INTEGER, kind TEXT, ts TEXT, site TEXT, PRIMARY KEY (system, kind, ts));
 -- The firsts watch: what Spansh showed of a system holding your unsold first discoveries when last checked (see
 -- firsts_reported). reported_ts is the earliest report by someone else of a body you discovered (the first sighting);
@@ -1543,7 +1544,7 @@ DELETE FROM journal_files; DELETE FROM visits; DELETE FROM jumps;
 DELETE FROM own_systems; DELETE FROM own_bodies; DELETE FROM own_signals; DELETE FROM own_ring_signals;
 DELETE FROM own_firsts; DELETE FROM own_mapped; DELETE FROM own_footfall; DELETE FROM sales; DELETE FROM deaths;
 DELETE FROM own_genera; DELETE FROM own_organic; DELETE FROM codex; DELETE FROM bio_sales;
-DELETE FROM own_barycentres; DELETE FROM phenomena; DELETE FROM sale_events; DELETE FROM logins;
+DELETE FROM own_barycentres; DELETE FROM phenomena; DELETE FROM phenomena_sites; DELETE FROM sale_events; DELETE FROM logins;
 DELETE FROM own_mined; DELETE FROM meta WHERE key IN ('srv_state', 'vehicle', 'ship_marker', 'body_here');
 DELETE FROM fleet_loadouts; DELETE FROM cargo_events; DELETE FROM system_population;
 DELETE FROM meta WHERE key IN ('ship_cargo', 'cargo_dock');
@@ -3541,10 +3542,8 @@ class Journals:
             system = self.pos["id64"]
             self.db.execute("INSERT INTO phenomena (system, kind, ts, reached_ts, n) VALUES (?, ?, ?, ?, 1) ON CONFLICT(system, kind) "
                             "DO UPDATE SET reached_ts = coalesce(reached_ts, excluded.reached_ts)", (system, kind, ts, ts))
-            # which site: the body Status.json names as you drop (live), else this drop on its own
-            st = self.status_json or {}
-            near = st.get("body") if st.get("live") and live_event(ts) else None
-            self.db.execute("INSERT OR IGNORE INTO phenomena_sites VALUES (?, ?, ?, ?)", (system, kind, ts, f"body:{near}" if near else f"drop:{ts}"))
+            # each drop is a site visited (the journal cannot tell which of a kind's sites it was)
+            self.db.execute("INSERT OR IGNORE INTO phenomena_sites VALUES (?, ?, ?, ?)", (system, kind, ts, f"drop:{ts}"))
         else:
             return
         self.dirty.add(system)
