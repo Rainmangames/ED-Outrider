@@ -6,6 +6,7 @@ import argparse
 import datetime as dt
 import json
 import os
+import tempfile
 import sys
 import time
 import unittest
@@ -2800,6 +2801,31 @@ class SchemaUpgrade(unittest.TestCase):
             row = db.execute("SELECT x, y, z FROM spansh_systems WHERE id64 = 42").fetchone()
             self.assertEqual(tuple(row), (1.5, -2.0, 300.25))
             self.assertEqual(ed_outrider.meta_get(db, "parser_version"), ed_outrider.PARSER_VERSION)
+
+
+class RereadNote(unittest.TestCase):
+    """The start-up log says when and why every journal is read again (the author, 2026-10-11)."""
+
+    def test_message_and_when_it_is_said(self):
+        V = ed_outrider.PARSER_VERSION
+        self.assertIn(V, ed_outrider.PARSER_CHANGES)   # every bump says why in the player's words
+        m = ed_outrider.reread_message(V - 1)
+        self.assertIn(f"the journal reader changed (version {V - 1} -> {V}: {ed_outrider.PARSER_CHANGES[V]})", m)
+        self.assertIn("older change", ed_outrider.reread_message(V - 9))   # three reasons at most, the rest counted
+        self.assertIn("a new database", ed_outrider.reread_message(None))
+        self.assertIn("--rescan", ed_outrider.reread_message(V, rescan=True))
+        self.assertIn("newer Outrider", ed_outrider.reread_message(V + 1))
+        with tempfile.TemporaryDirectory() as d:
+            path, said = os.path.join(d, "x.sqlite"), []
+            ed_outrider.open_db(path, on_reread=said.append).close()
+            ed_outrider.open_db(path, on_reread=said.append).close()          # up to date: nothing said
+            self.assertEqual(len(said), 1)
+            self.assertIn("a new database", said[0])
+            db = ed_outrider.open_db(path)
+            ed_outrider.meta_set(db, "parser_version", V - 1)
+            db.commit(), db.close()
+            ed_outrider.open_db(path, on_reread=said.append).close()
+            self.assertIn(f"version {V - 1} -> {V}", said[-1])
 
 
 class JournalsRegistry(unittest.TestCase):

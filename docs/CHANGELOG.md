@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · The start-up log says why the journals are read again
+- A start that reads every journal again said nothing about it, only a slower "journals up to date in ..." (the
+  author). It now says so first, with why: "re-reading every journal once: the journal reader changed (version 48 ->
+  49: named listening posts are kept, and two in one system count as two). This can take a few minutes."; or a new
+  database, `--rescan`, or a database written by a newer Outrider. The reasons are `PARSER_CHANGES`, in the player's
+  words (three at most, the rest counted); every PARSER_VERSION bump adds its line (a test checks).
+
 ## 2026-10-11 · Here: one line per finished species, in its colour
 - Here listed a finished species twice: "Bacterium 3/3 ✓ 8.3M" and its codex line "📖 Bacterium Alcyoneum - Red ✦"
   (the author). Now one line, the codex entry with what it pays ("📖 Bacterium Alcyoneum - Red ✦ 8.3M"; compact: the

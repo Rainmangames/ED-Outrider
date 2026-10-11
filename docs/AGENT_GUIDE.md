@@ -183,7 +183,8 @@ Ids: a system id64 can exceed 2^53, so the page compares the string `id` fields,
 
 - **`PARSER_VERSION`** (ed_outrider.py): bump it when the journal handler learns something that must be
   rebuilt from past journals (a new event, a new column filled from old lines). On the next start
-  `open_db` runs `RESET_JOURNAL_DATA` and re-reads every journal once. Add a comment line saying why.
+  `open_db` runs `RESET_JOURNAL_DATA` and re-reads every journal once. Add a comment line saying why, and a
+  line in `PARSER_CHANGES` in the player's words: the start-up log says it (`reread_message`).
 - **`CACHE_VERSION`**: bump it when the layout of cached Spansh records changes; cached systems in the old
   layout are ignored and fetched again.
 - **Journal-derived vs live-only tables.** Journal-derived tables (visits, jumps, own_*, sales, codex,

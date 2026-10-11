@@ -1232,6 +1232,16 @@ PARSER_VERSION = 49
 # 46: each drop at a notable stellar phenomenon is kept (phenomena_sites): "1 of 3 visited"
 # 45: notable stellar phenomena are counted (phenomena.n: the most in one FSS burst; the game writes several of a kind
 #     as identical lines, which the (system, kind) key had folded into one)
+# Why each version reads the journals again, in the player's words: said at the start that re-reads (reread_message).
+# Every bump adds its line here too (a test checks PARSER_VERSION has one).
+PARSER_CHANGES = {
+    49: "named listening posts are kept, and two in one system count as two",
+    48: "FSS signals worth a detour are kept (Titans, Guardian beacons, generation ships, listening posts...)",
+    47: "Guardian, Thargoid and planetary anomaly sites on bodies are kept",
+    46: "each drop at a notable stellar phenomenon is kept (which ones you visited)",
+    45: "notable stellar phenomena are counted",
+    44: "fixes in the journal reader",
+}
 CURIOUS_KEEP = 2000   # systems remembered as told about their curiosities (meta curious_said)
 NSP_BURST_S = 5   # s: the FSS's lines for a system's phenomena that count as one listing (they come in the same second)
 # Scans read off a nav beacon (as outrider.unsold.NAV_BEACON_SCANS): their Was* flags are not the game's record of the body.
@@ -1561,7 +1571,26 @@ DELETE FROM meta WHERE key LIKE 'legacy:%' OR key IN ('pos', 'prev', 'jump_range
 """
 
 
-def open_db(path, rescan=False):
+def reread_message(old, rescan=False):
+    """The start-up line saying why every journal is read again: asked for (--rescan), a new database, or the journal
+    reader changed since the database was written (PARSER_CHANGES: what, newest first, three at most)."""
+    if rescan:
+        return "re-reading every journal: asked for (--rescan)"
+    try:
+        old = int(old)
+    except (TypeError, ValueError):
+        return "reading every journal: a new database (the first start can take a few minutes)"
+    if old > PARSER_VERSION:
+        return (f"re-reading every journal: the database was written by a newer Outrider (journal reader version {old}, "
+                f"this one is {PARSER_VERSION})")
+    why = [PARSER_CHANGES[v] for v in range(PARSER_VERSION, old, -1) if v in PARSER_CHANGES]
+    more = len(range(PARSER_VERSION, old, -1)) - min(len(why), 3)
+    return (f"re-reading every journal once: the journal reader changed (version {old} -> {PARSER_VERSION}"
+            + (": " + "; ".join(why[:3]) if why else "") + (f"; and {more} older change{'' if more == 1 else 's'}" if more > 0 else "")
+            + "). This can take a few minutes.")
+
+
+def open_db(path, rescan=False, on_reread=None):
     db = sqlite3.connect(path)
     db.row_factory = sqlite3.Row
     db.executescript(SCHEMA + outrider.uploads.SCHEMA)
@@ -1588,7 +1617,10 @@ def open_db(path, rescan=False):
                        (b.get("x"), b.get("y"), b.get("z"), r["id64"]))
         db.execute("CREATE INDEX IF NOT EXISTS spansh_xyz ON spansh_systems (x, y, z)")
         db.commit()
-    if rescan or meta_get(db, "parser_version") != PARSER_VERSION:
+    old = meta_get(db, "parser_version")
+    if rescan or old != PARSER_VERSION:
+        if on_reread:
+            on_reread(reread_message(old, rescan))
         stamp_next_stop(db)
         db.executescript(RESET_JOURNAL_DATA)
         meta_set(db, "parser_version", PARSER_VERSION)
@@ -14588,7 +14620,7 @@ async def run(args, st):
         raise SystemExit(1)
     migrate_old_layout(args.db)   # an upgrade from before data/: your database and files come along
     os.makedirs(os.path.dirname(os.path.abspath(args.db)), exist_ok=True)   # data/ on a fresh copy
-    db = open_db(args.db, rescan=args.rescan)
+    db = open_db(args.db, rescan=args.rescan, on_reread=print)   # says why when every journal is read again
     journals = Journals(db)
 
     # a stop (SIGTERM: docker stop, systemd) during the import, which is synchronous: end at once with what is read
