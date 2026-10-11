@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Inara uploads, part G: the docs
+- The Uploads guide covers Inara: what goes, never the carrier, the batching and the change-only rule, the API key,
+  switching Inara off in any other app first (EDMC, EDDI, EDDiscovery, EDDLite: two senders can get the key revoked),
+  refusals, the developer switches. README, the Settings and Install guides, DESIGN_NOTES (why the whole profile, why
+  change-only, login-only credits) and AGENT_GUIDE's code map (`outrider/inara.py`, the hub's TRACKERS and keep).
+- Inara still has to accept "ED Outrider" before anything reaches it: until then it refuses, and Settings shows its
+  words.
+
 ## 2026-10-11 · Inara uploads, part E2: missions, combat, friends and suits (parity with EDMC's plugin)
 - So a player using Outrider as their only connector loses nothing on their Inara profile (the author, 2026-10-11):
   the mission log (accepted: where, for whom, what; completed: rewards, permits, the factions' gains; failed;

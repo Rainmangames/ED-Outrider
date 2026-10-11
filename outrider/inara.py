@@ -1,5 +1,6 @@
-"""Inara's commander-profile API (project/PLAN-inara-2026-10-11.md): what a journal line sends to the player's own Inara
-profile, and what Inara's answer means. Pure: the server (ed_outrider.py) owns the queue, the API keys and the sending.
+"""Inara's commander-profile API: what a journal line sends to the player's own Inara profile, and what Inara's answer
+means. Pure: the server (ed_outrider.py) owns the queue, the API keys and the sending. (Planned in
+project/PLAN-inara-2026-10-11.md, the author's notes, not in the repository.)
 
 Inara takes a commander's career, not the galaxy: travel, ranks, credits, ships, inventory, missions and the like
 (https://inara.cz/elite/inara-api-docs/, saved by the author 2026-10-11). Its rules, kept here:

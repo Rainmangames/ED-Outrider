@@ -151,7 +151,7 @@ config); back those up. `docker compose down` waits for a backup that is running
 checkout uses the Compose project name `ed-outrider`, so a new one replaces the old container. If you also run
 Outrider on the game PC, set `[spansh] watch_firsts = false` on one of them, or both check the same firsts on Spansh.
 To ask an AI client about the server, give the MCP bridge `[mcp] url` and `password`.
-To upload to EDDN or EDSM from the server, read [Uploads](uploads.md) first: one uploader at a time, and the server's
+To upload to EDDN, EDSM or Inara from the server, read [Uploads](uploads.md) first: one uploader at a time, and the server's
 note folder in the journal share.
 
 ## 🌐 Other devices on your network

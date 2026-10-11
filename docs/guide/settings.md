@@ -11,7 +11,7 @@
 **⚙ Settings** (top right) holds everything, in folding sections: Alerts, Voice, What is said, Sounds, Values, Risk
 & warnings, Surface map, Auto honk, Uploads, In-game overlay, Display, Sharing, **Server** and Spoken lines. Most are this browser's
 own (Sharing exports them or makes them the defaults for new browsers). **Server** is the config file
-itself, every key of it but the upload switches (`[eddn]`, `[edsm]`: Settings → Uploads): the network and the client password, the journal folders, paths, backups, Spansh, the
+itself, every key of it but the upload switches (`[eddn]`, `[edsm]`, `[inara]`: Settings → Uploads): the network and the client password, the journal folders, paths, backups, Spansh, the
 Highway, the voice's AI layer and more. Saving there writes `ed_outrider.toml` (only the keys you changed; its
 comments stay, and the previous file is kept as `ed_outrider.toml.bak`), and Outrider uses them from its next start.
 The password and the AI key are never shown, only whether they are set.
@@ -39,7 +39,7 @@ Outrider folder; they default to `data/ed_outrider.sqlite`, `data/backups` and `
 | `[copilot]` | `enabled`, `device`, `button`, `hold_ms`, `double_ms` |
 | `[assistant]` | `enabled`, `base_url`, `api_key`, `model`, `timeout`, `max_rounds`: the voice's optional AI layer |
 | `[mcp]` | `url`, `max_rows`, `password`: for the MCP bridge (see Ask an AI about your game) |
-| `[eddn]`, `[edsm]` | `enabled`: written by the switches in Settings → Uploads (the only place to change them; off by default) |
+| `[eddn]`, `[edsm]`, `[inara]` | `enabled`: written by the switches in Settings → Uploads (the only place to change them; off by default) |
 | `[overlay]` | `enabled`, `theme`, `text_size`, `system_panel`, `body_panel`, `radar`, `strip_panel`, `now_panel`, `bio_panel`, `system_seconds`, `radar_range` (the overlay is a game-PC feature: see In-game overlay) |
 | `[highway]` | `clipboard`, `efficiency`, `conservative`, `conservative_ly`, `background_image`, `background_extent`, `background_opacity`; auto-target: `autotarget`, `autotarget_delay`, `autotarget_entry`, `autotarget_map_wait`, `autotarget_search_wait`, `autotarget_key_delay`, `autotarget_keys`, `autotarget_search`, `autotarget_submit`, `autotarget_plot`, `autotarget_dry_run` |
 

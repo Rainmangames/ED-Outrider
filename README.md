@@ -23,7 +23,7 @@ about to jump away from something you'll regret leaving.**
 It runs on your own machine. It asks [Spansh](https://spansh.co.uk) (and
 [EDSM](https://www.edsm.net) as a backup) what the community already knows about the systems
 around you, then layers your own scans on top. Nothing is uploaded unless you switch on sharing with
-[EDDN and EDSM](docs/guide/uploads.md), as EDMC does. A tablet can sit beside you as a cockpit
+[EDDN, EDSM or Inara](docs/guide/uploads.md), as EDMC does. A tablet can sit beside you as a cockpit
 display ([ED Outrider for Android](https://github.com/weslocke/ED-Outrider-Android), or any browser), and Outrider can
 also run 24/7 on a home server in Docker.
 
@@ -86,7 +86,7 @@ Everything about installing, the optional parts, Docker, other devices and backu
 | <a id="-auto-honk"></a><a id="-the-co-pilot-button"></a>**[Automation](docs/guide/automation.md)** | Auto honk and the co-pilot button (on the game PC) |
 | <a id="-on-a-tablet"></a>**[On a tablet](docs/guide/tablet.md)** | The touch layout at /tablet, its nine themes, the control rail, the Android app |
 | **[In-game overlay](docs/guide/overlay.md)** | Panels drawn over the game: the system worth your time, the body you are heading to, a surface radar, the system strip, Now (To-Do & Info), bio signals; arranging them |
-| **[Uploads](docs/guide/uploads.md)** | EDDN and EDSM (opt-in, off by default): what is sent and never sent, one uploader at a time, EDSM's key |
+| **[Uploads](docs/guide/uploads.md)** | EDDN, EDSM and Inara (opt-in, off by default): what is sent and never sent, one uploader at a time, the keys |
 | <a id="-settings"></a><a id="-good-to-know"></a>**[Settings and good to know](docs/guide/settings.md)** | Every setting and config key, and the things worth knowing (what "not on the page" means, estimates, updates) |
 | <a id="-for-the-curious"></a>**[For the curious](docs/guide/for-developers.md)** | What's in the box, the code's layout, the status API for overlays; contributors start with the agent guide |
 
@@ -106,7 +106,7 @@ The project's history is in the [changelog](docs/CHANGELOG.md). Contributors and
 | Galactic region map | [klightspeed's EliteDangerousRegionMap](https://github.com/klightspeed/EliteDangerousRegionMap) | MIT | in `resources/bio_rules.json` |
 | Planetary mining odds | CMDR Grumlop's survey, [Elite Dangerous Field Manual](https://edfieldmanual.com/index.php?title=Module:Data/SurfaceMiningProspecting) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | `resources/mining_odds.json`, unchanged |
 | Geology sites; checklist pictures | [Canonn](https://canonn.science)'s codex records and screenshots | Canonn's | site counts in `resources/geo_codex.json`; pictures linked, never copied, credited to the commander who took each |
-| EDDN and EDSM upload rules | [EDMarketConnector](https://github.com/EDCD/EDMarketConnector) (EDCD) | GPL v2 or later | followed, with EDCD's notice in `outrider/eddn.py` |
+| EDDN, EDSM and Inara upload rules | [EDMarketConnector](https://github.com/EDCD/EDMarketConnector) (EDCD) | GPL v2 or later | followed, with EDCD's notice in `outrider/eddn.py` |
 | The overlay window's code | [EDMC Modern Overlay](https://github.com/SweetJonnySauce/EDMCModernOverlay) | GPL v3 | adapted, with its notice: `outrider/overlay_tracking.py`, `outrider/overlay_window.py` |
 
 The tablet themes' emblems (`static/emblems/`, each under the terms in its `CREDITS.txt`, not the GPL): the Explorer

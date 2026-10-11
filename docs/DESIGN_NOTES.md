@@ -9,8 +9,8 @@ upstream project's choices, not rules of the game.
 - **No keyboard shortcuts.** A deliberate upstream choice, declined more than once; clickable things are reachable with
   Tab and act on Enter/Space instead.
 - **No VoiceAttack integration.** Not used upstream; the co-pilot button and the page cover the same ground.
-- **Nothing is uploaded unless the player switches it on.** EDDN and EDSM (Settings → Uploads, off by default) are the
-  only uploads. Every other outside call is a read-only lookup: Spansh, EDSM, GitHub (the bio rules, ExploData's colour
+- **Nothing is uploaded unless the player switches it on.** EDDN, EDSM and Inara (Settings → Uploads, off by default)
+  are the only uploads. Every other outside call is a read-only lookup: Spansh, EDSM, GitHub (the bio rules, ExploData's colour
   tables and the update check), Hugging Face for voices, Canonn (its codex reference once a day; the page loads the
   checklists' pictures from Canonn's storage), EDAstro for the DSSA carrier list when the Nearest finder opens. The
   one exception is the AI layer (off by default, `[assistant]`): it sends the question and the read-only tools'
@@ -18,6 +18,19 @@ upstream project's choices, not rules of the game.
 - **EDSM has no test endpoint**, so its developer switch is a dry run (`OUTRIDER_EDSM_DRYRUN=1`: requests built and
   logged to `data/edsm-dryrun.jsonl` without the key, nothing sent; the rows end as `dry` and are never sent later).
   EDDN's is its `/test` schemas (`OUTRIDER_EDDN_TEST=1`). Neither is a setting.
+- **Inara keeps the whole commander profile, as EDMC's Inara upload does** (the author, 2026-10-11; plan in the
+  author's notes): a player who uses Outrider as their only connector must lose nothing there, so travel, credits,
+  every rank, reputation, inventory, ships and fleet, community goals, missions, combat, friends and suits all go
+  (`outrider/inara.py`). Inara asks apps to batch and never send the same thing twice, while the game rewrites ranks,
+  cargo, the ship locker, loadouts and suit loadouts constantly: each snapshot goes only when it differs from what that
+  commander's profile last got (meta `inara_sent`, live-only, in the tick's checkpoint), and the inventories only when
+  a batch goes (a jump, a docking, the end of the login, a shut-down), never on a pickup. Credits are the game's own
+  figures at login (LoadGame, Statistics), once per session: Inara warns that sums worked out from the journal are
+  wrong (crew wages). Never the fleet carrier (the API has no carrier hold) or the SRV's cargo. One request every 35 s
+  at most (EDMC's pace). Its developer switches: `OUTRIDER_INARA_DRYRUN=1` (as EDSM's) and `OUTRIDER_INARA_DEV=1`
+  (`isBeingDeveloped`, for a test account). Inara whitelists each app by its name: "ED Outrider".
+- **Two apps sending to Inara can get the key revoked**: EDMC's Inara upload on this PC holds Outrider's (as for EDDN
+  and EDSM); EDDI, EDDiscovery and EDDLite cannot be seen, so the page and the guide say to switch Inara off there.
 - **Survey odds are odds, not contents.** The mining tooltip shows what a community survey found at that kind of
   ground; the game never says what a location holds.
 - **No hand-logging of mining location contents.** Considered and left out for now; "Mined previously" records
