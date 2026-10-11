@@ -40,6 +40,9 @@ KEYS = {
     "bio_tag_near": "within 100 m of a plant you tagged with the composition scanner where the next sample of the "
                     "species you are sampling would count: {genus}, {distance} (metres)",
     "codex": "a new codex entry: {entry} (the entry's name), {what} (voucher or new to the region)",
+    "phenomena": "the FSS found notable stellar phenomena in a system where you have none on record (said with delight, in "
+                 "every style: the co-pilot loves new things): {what} (already phrased, e.g. 'three notable stellar "
+                 "phenomena, all in rings')",
     "fuel_low": "the game's low fuel warning: {pct}",
     "fuel_star": "arrived under 30% fuel at a star you cannot scoop: {pct}, {star}",
     "fuel_target": "targeted a star you cannot scoop with under 30% fuel: {pct}, {system}",
@@ -387,6 +390,7 @@ SAMPLES = {
     "find_body": {"what": "Water world, terraformable, undiscovered", "body": "A 3", "value": "2.3M"}, "mapped_before": {},
     "find_bio": {"body": "B 7", "value": "19.0M"}, "sample_clear": {"genus": "Stratum"}, "bio_tag_near": {"genus": "Tussock", "distance": 80},
     "codex": {"entry": "Stratum Tectonicas", "what": "new to your codex for this region"},
+    "phenomena": {"what": "three notable stellar phenomena, all in rings"},
     "fuel_low": {"pct": 18}, "fuel_star": {"pct": 22, "star": "white dwarf"},
     "fuel_target": {"pct": 22, "system": "Drojau LL-O b26-3"},
     "fuel_topup": {"rate": "8 of the last 20 stars were scoopable", "jumps": "about 6 jumps"}, "hull": {"pct": 42}, "interdicted": {"by": "someone"},

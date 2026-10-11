@@ -4235,6 +4235,34 @@ const settle = async maxMs => {
     allOk = allOk && ok;
     console.log(ok ? "OK" : "FAIL", "| plot route: clear during a survey plot |", ok ? "the running plot is stopped, the Highway kept" : JSON.stringify(got), errors.slice(before));
   }
+  // notable stellar phenomena (the author's three rings, 2026-10-11): counted in words, Nearby's 🌀 with the count, a line
+  // in Now, and the alert said with delight from its own lines
+  {
+    const w = dom.window, before = errors.length;
+    const got = JSON.parse(await w.eval(`(async () => {
+      const o = {};
+      o.what = [phenomenaWhat({ring: 3}), phenomenaWhat({cloud: 1}), phenomenaWhat({ring: 2, cloud: 1}), phenomenaWhat({})];
+      const t = document.createElement("div"); t.innerHTML = phenomenaTag([{kind: "ring", n: 3, reached_ts: null}]);
+      o.tag = t.textContent;
+      const saved = {position: data.position, arrival: data.arrival, on_body: data.on_body}, hd = hereData, big = "9007199254740995";
+      data.on_body = null; data.position = Object.assign({}, saved.position, {id64: Number(big), id: big});
+      hereData = {id64: big, bodies: [], leaving: {honked: true, unscanned: 0, all_found: true, body_count: 5, bio_pending: [], unmapped: []},
+                  phenomena: [{kind: "ring", n: 3, reached_ts: null}]};
+      renderNow();
+      o.now = /🌀 Three notable stellar phenomena, all in rings none visited yet/.test(document.getElementById("nowView").textContent.replace(/\\s+/g, " "));
+      hereData = hd; Object.assign(data, saved); renderNow();
+      const ao = window.alertOut; let said = null;
+      window.alertOut = (kind, title, body, opt) => { said = [kind, title, typeof opt.say === "function" ? opt.say() : opt.say]; };
+      sayPhenomena({kind: "phenomena", count: 3, kinds: {ring: 3}, system_name: "Smojooe XF-G b24-0"});
+      window.alertOut = ao;
+      o.said = !!said && said[0] === "phenomena" && /Three notable stellar phenomena/.test(said[1]) && /three notable stellar phenomena, all in rings/.test(said[2]);
+      return JSON.stringify(o); })()`));
+    const want = {what: ["three notable stellar phenomena, all in rings", "a notable stellar phenomenon, in a cloud",
+                         "three notable stellar phenomena: two in rings and one in a cloud", ""], tag: "🌀 3", now: true, said: true};
+    const ok = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && ok;
+    console.log(ok ? "OK" : "FAIL", "| stellar phenomena |", ok ? "counted, in Now and the 🌀, said from its lines" : JSON.stringify(got), errors.slice(before));
+  }
   // Settings > In-game overlay: the switches and each panel's place from data.overlay; a change posts it (stubbed)
   {
     const w = dom.window, before = errors.length, real = w.fetch, posted = [];

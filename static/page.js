@@ -193,11 +193,14 @@ const bioUnknownTag = n => !n ? "" : `<span class="nb" title="${n} bod${n === 1 
 const oldDataTag = o => { if (!o || !o.bodies) return "";
   const full = `old data: ${o.bodies} bod${o.bodies === 1 ? "y" : "ies"}`;
   return `<span class="nb old" title="${oldDataTitle(o)}">${dual(full, `old ${o.bodies}`, {titleHtml: `${full}. ${oldDataTitle(o)}`})}</span>`; };
-// 🌀 notable stellar phenomena your FSS found in a system (life clouds, rings); dimmed once you have been to it
+// 🌀 notable stellar phenomena your FSS found in a system (life clouds, rings), with how many; dimmed once you have been
+// to every kind
+const phenomenaCount = list => (list || []).reduce((a, p) => a + (p.n || 1), 0);
 function phenomenaTag(list) {
   if (!list || !list.length) return "";
-  const left = list.filter(p => !p.reached_ts);
-  return `<span class="nb nsp${left.length ? "" : " done"}" title="notable stellar phenomena: ${list.map(p => p.kind + (p.reached_ts ? " (reached)" : "")).join(", ")}">🌀${list.length > 1 ? "×" + list.length : ""}</span>`;
+  const left = list.filter(p => !p.reached_ts), n = phenomenaCount(list);
+  return `<span class="nb nsp${left.length ? "" : " done"}" title="${esc(phenomenaWhat(Object.fromEntries(list.map(p => [p.kind, p.n || 1]))))}` +
+    `${list.some(p => p.reached_ts) ? " (reached: " + list.filter(p => p.reached_ts).map(p => p.kind).join(", ") + ")" : ""}">🌀 ${n}</span>`;
 }
 // Journal ship ids -> the names the game shows.
 const SHIP_NAMES = {sidewinder: "Sidewinder", eagle: "Eagle", hauler: "Hauler", adder: "Adder", empire_eagle: "Imperial Eagle",
@@ -833,6 +836,14 @@ function renderNow() {
     // a body targeted that is not the next item: an extra line, never in place of Next (Status.json keeps the target
     // after you finish a body, so Next must stay visible)
     if (dest && !destIsNext) lines.push(`<div class="now-line now-small">${nowDestText(hd, l, plan, dest)}</div>`);
+    // notable stellar phenomena the FSS found here: how many and where, and how many are still to visit
+    const nsp = hd && hd.phenomena && hd.phenomena.length ? hd.phenomena : null;
+    if (nsp) {
+      const what = phenomenaWhat(Object.fromEntries(nsp.map(p => [p.kind, p.n || 1])));
+      const left = nsp.filter(p => !p.reached_ts);
+      lines.push(`<div class="now-line now-nsp"><span class="${left.length ? "warnc" : "ok"}">🌀 ${esc(what[0].toUpperCase() + what.slice(1))}</span>` +
+        ` <span class="unk">${left.length ? (left.length === nsp.length ? "none visited yet" : "some still to visit") : "visited"}</span></div>`);
+    }
   }
   const hz = horizon(), sk = data.streak;
   if (hz || (sk && sk.total)) lines.push(`<div class="now-line now-small">${[sk && sk.total ? `<b>${sk.new}/${sk.total}</b> new` : "",
@@ -1516,6 +1527,7 @@ const ALERTS = [["discovery", "targeting a system: the fanfare if nobody has rep
   ["saleleft", "a sale left data aboard: Universal Cartographics sells 50 systems a page, so a sale that stops after one page leaves the rest unsold (said once the pages stop and the estimate has caught up); likewise completed samples still unsold after a Vista Genomics sale", "alert"],
   ["unsold", "unsold data crosses a threshold", "cash"], ["hull", "hull damage, heat damage, interdiction", "danger"],
   ["carrier", "your carrier arrives somewhere", "chime"], ["codex", "a new codex entry", "chime"],
+  ["phenomena", "the FSS finds notable stellar phenomena (life in clouds or rings) in a system where you have none on record: how many, said with delight", "find"],
   ["loss", "your ship was destroyed with data aboard (or samples died with you): what was lost, and the nearest system to rescan", "danger"],
   ["rigs", "Rhino mining rigs: the co-pilot button's confirmation (rig placed, picked up, six out) and what a rig collected", null],
   ["rigleash", "a Rhino mining rig too far from you (over the rig warning distance, again at 4.5 km; the game destroys it at 5 km)", "danger"],
@@ -1693,10 +1705,10 @@ const JUMP_LINE_WAIT = 8000;   // ms: the jump line's latest start after the cha
 // ms after Status.json says "in the tunnel" (it says so about 2 s before the countdown ends): the line then starts
 // with the tunnel itself (the author's timing, in game 2026-10-03)
 const JUMP_TUNNEL_DELAY = 2500;
-const SPEECH_SYS_BOUND = new Set(["find", "signals", "jump", "honk", "brief", "fss", "mapped", "approach", "bodybrief", "jumponium", "highway", "riches", "exo", "trade", "autotarget"]);
+const SPEECH_SYS_BOUND = new Set(["find", "signals", "jump", "honk", "brief", "fss", "mapped", "approach", "bodybrief", "jumponium", "phenomena", "highway", "riches", "exo", "trade", "autotarget"]);
 // a rig confirmation answers your own press, like a line asked for
 const speechPrio = (kind, tag) => DANGER.has(tag) || kind === "hull" || kind === "fuel" ? 0 : kind === "manual" || kind === "rigs" ? 1
-  : ["find", "signals", "codex", "bodybrief", "supercharge", "jumponium"].includes(kind) ? 3 : 2;
+  : ["find", "signals", "codex", "phenomena", "bodybrief", "supercharge", "jumponium"].includes(kind) ? 3 : 2;
 // the queue without what went stale by `now` with the ship at `pos`
 const speechExpire = (items, now, pos) => items.filter(it => now - it.notBefore <= SPEECH_MAX_AGE
   && (it.sys == null || it.sys === pos) && (!it.still || it.still()));
@@ -2061,6 +2073,7 @@ const LINE_SAMPLES = {
   find_body: {what: "Water world, terraformable, undiscovered", body: "A 3", value: "2.3M"}, mapped_before: {},
   find_bio: {body: "B 7", value: "19.0M"}, sample_clear: {genus: "Stratum"},
   codex: {entry: "Stratum Tectonicas", what: "new to your codex for this region"},
+  phenomena: {what: "three notable stellar phenomena, all in rings"},
   fuel_low: {pct: 18}, fuel_star: {pct: 22, star: "white dwarf"}, fuel_target: {pct: 22, system: "Drojau LL-O b26-3"},
   fuel_topup: {rate: "8 of the last 20 stars were scoopable", jumps: "about 6 jumps"}, hull: {pct: 42}, interdicted: {by: "someone"},
   docked_sell: {value: "114.1M", station: "Jaques Station"}, undocked_unsold: {value: "260.4M"},
@@ -2245,6 +2258,27 @@ function sayRegion(m) {
 // "B 4 has polonium, 1.3 percent": a jumponium body, in the FSS debrief or alone
 const jumponiumSaid = j => `${j.body} has ${(j.name || j.material || "").toLowerCase()}, ${j.pct} percent.`;
 const jumponiumOn = () => !!(alertSpeak.jumponium || (alertCfg.enabled && alertCfg.jumponium) || alertSound.jumponium);
+// Notable stellar phenomena in words: {ring: 3} -> "three notable stellar phenomena, all in rings"; {ring: 2, cloud: 1}
+// -> "three notable stellar phenomena: two in rings and one in a cloud"; {cloud: 1} -> "a notable stellar phenomenon, in a cloud"
+const NSP_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
+const nspCount = n => NSP_WORDS[n] || String(n);
+const nspWhere = (kind, n) => ({ring: n === 1 ? "in a ring" : "in rings", cloud: n === 1 ? "in a cloud" : "in clouds"}[kind]
+  || (n === 1 ? `of the ${kind} kind` : `of the ${kind} kind`));
+function phenomenaWhat(kinds) {
+  const parts = Object.entries(kinds || {}).filter(([, n]) => n > 0);
+  const total = parts.reduce((a, [, n]) => a + n, 0);
+  if (!total) return "";
+  const head = total === 1 ? "a notable stellar phenomenon" : `${nspCount(total)} notable stellar phenomena`;
+  if (parts.length === 1) return `${head}, ${total === 1 ? "" : "all "}${nspWhere(parts[0][0], total)}`;
+  return `${head}: ` + parts.map(([k, n]) => `${nspCount(n)} ${nspWhere(k, n)}`).join(" and ").replace(/ and (?=[^]* and )/g, ", ");
+}
+// the FSS found phenomena in a system with none on record (State's "phenomena" moment): said with delight
+function sayPhenomena(m) {
+  const what = phenomenaWhat(m.kinds);
+  if (!what) return;
+  alertOut("phenomena", `🌀 ${what[0].toUpperCase()}${what.slice(1)}`, m.system_name || "",
+           {say: () => line("phenomena", {what}, `Notable stellar phenomena: ${what}.`)});
+}
 function sayJumponium(j) {
   const material = (j.name || j.material || "").toLowerCase(), pct = `${j.pct} percent`;
   if (jumponiumOn()) toast(`⛽ ${j.body}: ${material} ${j.pct}%`);
@@ -7009,6 +7043,7 @@ function onData() {
         else sayRegion(m);
       }
       else if (m.kind === "jumponium" && m.jumponium) sayJumponium(m.jumponium);
+      else if (m.kind === "phenomena" && m.count) sayPhenomena(m);
       else if (m.kind === "arrival_brief") {   // after the honk (or 12 s after arriving without one): one sentence
         let text = arrivalBriefText(m);
         // the arrival alert has just said this system is undiscovered: the briefing starts at the bodies, not twice
@@ -7260,7 +7295,7 @@ const speechLogFacts = e => [e.kind + (e.tag ? "/" + e.tag : ""), e.style, e.voi
 const ALERT_SHORT = {arrival: "Arrival", game: "Game start and quit", jump: "FSD charge", honk: "Honk", brief: "Arrival brief", fss: "FSS",
   leaving: "Leaving", fuel: "Fuel", scoop: "Tank full", scoopstop: "Scooping stopped", supercharge: "Supercharge", find: "Find",
   jumponium: "Jumponium", sampling: "Sampling", approach: "High-g approach", bodybrief: "Body brief", sell: "Selling", saleleft: "Sale left data",
-  unsold: "Unsold", hull: "Hull and danger", carrier: "Carrier", codex: "Codex", loss: "Ship lost", rigs: "Rigs", rigleash: "Rig leash",
+  unsold: "Unsold", hull: "Hull and danger", carrier: "Carrier", codex: "Codex", phenomena: "Stellar phenomena", loss: "Ship lost", rigs: "Rigs", rigleash: "Rig leash",
   rigsout: "Rigs out", mapped: "Mapped", signals: "Signals", highway: "Neutron Highway", autotarget: "Auto-target", manual: "Asked for",
   exo: "Exomastery route", riches: "Road to Riches", trade: "Trade route"};
 const speechMuted = new Set();   // kinds turned off from the tally this session (each shows an undo)
@@ -8818,7 +8853,7 @@ const TAB_ALERT_NAMES = {discovery: "Targeting a system", arrival: "Arriving som
   supercharge: "Supercharged", highway: "Highway next stop", autotarget: "Auto-target", find: "Valuable body",
   jumponium: "Jumponium materials", sampling: "Exobiology unfinished", approach: "High gravity", bodybrief: "Bio signals on approach",
   sell: "Selling", saleleft: "Data left after a sale", unsold: "Unsold data", hull: "Hull, heat, interdiction",
-  carrier: "Carrier arrived", codex: "New codex entry", loss: "Ship lost", rigs: "Mining rigs", rigleash: "Rig too far",
+  carrier: "Carrier arrived", codex: "New codex entry", phenomena: "Stellar phenomena", loss: "Ship lost", rigs: "Mining rigs", rigleash: "Rig too far",
   rigsout: "Rigs still out"};
 function tabDrawAlerts() {
   const tog = (attr, k, on, what) => `<label class="tb-tog"><input type="checkbox" data-${attr}="${esc(k)}"${on ? " checked" : ""}> ${what}</label>`;

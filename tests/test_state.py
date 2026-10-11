@@ -352,6 +352,35 @@ class Batch2Server(unittest.TestCase):
         self.j.handle({"event": "SupercruiseDestinationDrop", "timestamp": "2026-01-01T00:09:00Z", "Type": "$Fixed_Event_Life_Cloud;"})
         self.assertEqual(self.db.execute("SELECT reached_ts FROM phenomena").fetchone()[0], "2026-01-01T00:09:00Z")
 
+    def test_phenomena_counted_and_announced_once(self):
+        """The FSS lists several phenomena of a kind as identical lines in one moment: counted (they were folded into
+        one), never added up when the FSS lists them again, and announced (live) the first time a system has any
+        (the author's Smojooe XF-G b24-0, three rings, 2026-10-11: nothing said, one 🌀 shown)."""
+        now = time.time()
+        at = lambda s: ed_outrider.iso_ts(now - 60 + s)
+        self.j.handle({"event": "FSDJump", "timestamp": at(0), "StarSystem": "Smojooe XF-G b24-0", "SystemAddress": 614582987473,
+                       "StarPos": [0, 0, 0]})
+        sig = lambda s, kind="Ring": {"event": "FSSSignalDiscovered", "timestamp": at(s), "SystemAddress": 614582987473,
+                                      "SignalName": f"$Fixed_Event_Life_{kind};", "SignalName_Localised": "Notable stellar phenomena",
+                                      "SignalType": "Codex"}
+        for _ in range(3):
+            self.j.handle(sig(9))
+        self.j.handle(sig(9, "Cloud"))
+        rows = {r["kind"]: r["n"] for r in self.db.execute("SELECT kind, n FROM phenomena WHERE system=614582987473")}
+        self.assertEqual(rows, {"ring": 3, "cloud": 1})
+        said = [m for m in self.j.moments if m["kind"] == "phenomena"]
+        self.assertEqual([(m["count"], m["kinds"], m["system_name"]) for m in said], [(4, {"ring": 3, "cloud": 1}, "Smojooe XF-G b24-0")])
+        for _ in range(3):                                                    # the FSS opened again later
+            self.j.handle(sig(40))
+        self.assertEqual(self.db.execute("SELECT n FROM phenomena WHERE kind='ring'").fetchone()[0], 3)   # not 6
+        self.assertEqual(len([m for m in self.j.moments if m["kind"] == "phenomena"]), 1)   # known now: not said again
+        detail = self.state.system_detail(614582987473)
+        self.assertEqual(sorted((p["kind"], p["n"]) for p in detail["phenomena"]), [("cloud", 1), ("ring", 3)])
+        # a re-read of old journals: counted, never announced
+        self.j.handle({"event": "FSSSignalDiscovered", "timestamp": "2020-01-01T00:00:00Z", "SystemAddress": 5,
+                       "SignalName": "$Fixed_Event_Life_Cloud;", "SignalType": "Codex"})
+        self.assertEqual(len([m for m in self.j.moments if m["kind"] == "phenomena"]), 1)
+
     def test_phenomena_lines_pass_the_filter(self):
         import tempfile, json as _j
         d = tempfile.mkdtemp()

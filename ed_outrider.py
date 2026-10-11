@@ -1225,7 +1225,10 @@ WANTED = tuple(f'"event":"{e}"'.encode()
 #     were dropped; the SRV's refinery and scoop stay out of the ship's hold; an older Location's relog is judged
 #     against the arrival before it (a legacy folder read late counted every login as a visit).
 # 43: a system's population (system_population) and own_firsts.bio_x5: no x5 bio bonus in populated systems.
-PARSER_VERSION = 44
+PARSER_VERSION = 45
+# 45: notable stellar phenomena are counted (phenomena.n: the most in one FSS burst; the game writes several of a kind
+#     as identical lines, which the (system, kind) key had folded into one)
+NSP_BURST_S = 5   # s: the FSS's lines for a system's phenomena that count as one listing (they come in the same second)
 # Scans read off a nav beacon (as outrider.unsold.NAV_BEACON_SCANS): their Was* flags are not the game's record of the body.
 NAV_BEACON_SCANS = ("NavBeaconDetail", "NavBeacon")
 
@@ -1468,9 +1471,10 @@ CREATE TABLE IF NOT EXISTS sale_events (
 -- so a journal re-read keeps it (not in RESET_JOURNAL_DATA); the ledger joins it to sale_events by (ts, kind).
 CREATE TABLE IF NOT EXISTS sale_estimates (ts TEXT, kind TEXT, estimate INTEGER, PRIMARY KEY (ts, kind));
 -- Notable stellar phenomena (the FSS "Codex" signals $Fixed_Event_Life_Cloud/Ring): kind cloud|ring;
--- reached_ts is set when you drop out of supercruise at one.
+-- reached_ts is set when you drop out of supercruise at one; n how many of that kind (the most the FSS listed at once:
+-- the game writes them as identical lines, all in the same moment). Journal-derived.
 CREATE TABLE IF NOT EXISTS phenomena (
-    system INTEGER, kind TEXT, ts TEXT, reached_ts TEXT, PRIMARY KEY (system, kind));
+    system INTEGER, kind TEXT, ts TEXT, reached_ts TEXT, n INTEGER, PRIMARY KEY (system, kind));
 -- The firsts watch: what Spansh showed of a system holding your unsold first discoveries when last checked (see
 -- firsts_reported). reported_ts is the earliest report by someone else of a body you discovered (the first sighting);
 -- bodies how many of yours Spansh has from others, spansh_bodies of body_count the bodies it has in all. Live only
@@ -2230,6 +2234,8 @@ class Journals:
         self.regions_said = set()  # galactic regions announced (or left) this game session: see note_region
         self.region_entered = None  # the latest region crossing {id64, ts, region, spoken, count}
         self.jumponium = None      # this system's best jumponium body so far {system, body, material, pct, said}
+        # the FSS's notable stellar phenomena as they come (several lines in one moment): {system, t, counts, new, seq}
+        self.nsp_burst = None
         # a live sale still coming in (a 'Sell all' writes a page every 10 s to a minute or so): State.maybe_sale_left
         # says what it left aboard once the pages stop. {carto, systems, bio, species, read_at (wall clock)}
         self.sale_run = None
@@ -2657,11 +2663,12 @@ class Journals:
         return (self.moment_seq, list(self.moments), self.last_heat,
                 set(self.body_touched), set(self.approached), self.brief_key,
                 set(self.regions_said), self.region_entered, self.jumponium, dict(self.sale_run or {}) or None,
-                json.loads(json.dumps(self.burst)), self.uploads.snapshot() if self.uploads else None)
+                json.loads(json.dumps(self.burst)), self.uploads.snapshot() if self.uploads else None,
+                json.loads(json.dumps(self.nsp_burst)))
 
     def restore(self, cp):
         (self.moment_seq, moments, self.last_heat, touched, approached, self.brief_key,
-         regions, self.region_entered, self.jumponium, self.sale_run, self.burst, uploads) = cp
+         regions, self.region_entered, self.jumponium, self.sale_run, self.burst, uploads, self.nsp_burst) = cp
         if self.uploads and uploads:
             self.uploads.restore(uploads)
         self.body_touched, self.approached, self.regions_said = set(touched), set(approached), set(regions)
@@ -3524,14 +3531,44 @@ class Journals:
             system = ev.get("SystemAddress")
             if system is None:
                 return
-            self.db.execute("INSERT OR IGNORE INTO phenomena VALUES (?, ?, ?, NULL)", (system, kind, ts))
+            self.phenomenon_found(system, kind, ts)
         elif self.pos and ts >= self.pos.get("ts", ""):   # the drop happens in the system you are in (not an old one read later)
             system = self.pos["id64"]
-            self.db.execute("INSERT INTO phenomena VALUES (?, ?, ?, ?) ON CONFLICT(system, kind) "
+            self.db.execute("INSERT INTO phenomena (system, kind, ts, reached_ts, n) VALUES (?, ?, ?, ?, 1) ON CONFLICT(system, kind) "
                             "DO UPDATE SET reached_ts = coalesce(reached_ts, excluded.reached_ts)", (system, kind, ts, ts))
         else:
             return
         self.dirty.add(system)
+
+    def phenomenon_found(self, system, kind, ts):
+        """One FSS line for a notable stellar phenomenon. The FSS lists a system's phenomena together, as identical lines
+        for the same kind: a burst (lines of one system within NSP_BURST_S) is counted, and each kind keeps the most one
+        burst had (opening the FSS again later lists them again: never added up). The first burst in a system with none
+        recorded is news: a "phenomena" moment (live play only), its count kept up to date as the burst's lines come."""
+        b = self.nsp_burst
+        try:
+            near = b and b["system"] == system and abs(ts_seconds(ts) - b["t"]) <= NSP_BURST_S
+        except (TypeError, ValueError):
+            near = False
+        if not near:
+            known = self.db.execute("SELECT 1 FROM phenomena WHERE system=? LIMIT 1", (system,)).fetchone() is not None
+            b = self.nsp_burst = {"system": system, "t": ts_seconds(ts), "counts": {}, "new": not known, "seq": None}
+        b["counts"][kind] = b["counts"].get(kind, 0) + 1
+        self.db.execute("INSERT INTO phenomena (system, kind, ts, reached_ts, n) VALUES (?, ?, ?, NULL, ?) "
+                        "ON CONFLICT(system, kind) DO UPDATE SET n = max(coalesce(n, 1), excluded.n)",
+                        (system, kind, ts, b["counts"][kind]))
+        if not b["new"] or not live_event(ts):
+            return
+        here = self.pos if self.pos and self.pos.get("id64") == system else {}
+        fields = {"system": str(system), "system_name": here.get("name"), "count": sum(b["counts"].values()),
+                  "kinds": dict(b["counts"])}
+        if b["seq"] is None:
+            self.moment("phenomena", ts, **fields)
+            b["seq"] = self.moment_seq
+        else:   # the same burst's next line: the moment says the new count (a new dict: a checkpoint holds the old one)
+            for i, mo in enumerate(self.moments):
+                if mo.get("seq") == b["seq"]:
+                    self.moments[i] = dict(mo, **fields)
 
     def handle_cmdr(self, name, ev, ts):
         c = self.commander or {}
@@ -8238,7 +8275,7 @@ class State:
         spansh_recs = (base or {}).get("records") or []
         partial = bool(spansh_recs) and not any(x.get("full") for x in spansh_recs) \
             and self.dump_tries.get(id64, 0) < DUMP_MAX_TRIES and not (base or {}).get("no_dump")
-        phenomena = [dict(r) for r in self.db.execute("SELECT kind, ts, reached_ts FROM phenomena WHERE system=?", (id64,))]
+        phenomena = [dict(r) for r in self.db.execute("SELECT kind, ts, reached_ts, coalesce(n, 1) AS n FROM phenomena WHERE system=?", (id64,))]
         leaving = self.leaving_summary(id64)
         if leaving is not None:   # the checklist's "N not on Spansh" (leaving_summary itself runs on every poll)
             leaving["base_known"] = base_known(base, source)
@@ -9254,7 +9291,7 @@ class State:
                      (id64,)).fetchone()[0])
         s.update(self.system_value(id64, base["name"], records, star, ctx))
         s["no_dump"] = bool(base.get("no_dump"))   # Spansh has no body details: the popup stops saying "loading"
-        s["phenomena"] = [dict(r) for r in self.db.execute("SELECT kind, reached_ts FROM phenomena WHERE system=?", (id64,))]
+        s["phenomena"] = [dict(r) for r in self.db.execute("SELECT kind, reached_ts, coalesce(n, 1) AS n FROM phenomena WHERE system=?", (id64,))]
         raws = {short_name(base["name"], r_["name"]): json.loads(r_["raw"]) for r_ in self.db.execute(
             "SELECT name, raw FROM own_bodies WHERE system=? AND raw IS NOT NULL", (id64,))}
         cur = system_curiosities(base["name"], records, raws)

@@ -2,6 +2,17 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Notable stellar phenomena: counted, in Now, and announced
+- The FSS lists a system's phenomena as identical lines (the author's Smojooe XF-G b24-0: three rings in one second),
+  and the (system, kind) key folded them into one: each kind now keeps how many (`phenomena.n`, the most one FSS
+  listing had; opening the FSS again never adds up). PARSER_VERSION 45: **the next start re-reads the journals** once,
+  so past systems get their counts.
+- A new alert, "Stellar phenomena": the first time the FSS finds phenomena in a system with none on record, live, "three
+  notable stellar phenomena, all in rings" (a cloud, rings, or both, in words), with its own `phenomena` lines in every
+  personality: all delighted, the sarcastic and profane ones too (50 a list). Nothing was said before.
+- Nearby's and Here's 🌀 shows the count ("🌀 3", what they are on hover; it showed one 🌀 for any number), and Now has
+  a line: "🌀 Three notable stellar phenomena, all in rings · none visited yet".
+
 ## 2026-10-11 · Piper spells four star letters too
 - A body round four stars' barycentre ("ABCD 3 a", "ABCD 3 b a": the author's, today) was said "abd three ay": the
   letters were spelled only up to three. Up to eight now, under the same rule that keeps words out (the letters in
