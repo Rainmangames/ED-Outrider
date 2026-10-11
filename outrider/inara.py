@@ -16,7 +16,7 @@ import hashlib
 import json
 import os
 
-from . import uploads
+from . import materials, uploads
 
 URL = "https://inara.cz/inapi/v1/"
 SOFTWARE = "ED Outrider"   # appName: exactly as Inara whitelisted it
@@ -51,7 +51,8 @@ def _state(session):
     t = session.track.get("inara")
     if t is None:
         t = session.track["inara"] = {"ship": {}, "taxi": None, "suppress_dock": False, "undocked": False,
-                                      "starting": False, "credits": None, "loan": None, "line": {}}
+                                      "starting": False, "credits": None, "loan": None, "line": {},
+                                      "materials": materials.new_state(), "cargo": None, "locker": None}
     return t
 
 
@@ -60,6 +61,13 @@ def track(session, ev):
     t = _state(session)
     name = ev.get("event")
     line = t["line"] = {}
+    # the inventories, as the game last said them: materials folded (the Materials tab's fold), the ship's hold and the
+    # ship locker as their latest event (its contents may be in Cargo.json / ShipLocker.json: read when sent)
+    materials.apply(t["materials"], ev)
+    if name == "Cargo" and ev.get("Vessel", "Ship") == "Ship":
+        t["cargo"] = ev
+    elif name == "ShipLocker":
+        t["locker"] = ev
     if name == "Fileheader" and not uploads.continued(ev):
         t.update(ship={}, taxi=None, suppress_dock=False, undocked=False, starting=False, credits=None, loan=None)
     elif name == "LoadGame":
@@ -322,7 +330,76 @@ def _ship_now(ev, session, t, sent):
     return out
 
 
-BUILDERS = (_travel, _ranks, _credits, _ship_now)
+def _reputation(ev, session, t, sent):
+    """Reputation with the superpowers (Reputation, at login) and with the factions of each system you arrive in
+    (FSDJump, Location, CarrierJump: MyReputation); the journal's -100..100 as Inara's -1..1, changed ones only."""
+    name, cmdr = ev.get("event"), session.cmdr
+    out = []
+    if name == "Reputation":
+        items = [{"majorfactionName": k.lower(), "majorfactionReputation": round(v / 100, 4)}
+                 for k, v in ev.items() if k not in ("timestamp", "event") and isinstance(v, (int, float))
+                 and not isinstance(v, bool) and sent.changed(cmdr, f"major:{k.lower()}", v)]
+        if items:
+            out.append(_event(ev, "setCommanderReputationMajorFaction", items))
+    elif name in ("FSDJump", "Location", "CarrierJump"):
+        items = [{"minorfactionName": f["Name"], "minorfactionReputation": round(f["MyReputation"] / 100, 4)}
+                 for f in ev.get("Factions") or [] if isinstance(f, dict) and f.get("Name")
+                 and isinstance(f.get("MyReputation"), (int, float)) and sent.changed(cmdr, f"minor:{f['Name']}", f["MyReputation"])]
+        if items:
+            out.append(_event(ev, "setCommanderReputationMinorFaction", items))
+    return out
+
+
+LOCKER = ("Items", "Components", "Data", "Consumables")   # the ship locker's kinds (Odyssey), as Inara's itemType
+
+
+def _with_file(ev, session, filename, keys):
+    """The event, or its file's contents when it was written without them and the file is the one it wrote (the same
+    timestamp: a later write means a later event, which would be the one kept)."""
+    if ev is None or any(k in ev for k in keys) or not session.dir:
+        return ev
+    try:
+        with open(os.path.join(session.dir, filename), encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return ev
+    if isinstance(data, dict) and data.get("timestamp") == ev.get("timestamp") and data.get("event") == ev.get("event"):
+        return dict(ev, **{k: v for k, v in data.items() if k not in ev})
+    return ev
+
+
+def _inventory(ev, session, t, sent):
+    """The inventories as whole snapshots (Inara replaces them whole): materials, the ship's hold (never the SRV's,
+    never the fleet carrier's: the API has none) and the ship locker. Taken at the moments a batch goes (a jump, a
+    docking, the end of the login's lines, a shut-down), and only when it changed: never on every pickup."""
+    if hold(ev, session) != 0:
+        return []
+    cmdr, out = session.cmdr, []
+    m = t["materials"]
+    if m.get("snapshot_ts"):
+        counts = {k: v for k, v in sorted(m["counts"].items()) if v > 0}
+        if sent.changed(cmdr, "materials", counts):
+            out.append(_event(ev, "setCommanderInventoryMaterials", [{"itemName": k, "itemCount": v} for k, v in counts.items()]))
+    cargo = _with_file(t["cargo"], session, "Cargo.json", ("Inventory",))
+    if cargo is not None and isinstance(cargo.get("Inventory"), list):
+        items = [_clean({"itemName": c.get("Name"), "itemCount": c.get("Count"), "isStolen": bool(c.get("Stolen")) or None,
+                         "missionGameID": c.get("MissionID")}) for c in cargo["Inventory"] if isinstance(c, dict) and c.get("Name")]
+        if sent.changed(cmdr, "cargo", items):
+            out.append(_event(ev, "setCommanderInventoryCargo", items))
+    locker = _with_file(t["locker"], session, "ShipLocker.json", LOCKER)
+    if locker is not None and any(isinstance(locker.get(k), list) for k in LOCKER):
+        items = [{"itemName": x["Name"], "itemCount": x.get("Count", 1), "itemType": kind}
+                 for kind in LOCKER for x in locker.get(kind) or [] if isinstance(x, dict) and x.get("Name")]
+        if sent.changed(cmdr, "locker", items):
+            out.append(_event(ev, "resetCommanderInventory", [{"itemType": k} for k in LOCKER]))   # empty kinds too
+            if items:
+                out.append(_event(ev, "setCommanderInventory", items))
+    return out
+
+
+BUILDERS = (_travel, _ranks, _credits, _ship_now, _reputation, _inventory)
+# whole snapshots whose empty list means something (an emptied hold clears Inara's): sent even with no items
+EMPTY_OK = frozenset({"setCommanderInventoryCargo", "setCommanderInventoryMaterials"})
 
 
 def build(ev, session, sent=None):
@@ -334,7 +411,7 @@ def build(ev, session, sent=None):
     for fn in BUILDERS:   # each: (ev, session, the tracker's state, sent) -> [(name, event)]
         out += fn(ev, session, t, sent)
     # who the event is for: the request's header needs the commander's Frontier ID, kept with each row
-    return [(n, dict(m, _fid=session.fid)) for n, m in out if m["eventData"] or n.startswith("reset")]
+    return [(n, dict(m, _fid=session.fid)) for n, m in out if m["eventData"] or n in EMPTY_OK]
 
 
 def hold(ev, session=None):

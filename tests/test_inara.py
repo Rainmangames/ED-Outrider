@@ -216,6 +216,72 @@ class Profile(unittest.TestCase):
         self.assertEqual(names(f(dict(LOADOUT, timestamp=ts(70)))), ["setCommanderShip"])   # back to 39: current again, same loadout
 
 
+class ReputationAndInventory(unittest.TestCase):
+    """Batch C2: superpower and faction reputation; materials, the ship's hold and the ship locker as whole snapshots at
+    the moments a batch goes, only when changed; never the SRV's hold or the fleet carrier's."""
+
+    def test_reputation(self):
+        f = Feed()
+        f(*login())
+        got = f({"timestamp": ts(1), "event": "Reputation", "Empire": 75.0, "Federation": 75.0, "Independent": 1.01452})
+        self.assertEqual(data(got, "setCommanderReputationMajorFaction"),
+                         [[{"majorfactionName": "empire", "majorfactionReputation": 0.75}, {"majorfactionName": "federation",
+                           "majorfactionReputation": 0.75}, {"majorfactionName": "independent", "majorfactionReputation": 0.0101}]])
+        got = f(jump(10, Factions=[{"Name": "Inara Nexus", "MyReputation": 42.5}, {"Name": "Others", "MyReputation": 0.0}]))
+        self.assertEqual(data(got, "setCommanderReputationMinorFaction"),
+                         [[{"minorfactionName": "Inara Nexus", "minorfactionReputation": 0.425}, {"minorfactionName": "Others", "minorfactionReputation": 0.0}]])
+        got = f(jump(20, Factions=[{"Name": "Inara Nexus", "MyReputation": 50.0}, {"Name": "Others", "MyReputation": 0.0}]))
+        self.assertEqual(data(got, "setCommanderReputationMinorFaction"), [[{"minorfactionName": "Inara Nexus", "minorfactionReputation": 0.5}]])
+        self.assertEqual(data(f(jump(30)), "setCommanderReputationMinorFaction"), [])   # out in the black: no factions
+
+    def test_materials_at_release_points_only(self):
+        f = Feed()
+        f(*login())
+        f({"timestamp": ts(1), "event": "Materials", "Raw": [{"Name": "iron", "Count": 10}], "Manufactured": [], "Encoded": [
+            {"Name": "bulkscandata", "Name_Localised": "Anomalous Bulk Scan Data", "Count": 3}]})
+        pick = {"timestamp": ts(5), "event": "MaterialCollected", "Category": "Raw", "Name": "iron", "Count": 3}
+        self.assertEqual(f(pick, dict(pick, timestamp=ts(6))), [])          # never per pickup
+        got = f(jump(10))
+        self.assertEqual(data(got, "setCommanderInventoryMaterials"),
+                         [[{"itemName": "bulkscandata", "itemCount": 3}, {"itemName": "iron", "itemCount": 16}]])   # folded
+        self.assertEqual(data(f(jump(20)), "setCommanderInventoryMaterials"), [])   # unchanged
+
+    def test_cargo_and_locker(self):
+        f = Feed()
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        f.session.dir = d
+        f(*login())
+        short = {"timestamp": ts(3), "event": "Cargo", "Vessel": "Ship", "Count": 2}       # contents in Cargo.json
+        with open(os.path.join(d, "Cargo.json"), "w") as fh:
+            json.dump(dict(short, Inventory=[{"Name": "gold", "Count": 1, "Stolen": 0}, {"Name": "drones", "Name_Localised": "Limpet", "Count": 1, "Stolen": 0}]), fh)
+        locker = {"timestamp": ts(2), "event": "ShipLocker", "Items": [], "Components": [{"Name": "graphene", "OwnerID": 0, "Count": 15}],
+                  "Consumables": [], "Data": []}
+        f(locker)
+        got = f(short)                                                       # the login's last line: they go
+        self.assertEqual(data(got, "setCommanderInventoryCargo"), [[{"itemName": "gold", "itemCount": 1}, {"itemName": "drones", "itemCount": 1}]])
+        self.assertEqual(names(got), ["setCommanderInventoryCargo", "resetCommanderInventory", "setCommanderInventory"])
+        self.assertEqual(data(got, "resetCommanderInventory"), [[{"itemType": k} for k in I.LOCKER]])
+        self.assertEqual(data(got, "setCommanderInventory"), [[{"itemName": "graphene", "itemCount": 15, "itemType": "Components"}]])
+        got = f({"timestamp": ts(5), "event": "Cargo", "Vessel": "SRV", "Count": 4, "Inventory": [{"Name": "gold", "Count": 4}]}, jump(10))
+        self.assertEqual(names(got), ["addCommanderTravelFSDJump"])          # the SRV's hold: nothing (the ship's is unchanged)
+        got = f({"timestamp": ts(20), "event": "Cargo", "Vessel": "Ship", "Count": 0, "Inventory": []}, jump(30))
+        self.assertEqual(data(got, "setCommanderInventoryCargo"), [[]])      # sold it all: the hold is emptied there too
+
+    def test_never_the_carrier(self):
+        f = Feed()
+        f(*login())
+        got = f({"timestamp": ts(1), "event": "CargoTransfer", "Transfers": [{"Type": "tritium", "Count": 500, "Direction": "tocarrier"}]},
+                {"timestamp": ts(2), "event": "CarrierDepositFuel", "CarrierID": 3700251648, "Amount": 500, "Total": 1000},
+                {"timestamp": ts(3), "event": "CarrierStats", "CarrierID": 3700251648, "Callsign": "G0X-85Z"},
+                {"timestamp": ts(4), "event": "Market", "MarketID": 3700251648, "StationType": "FleetCarrier"},
+                {"timestamp": ts(5), "event": "CarrierTradeOrder", "CarrierID": 3700251648, "Commodity": "platinum", "SaleOrder": 1000})
+        self.assertEqual(got, [])
+        sent = json.dumps(f(jump(9)))
+        self.assertNotIn("tritium", sent)
+        self.assertNotIn("platinum", sent)
+
+
 class Batching(unittest.TestCase):
     def test_release_points(self):
         f = Feed()

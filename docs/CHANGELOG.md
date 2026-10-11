@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Inara uploads, part C2: reputation and inventory
+- Reputation with the superpowers (at login) and with each arrival system's factions, as Inara's -1..1, changed ones.
+- The inventories as whole snapshots, which Inara replaces whole: materials (the Materials tab's own fold), the
+  ship's hold (from Cargo.json when the line is the short form) and the Odyssey ship locker (reset, then set, so an
+  emptied kind empties there too). Taken when a batch goes (a jump, a docking, the end of the login's lines, a
+  shut-down) and only when changed: never on every pickup (the author's journals hold 14,049 Cargo and 19,467
+  ShipLocker lines). An emptied hold is sent empty.
+- Never the SRV's hold, and never anything about the fleet carrier (transfers, its market, trade orders): Inara's
+  API has no carrier inventory, and the carrier tracker's figures stay in Outrider.
+
 ## 2026-10-11 · Inara uploads, part C: ranks, credits, statistics and the ship flown
 - Every rank and its progress (Combat, Trade, Exploration, CQC, Mercenary, Exobiologist, Federation, Empire; a
   promotion at 0 %), the engineers (stage, rank), Powerplay (power, rank, merits at login; joining, leaving, defecting,
