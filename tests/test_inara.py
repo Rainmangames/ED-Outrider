@@ -282,6 +282,69 @@ class ReputationAndInventory(unittest.TestCase):
         self.assertNotIn("platinum", sent)
 
 
+class Fleet(unittest.TestCase):
+    """Batch D: ships bought, sold, swapped, sent elsewhere and renamed; the fleet's places; the stored modules."""
+
+    def docked(self):
+        f = Feed()
+        f(*login())
+        f({"timestamp": ts(1), "event": "Location", "Docked": True, "StationName": "Jameson Memorial", "MarketID": 128666762,
+           "StarSystem": "Shinrarta Dezhra", "SystemAddress": 3932277478106, "StarPos": [55.7, 17.6, 27.2]})
+        return f
+
+    def test_buy_new_sell_swap(self):
+        f = self.docked()
+        here = {"starsystemName": "Shinrarta Dezhra", "stationName": "Jameson Memorial", "marketID": 128666762}
+        got = f({"timestamp": ts(10), "event": "ShipyardBuy", "ShipType": "explorer_nx", "ShipPrice": 170990782, "StoreOldShip": "Explorer_NX",
+                 "StoreShipID": 39, "MarketID": 128666762},
+                {"timestamp": ts(11), "event": "ShipyardNew", "ShipType": "explorer_nx", "NewShipID": 50})
+        self.assertEqual([(n, m["eventData"]) for n, m in got],
+                         [("setCommanderShip", dict({"shipType": "Explorer_NX", "shipGameID": 39}, **here)),
+                          ("addCommanderShip", {"shipType": "explorer_nx", "shipGameID": 50})])
+        got = f({"timestamp": ts(20), "event": "ShipyardBuy", "ShipType": "hauler", "ShipPrice": 46262, "SellOldShip": "SideWinder",
+                 "SellShipID": 2, "SellPrice": 35600, "MarketID": 128666762})
+        self.assertEqual(data(got, "delCommanderShip"), [{"shipType": "SideWinder", "shipGameID": 2}])
+        self.assertEqual(data(f({"timestamp": ts(30), "event": "ShipyardSell", "ShipType": "adder", "SellShipID": 6, "ShipPrice": 79027,
+                                 "System": "Eranin", "MarketID": 1}), "delCommanderShip"), [{"shipType": "adder", "shipGameID": 6}])
+        self.assertEqual(data(f({"timestamp": ts(31), "event": "SellShipOnRebuy", "ShipType": "dolphin", "System": "Shinrarta Dezhra",
+                                 "SellShipId": 4, "ShipPrice": 4110183}), "delCommanderShip"), [{"shipType": "dolphin", "shipGameID": 4}])
+        got = f({"timestamp": ts(40), "event": "ShipyardSwap", "ShipType": "explorer_nx", "ShipID": 50, "StoreOldShip": "Explorer_NX",
+                 "StoreShipID": 39, "MarketID": 128666762})
+        self.assertEqual(data(got, "setCommanderShip"), [dict({"shipType": "Explorer_NX", "shipGameID": 39}, **here)])   # the old one, stored
+
+    def test_transfer_rename_fleet_and_modules(self):
+        f = self.docked()
+        got = f({"timestamp": ts(10), "event": "ShipyardTransfer", "ShipType": "Explorer_NX", "ShipID": 39, "System": "Sol",
+                 "ShipMarketID": 1, "Distance": 5365.6, "TransferPrice": 7007804, "TransferTime": 53956, "MarketID": 128666762})
+        self.assertEqual(data(got, "setCommanderShipTransfer"), [{"shipType": "Explorer_NX", "shipGameID": 39, "transferTime": 53956,
+                                                                   "starsystemName": "Shinrarta Dezhra", "stationName": "Jameson Memorial",
+                                                                   "marketID": 128666762}])
+        got = f({"timestamp": ts(11), "event": "SetUserShipName", "Ship": "explorer_nx", "ShipID": 50, "UserShipName": "Rhinocart", "UserShipId": "br-rhi"})
+        self.assertEqual(data(got, "setCommanderShip"), [{"shipType": "explorer_nx", "shipGameID": 50, "shipName": "Rhinocart", "shipIdent": "br-rhi"}])
+        stored = {"timestamp": ts(20), "event": "StoredShips", "StationName": "G0X-85Z", "MarketID": 3700251648, "StarSystem": "Smojooe AR-E b25-8",
+                  "ShipsHere": [{"ShipID": 43, "ShipType": "smallcombat01_nx", "Value": 111697, "Hot": False}],
+                  "ShipsRemote": [{"ShipID": 7, "ShipType": "type9", "Name": "Hauler", "StarSystem": "Sol", "ShipMarketID": 128016640,
+                                   "TransferPrice": 1, "TransferTime": 2, "Value": 3, "Hot": False},
+                                  {"ShipID": 8, "ShipType": "cutter", "InTransit": True, "Value": 3, "Hot": False}]}
+        got = f(stored)
+        self.assertEqual(data(got, "setCommanderShip"), [
+            {"shipType": "smallcombat01_nx", "shipGameID": 43, "isHot": False, "starsystemName": "Smojooe AR-E b25-8", "stationName": "G0X-85Z",
+             "marketID": 3700251648},
+            {"shipType": "type9", "shipGameID": 7, "shipName": "Hauler", "isHot": False, "starsystemName": "Sol", "marketID": 128016640},
+            {"shipType": "cutter", "shipGameID": 8, "isHot": False}])
+        self.assertEqual(f(dict(stored, timestamp=ts(30))), [])            # the fleet as it was: nothing
+        mods = {"timestamp": ts(40), "event": "StoredModules", "MarketID": 3700251648, "StationName": "G0X-85Z", "StarSystem": "Smojooe AR-E b25-8",
+                "Items": [{"Name": "$hpt_multicannon_fixed_medium_name;", "Name_Localised": "Multi-Cannon", "StorageSlot": 3,
+                           "StarSystem": "Smojooe AR-E b25-8", "MarketID": 3700251648, "TransferCost": 0, "TransferTime": 0, "BuyPrice": 0,
+                           "Hot": False, "EngineerModifications": "Weapon_RapidFire", "Level": 1, "Quality": 0.9569},
+                          {"Name": "$int_dronecontrol_collection_size1_class5_name;", "StorageSlot": 1, "InTransit": True, "BuyPrice": 9600, "Hot": False}]}
+        got = data(f(mods), "setCommanderStorageModules")[0]
+        self.assertEqual([m["itemName"] for m in got], ["$int_dronecontrol_collection_size1_class5_name;", "$hpt_multicannon_fixed_medium_name;"])
+        self.assertEqual(got[1]["engineering"], {"blueprintName": "Weapon_RapidFire", "blueprintLevel": 1, "blueprintQuality": 0.9569})
+        self.assertEqual(f(dict(mods, timestamp=ts(50))), [])
+        self.assertEqual(data(f(dict(mods, timestamp=ts(60), Items=[])), "setCommanderStorageModules"), [[]])   # all fitted again: emptied
+
+
 class Batching(unittest.TestCase):
     def test_release_points(self):
         f = Feed()

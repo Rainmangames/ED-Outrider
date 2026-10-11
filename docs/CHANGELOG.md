@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Inara uploads, part D: the fleet and stored modules
+- Ships bought (the old one stored where you are, or sold), sold (on a rebuy too), swapped (the old one stored; the
+  Loadout that follows marks the new one current), sent elsewhere (with the transfer time) and renamed.
+- The fleet's places when the shipyard lists it (StoredShips: changed ships only; a ship in transit has no place yet)
+  and the stored modules whole (StoredModules, engineering included; an emptied store is sent empty).
+
 ## 2026-10-11 · Inara uploads, part C2: reputation and inventory
 - Reputation with the superpowers (at login) and with each arrival system's factions, as Inara's -1..1, changed ones.
 - The inventories as whole snapshots, which Inara replaces whole: materials (the Materials tab's own fold), the

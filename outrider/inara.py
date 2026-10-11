@@ -397,9 +397,56 @@ def _inventory(ev, session, t, sent):
     return out
 
 
-BUILDERS = (_travel, _ranks, _credits, _ship_now, _reputation, _inventory)
+def _fleet(ev, session, t, sent):
+    """The fleet: a ship bought (the old one stored here or sold), sold (also on a rebuy), swapped (the old one stored
+    here; the new one is marked current by the Loadout that follows), sent elsewhere, renamed; the whole fleet's
+    places when the shipyard lists it (StoredShips, changed ships only); the stored modules (StoredModules, whole)."""
+    name, cmdr = ev.get("event"), session.cmdr
+    here = _clean({"starsystemName": session.system, "stationName": session.station, "marketID": ev.get("MarketID") or session.market_id})
+    out = []
+    if name in ("ShipyardBuy", "ShipyardSwap", "ShipyardSell", "SellShipOnRebuy"):
+        if ev.get("StoreShipID") is not None:
+            out.append(_event(ev, "setCommanderShip", dict({"shipType": ev.get("StoreOldShip"), "shipGameID": ev["StoreShipID"]}, **here)))
+        sold = ev.get("SellShipID", ev.get("SellShipId"))   # SellShipOnRebuy writes "SellShipId"
+        if sold is not None:
+            out.append(_event(ev, "delCommanderShip", {"shipType": ev.get("SellOldShip") or ev.get("ShipType"), "shipGameID": sold}))
+    elif name == "ShipyardNew" and ev.get("NewShipID") is not None:
+        out.append(_event(ev, "addCommanderShip", {"shipType": ev.get("ShipType"), "shipGameID": ev["NewShipID"]}))
+    elif name == "ShipyardTransfer" and ev.get("ShipID") is not None:
+        out.append(_event(ev, "setCommanderShipTransfer", _clean(dict({"shipType": ev.get("ShipType"), "shipGameID": ev["ShipID"],
+                                                                      "transferTime": ev.get("TransferTime")}, **here))))
+    elif name == "SetUserShipName" and ev.get("ShipID") is not None:
+        out.append(_event(ev, "setCommanderShip", _clean({"shipType": ev.get("Ship"), "shipGameID": ev["ShipID"],
+                                                          "shipName": (ev.get("UserShipName") or "").strip() or None,
+                                                          "shipIdent": ev.get("UserShipId") or None})))
+    elif name == "StoredShips":
+        at = _clean({"starsystemName": ev.get("StarSystem"), "stationName": ev.get("StationName"), "marketID": ev.get("MarketID")})
+        ships = [dict(_clean({"shipType": x.get("ShipType"), "shipGameID": x.get("ShipID"), "shipName": (x.get("Name") or "").strip() or None,
+                              "isHot": x.get("Hot")}), **at) for x in ev.get("ShipsHere") or [] if isinstance(x, dict)]
+        ships += [_clean({"shipType": x.get("ShipType"), "shipGameID": x.get("ShipID"), "shipName": (x.get("Name") or "").strip() or None,
+                          "isHot": x.get("Hot"), "starsystemName": x.get("StarSystem"), "marketID": x.get("ShipMarketID")})
+                  for x in ev.get("ShipsRemote") or [] if isinstance(x, dict)]   # in transit: no place yet
+        for ship in ships:
+            if ship.get("shipGameID") is not None and sent.changed(cmdr, f"stored:{ship['shipGameID']}", ship):
+                out.append(_event(ev, "setCommanderShip", ship))
+    elif name == "StoredModules":
+        items = sorted((x for x in ev.get("Items") or [] if isinstance(x, dict) and x.get("Name")), key=lambda x: x.get("StorageSlot") or 0)
+        mods = []
+        for x in items:
+            m = _clean({"itemName": x["Name"], "itemValue": x.get("BuyPrice"), "isHot": x.get("Hot"),
+                        "starsystemName": x.get("StarSystem"), "marketID": x.get("MarketID")})
+            if x.get("EngineerModifications"):
+                m["engineering"] = _clean({"blueprintName": x["EngineerModifications"], "blueprintLevel": x.get("Level"),
+                                           "blueprintQuality": x.get("Quality")})
+            mods.append(m)
+        if sent.changed(cmdr, "stored_modules", mods):
+            out.append(_event(ev, "setCommanderStorageModules", mods))
+    return out
+
+
+BUILDERS = (_travel, _ranks, _credits, _ship_now, _reputation, _inventory, _fleet)
 # whole snapshots whose empty list means something (an emptied hold clears Inara's): sent even with no items
-EMPTY_OK = frozenset({"setCommanderInventoryCargo", "setCommanderInventoryMaterials"})
+EMPTY_OK = frozenset({"setCommanderInventoryCargo", "setCommanderInventoryMaterials", "setCommanderStorageModules"})
 
 
 def build(ev, session, sent=None):
