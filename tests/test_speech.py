@@ -545,9 +545,13 @@ class Batch6Voice(unittest.TestCase):
                 ("B 3 A Ring", "[[bˈiː]] 3 [[ˈeɪ]] Ring"), ("3 A Ring", "3 [[ˈeɪ]] Ring"),
                 ("A A Belt Cluster 3", "[[ˈeɪ ˈeɪ]] Belt Cluster 3"), ("A Belt Cluster 3", "[[ˈeɪ]] Belt Cluster 3"),
                 ("Smojooe A R E, b 25 8 A 1", "Smojooe A R E, b 25 8 [[ˈeɪ]] 1"),   # the system's own letters are its name
-                ("Z 1", "[[zˈɛd]] 1")):
+                ("Z 1", "[[zˈɛd]] 1"),
+                # four stars' letters (the author's ABCD 3 a and ABCD 3 b a, 2026-10-11: said "abd"), and more
+                ("ABCD 3 a", "[[ˈeɪ bˈiː sˈiː dˈiː]] 3 [[ˈeɪ]]"), ("ABCD 3 b a", "[[ˈeɪ bˈiː sˈiː dˈiː]] 3 [[bˈiː ˈeɪ]]"),
+                ("ABCDE 1", "[[ˈeɪ bˈiː sˈiː dˈiː ˈiː]] 1"), ("ABCD Belt Cluster 2", "[[ˈeɪ bˈiː sˈiː dˈiː]] Belt Cluster 2")):
             self.assertEqual(b(text), want, text)
-        for name in ("Jaques Station", "HIP 12345", "LHS 21", "UC 3", "G 139-21", "a class two gas giant", "found 3 a day",
+        for name in ("Jaques Station", "HIP 12345", "LHS 21", "UC 3", "G 139-21", "a class two gas giant", "found 3 a day", "ABBA 2",
+                     "ABCDEFGHI 1",
                      "A 2.5 percent", "A 1,000 credits", "Out Of The Blue"):
             self.assertEqual(b(name), name)
         self.assertEqual(b("Z 1", "en-us"), "[[zˈiː]] 1")

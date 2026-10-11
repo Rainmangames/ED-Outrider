@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Piper spells four star letters too
+- A body round four stars' barycentre ("ABCD 3 a", "ABCD 3 b a": the author's, today) was said "abd three ay": the
+  letters were spelled only up to three. Up to eight now, under the same rule that keeps words out (the letters in
+  alphabetical order, none twice: "ABBA 2" stays a word). Belts the same.
+
 ## 2026-10-11 · Inara uploads, part G: the docs
 - The Uploads guide covers Inara: what goes, never the carrier, the batching and the change-only rule, the API key,
   switching Inara off in any other app first (EDMC, EDDI, EDDiscovery, EDDLite: two senders can get the key revoked),

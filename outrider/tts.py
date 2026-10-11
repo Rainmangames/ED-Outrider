@@ -104,7 +104,8 @@ LETTER_SOUNDS = dict(zip("ABCDEFGHIJKLMNOPQRSTUVWXYZ", (
     "ˈeɪ", "bˈiː", "sˈiː", "dˈiː", "ˈiː", "ˈɛf", "dʒˈiː", "ˈeɪtʃ", "ˈaɪ", "dʒˈeɪ", "kˈeɪ", "ˈɛl", "ˈɛm", "ˈɛn",
     "ˈəʊ", "pˈiː", "kjˈuː", "ˈɑː", "ˈɛs", "tˈiː", "jˈuː", "vˈiː", "dˈʌbəljˌuː", "ˈɛks", "wˈaɪ", "zˈɛd")))
 LETTER_SOUNDS_US = {**LETTER_SOUNDS, "O": "ˈoʊ", "R": "ˈɑːɹ", "Z": "zˈiː"}
-# A body's short name in a spoken line: its star letters ("A", "ABC") and planet number, then moons ("A 2 a b")
+# A body's short name in a spoken line: its star letters ("A", "ABC", "ABCD": a planet round four stars' barycentre,
+# up to eight) and planet number, then moons ("A 2 a b")
 # and a ring ("B 3 A Ring"); a belt ("A Belt Cluster 3", "A A Belt"); or, in a one-star system, a planet's number
 # with moons or a ring ("2 a," "3 A Ring"), its moons only at the end of a clause (so "3 a day" stays English).
 # Names are left alone: a catalogue number has more digits ("HIP 12345") or a dash ("G 139-21"), and star
@@ -113,10 +114,10 @@ LETTER_SOUNDS_US = {**LETTER_SOUNDS, "O": "ˈoʊ", "R": "ˈɑːɹ", "Z": "zˈiː
 # after a [[block]] and runs on into the next word ("2 a, up to" said "two ay-up to").
 _BODY_NAME = re.compile(r"""
     (?<![\w'’.-])
-    (?: (?P<stars>[A-Z]{1,3})\ (?P<num>\d{1,2})(?![.,]\d)
+    (?: (?P<stars>[A-Z]{1,8})\ (?P<num>\d{1,2})(?![.,]\d)
         (?P<moons>(?:\ [a-z](?![\w'’-]))*)
         (?P<ring>\ [A-Z](?=\ (?:Ring|Belt)\b))?
-      | (?P<belt>[A-Z]{1,3}(?:\ [A-Z])?)(?=\ Belt\b)
+      | (?P<belt>[A-Z]{1,8}(?:\ [A-Z])?)(?=\ Belt\b)
       | (?P<lone>\d{1,2})
         (?=(?:\ [a-z])+(?:$|[,.;:!?)])|\ [A-Z]\ Ring\b)
         (?P<lmoons>(?:\ [a-z])*)
