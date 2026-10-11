@@ -202,6 +202,36 @@ class WritingFixes(unittest.TestCase):
         self.assertEqual(tomllib.loads(ce.set_key("", "x", "y", "m\x7f"))["x"]["y"], "m\x7f")
 
 
+class ReviewConfigFixes(unittest.TestCase):
+    """The full review of 2026-10-11: values of the wrong type are reported and the default kept, as the example file
+    promises; backup_dir is written relative to the Outrider folder, like db."""
+
+    def test_wrong_types_are_reported(self):
+        cfg = {"defaults": {"module_warn": True, "unsold_warn": True, "voice": True},
+               "server": {"radius": True, "db": 5, "backup_dir": 5}, "autohonk": {"key": 5}}
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            st = ed_outrider.settings_from(cfg, ARGS, None, ([], []))
+        d = settings({})
+        for k in ("module_warn", "unsold_warn", "voice", "radius", "db", "backup_dir"):
+            self.assertEqual(st[k], d[k], k)
+        self.assertEqual(st["autohonk"]["key"], d["autohonk"]["key"])
+        said = err.getvalue()
+        for k in ("module_warn", "unsold_warn", "voice", "radius", "db", "backup_dir", "key"):
+            self.assertIn(f"] {k} = ", said, k)
+
+    def test_the_temp_config_is_ignored(self):
+        """Server settings write through ed_outrider.toml.new, which holds the password while it exists: git ignores it as
+        .dockerignore does (a whole line: .gitignore has no comments after a pattern)."""
+        root = os.path.dirname(ed_outrider.STATIC_DIR)
+        for name in (".gitignore", ".dockerignore"):
+            with open(os.path.join(root, name), encoding="utf-8") as f:
+                self.assertIn("ed_outrider.toml.new", [line.strip() for line in f], name)
+
+    def test_backup_dir_written_relative(self):
+        text = ed_outrider.config_text(settings({}))
+        self.assertIn('backup_dir = "data/backups"', text)
+
+
 class WritingFile(TempConfig):
     """R2, R8, R9 through POST /api/config: the file's mode and a symlinked config."""
 

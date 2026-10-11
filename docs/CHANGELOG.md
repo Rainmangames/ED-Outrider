@@ -2,6 +2,17 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Review fixes: config and launchers
+- A config value of the wrong type is reported at start and the default kept, as the example file says: a boolean
+  for a number (`module_warn = true` read as 1, `radius = true` as 1 ly) and a non-text `db`, `backup_dir`, `voice`,
+  `voice_fallback` or `[autohonk] key` (`db = 5` became a database called "5") were taken silently.
+- `--write-config` and the first Server settings save write `backup_dir` relative to the Outrider folder
+  ("data/backups"), as `db` is: an absolute path kept pointing at the old folder after a move or rename.
+- `ed_outrider.toml.new` (Server settings write through it; it holds the password while it exists) is git-ignored.
+- launch_outrider.sh and .bat start Outrider in the folder they were run from, so relative paths in the arguments
+  (`--config my.toml`, `--journals .`) are the caller's, not the repository's. The Linux launcher no longer stops
+  when pip's own upgrade fails (offline): the requirements' install after it says what matters, as on Windows.
+
 ## 2026-10-11 · Review fixes: auto honk and the server
 - Auto honk no longer presses Primary Fire when Status.json says the game is at its menu or closed: quitting during
   its wait for the cockpit (galaxy map open after arriving, say) sent the key into whatever window had focus. It waits,

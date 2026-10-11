@@ -674,6 +674,8 @@ def _config_value(section, key, value, conv, default):
     if value is None:
         return default
     try:
+        if isinstance(value, bool) and conv in (int, float, _config_radius):   # int(True) is 1: not a number here
+            raise TypeError("not a number")
         out = conv(value)
         if isinstance(out, float) and not math.isfinite(out):   # TOML allows inf and nan
             raise ValueError("not a finite number")
@@ -883,7 +885,7 @@ def settings_from(cfg, args, env_journals=None, detected=((), ())):
         # a relative --db is relative to the current folder, like every other path flag; a relative db in the
         # config file is relative to the repository folder (where this script is), so a copied folder keeps working
         "db": (os.path.abspath(os.path.expanduser(args.db)) if args.db
-               else os.path.join(SCRIPT_DIR, os.path.expanduser(str(sv.get("db") or DB_PATH)))),
+               else os.path.join(SCRIPT_DIR, os.path.expanduser(num("server", sv, "db", _config_str, None) or DB_PATH))),
         "unsold_warn": num("defaults", df, "unsold_warn", int, UNSOLD_WARN),
         "unsold_urgent": num("defaults", df, "unsold_urgent", int, UNSOLD_URGENT),
         "bio_min": num("defaults", df, "bio_min", int, BIO_MIN),
@@ -900,7 +902,8 @@ def settings_from(cfg, args, env_journals=None, detected=((), ())):
         "surface_map_strip": flag("defaults", df, "surface_map_strip", SURFACE_MAP_STRIP),
         # under the 5 km at which the game destroys a rig, or the warning would come too late
         "rig_warn": min(RIG_LOST_M - 100.0, max(100.0, num("defaults", df, "rig_warn", float, RIG_WARN))),
-        "voice": str(df.get("voice") or VOICE), "voice_fallback": str(df.get("voice_fallback") or VOICE_FALLBACK),
+        "voice": num("defaults", df, "voice", _config_str, None) or VOICE,
+        "voice_fallback": num("defaults", df, "voice_fallback", _config_str, None) or VOICE_FALLBACK,
         "speech_styles": [str(x) for x in (styles if styles is not None else SPEECH_STYLES)],
         "speech_profanity": flag("defaults", df, "speech_profanity", SPEECH_PROFANITY),
         "speech_profanity_pct": min(100, max(0, num("defaults", df, "speech_profanity_pct", int, SPEECH_PROFANITY_PCT))),
@@ -917,7 +920,7 @@ def settings_from(cfg, args, env_journals=None, detected=((), ())):
         # your own alert sounds: <name>.wav files replacing sounds.json's (review S16); "" for none
         "sound_dir": os.path.join(SCRIPT_DIR, os.path.expanduser(str(spk["sound_dir"])))
                      if isinstance(spk.get("sound_dir"), str) and spk["sound_dir"].strip() else "",
-        "backup_dir": os.path.join(SCRIPT_DIR, os.path.expanduser(str(sv.get("backup_dir") or BACKUP_DIR))),
+        "backup_dir": os.path.join(SCRIPT_DIR, os.path.expanduser(num("server", sv, "backup_dir", _config_str, None) or BACKUP_DIR)),
         "backup_keep": max(1, num("server", sv, "backup_keep", int, BACKUP_KEEP)),
         "backup_every_days": max(0.0, num("server", sv, "backup_every_days", float, BACKUP_EVERY_DAYS)),
         # at least 1 (a Semaphore(0) would hang every body fetch, a negative one fails at start), and a map of
@@ -927,7 +930,7 @@ def settings_from(cfg, args, env_journals=None, detected=((), ())):
         "map_max_pages": max(1, num("spansh", sp, "map_max_pages", int, MAP_MAX_PAGES)),
         "watch_firsts": flag("spansh", sp, "watch_firsts", WATCH_FIRSTS),
         "autohonk": {"enabled": flag("autohonk", ah, "enabled", AUTOHONK["enabled"]),
-                     "key": str(ah.get("key") or AUTOHONK["key"]),
+                     "key": num("autohonk", ah, "key", _config_str, None) or AUTOHONK["key"],
                      "delay": max(0.0, num("autohonk", ah, "delay", float, AUTOHONK["delay"])),
                      "hold": min(20.0, max(0.5, num("autohonk", ah, "hold", float, AUTOHONK["hold"]))),
                      "skip_honked": flag("autohonk", ah, "skip_honked", AUTOHONK["skip_honked"]),
@@ -1011,7 +1014,7 @@ game_pc = {q(st["game_pc"] if st["game_pc"] == "auto" else ("true" if st["game_p
 update_check = {"true" if st["update_check"] else "false"}   # once a day, ask GitHub whether a newer Outrider release is out, and say so on the page (only the request: nothing about you is sent)
 radius = {n(st["radius"])}      # ly: the sphere of nearby systems the page lists
 radius_choices = [{", ".join(n(x) for x in st["radius_choices"])}]   # ly: what the page's radius dropdown offers
-backup_dir = {p(st["backup_dir"])}   # backups: dated database zips, and every live journal copied once into its journals/
+backup_dir = {p(_root_relative(st["backup_dir"]))}   # backups: dated database zips, and every live journal copied once into its journals/
 backup_keep = {st["backup_keep"]}   # dated database zips kept (the journal archive is never pruned)
 backup_every_days = {n(st["backup_every_days"])}   # automatic backup at start when the last is older than this, and when the game quits (0 = off)
 speech_file = {p(_root_relative(st["speech_file"]))}   # the spoken alerts' lines, per personality

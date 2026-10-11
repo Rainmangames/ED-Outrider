@@ -150,7 +150,7 @@ class Packaging(unittest.TestCase):
         self.assertEqual(subprocess.run(["bash", "-n", path], capture_output=True).returncode, 0)
         script = self.read("launch_outrider.sh")
         for part in ("hashlib.sha256(open(\"requirements.txt\"", ".requirements.sha256", "import aiohttp", "pip install --quiet -r requirements.txt",
-                     'exec python ed_outrider.py "$@"', "sys.version_info < (3, 11)",
+                     'exec python "$HERE/ed_outrider.py" "$@"', "upgrade pip || true", "sys.version_info < (3, 11)",
                      "command -v wl-copy", "command -v xclip"):   # the clipboard tools pip cannot install: a hint
             self.assertIn(part, script)
 
@@ -165,7 +165,7 @@ class Packaging(unittest.TestCase):
         script = self.read("launch_outrider.sh")
         func = re_.search(r"^clipboard_hint\(\) \{\n.*?^\}\n", script, re_.S | re_.M).group(0)
         self.assertIn("\nclipboard_hint\n", script)                    # called at every start, before Outrider
-        self.assertLess(script.index("\nclipboard_hint\n"), script.index('exec python ed_outrider.py "$@"'))
+        self.assertLess(script.index("\nclipboard_hint\n"), script.index('exec python "$HERE/ed_outrider.py" "$@"'))
         bash, uname = shutil.which("bash"), shutil.which("uname")
 
         def hint(env, tools=()):
@@ -209,7 +209,7 @@ class Packaging(unittest.TestCase):
         script = raw.decode("ascii")
         for part in ("sys.version_info < (3, 11)", "py -3", '-m venv "%VENV%"', "pip install --quiet -r requirements.txt",
                      "import aiohttp, sys; sys.exit(open('requirements.txt', 'rb').read() != open(r'%STAMP%', 'rb').read())",
-                     "copy /y requirements.txt", '"%VPY%" ed_outrider.py %*', "pause"):
+                     "copy /y requirements.txt", '"%HERE%\\%VPY%" "%HERE%\\ed_outrider.py" %*', 'set "CALLER=%CD%"', "pause"):
             self.assertIn(part, script)
         self.assertNotIn("fc /b", script)
         labels = {line[1:].strip() for line in script.splitlines() if line.startswith(":")}
@@ -231,7 +231,7 @@ class Packaging(unittest.TestCase):
         for name in ("launch_outrider.sh", "launch_outrider.bat"):
             script = self.read(name)
             step = script.index("-m outrider.overlay_runner --setup")
-            self.assertLess(step, script.index("ed_outrider.py \"$@\"" if name.endswith(".sh") else "ed_outrider.py %*"), name)
+            self.assertLess(step, script.index("ed_outrider.py\" \"$@\"" if name.endswith(".sh") else "ed_outrider.py\" %*"), name)
         self.assertIn('--setup "$@" || true', self.read("launch_outrider.sh"))   # never stops Outrider starting
         self.assertNotIn("/api/overlay/install", self.read("ed_outrider.py") + self.read("static/page.js"))
 
@@ -359,6 +359,36 @@ class FableScriptFixes(unittest.TestCase):
         r = self.run_launcher(d, [bins])
         self.assertNotIn("sha256sum", r.stderr)
         self.assertIn("STARTED", r.stdout, r.stderr)        # the stamp matched: no reinstall, Outrider started
+
+    def test_relative_arguments_are_the_callers(self):
+        """Run from another folder, the launcher starts Outrider in that folder (with the repository's files by their
+        full path), so --config my.toml or --journals . mean the caller's (review 2026-10-11): they meant files in the
+        repository."""
+        import hashlib
+        import shutil
+        import tempfile
+        d, caller = tempfile.mkdtemp(), tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        self.addCleanup(shutil.rmtree, caller)
+        shutil.copy(os.path.join(self.ROOT, "launch_outrider.sh"), d)
+        with open(os.path.join(d, "requirements.txt"), "w") as f:
+            f.write("aiohttp\n")
+        os.makedirs(os.path.join(d, ".venv", "bin"))
+        with open(os.path.join(d, ".venv", ".requirements.sha256"), "w") as f:
+            f.write(hashlib.sha256(b"aiohttp\n").hexdigest() + "\n")
+        fake = os.path.join(d, ".venv", "bin", "python")   # nothing to install; Outrider says where and what it got
+        with open(fake, "w") as f:
+            f.write('#!/bin/sh\nif [ "$1" = "-c" ]; then exec %s "$@"; fi\nif [ "$1" = "-m" ]; then exit 0; fi\n'
+                    'echo "CWD=$(pwd) ARGS=$*"\n' % shutil.which("python3"))
+        os.chmod(fake, 0o755)
+        with open(os.path.join(d, ".venv", "bin", "activate"), "w") as f:
+            f.write("PATH=\"%s:$PATH\"\n" % os.path.join(d, ".venv", "bin"))
+        import subprocess
+        env = {k: v for k, v in os.environ.items() if k not in ("DISPLAY", "WAYLAND_DISPLAY", "XDG_SESSION_TYPE")}
+        r = subprocess.run(["bash", os.path.join(d, "launch_outrider.sh"), "--config", "my.toml"], cwd=caller,
+                           capture_output=True, text=True, env=env, timeout=60)
+        self.assertIn(f"CWD={os.path.realpath(caller)} ARGS={os.path.realpath(d)}/ed_outrider.py --config my.toml",
+                      r.stdout.replace(caller, os.path.realpath(caller)).replace(d, os.path.realpath(d)), r.stderr)
 
     def test_a_gone_python_remakes_the_environment(self):
         """A .venv whose Python link dangles (the system Python upgraded) is made again, not met with the

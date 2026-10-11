@@ -1,6 +1,8 @@
 # Machine-specific configuration (journal paths) — start from ed_outrider.toml.example
 ed_outrider.toml
 ed_outrider.toml.bak
+# Server settings write the config through this file: it may hold the password if a save is cut short
+ed_outrider.toml.new
 
 # Your own data: the database built from your journals, browser_defaults.json, the lines you banned
 # (speech_banned.json), backups/ (database + journals), downloaded Piper voices (piper-voices/), and what

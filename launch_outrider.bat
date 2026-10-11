@@ -9,7 +9,10 @@ rem Auto honk, auto-target and the control rail are experimental on Windows; the
 rem now; everything else works. The Linux and macOS launcher is launch_outrider.sh.
 rem Kept with Windows line endings (.gitattributes): cmd can misread labels in a file with Unix ones.
 setlocal
+rem relative paths in the arguments are the caller's: Outrider runs from the folder this was started in
+set "CALLER=%CD%"
 cd /d "%~dp0"
+set "HERE=%CD%"
 
 set "VENV=.venv"
 rem requirements.txt as it was when last installed
@@ -71,7 +74,8 @@ copy /y requirements.txt "%STAMP%" >nul
 :run
 rem the in-game overlay's PyQt6, installed when [overlay] enabled is true in the config and it is missing
 "%VPY%" -m outrider.overlay_runner --setup %*
-"%VPY%" ed_outrider.py %*
+cd /d "%CALLER%"
+"%HERE%\%VPY%" "%HERE%\ed_outrider.py" %*
 if errorlevel 1 goto stopped
 exit /b 0
 
