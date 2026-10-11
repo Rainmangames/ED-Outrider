@@ -2,6 +2,23 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Inara uploads, part B: the foundation and travel (project/PLAN-inara-2026-10-11.md)
+- A third uploader beside EDDN and EDSM, off by default: Settings -> Uploads switches it (`[inara] enabled`, hidden from
+  the Server settings like the others) and takes an Inara API key per in-game commander (kept here; the page sees its
+  ends only). `outrider/inara.py` builds the events, batches them (a jump, a docking, the end of the login's lines, or
+  5 minutes) and paces the requests (one every 35 s at most: `upload_loop`'s new `min_gap`); Inara's answers: a refused
+  batch holds the service with Inara's words, a rate refusal waits an hour, a refused event is dropped.
+- So far the flight log and location: jumps, carrier jumps, dockings (not the one a login or a ship swap writes, nor
+  re-docking without leaving), landings (Touchdown, a dropship's deployment) and the location (login, supercruise exit,
+  settlements), with the ship flown or the taxi. Ranks, credits, ships, inventory and the rest follow in the next parts.
+- EDMC sending to Inara on this PC holds Outrider's (two senders can get the key revoked); the page asks for Inara to be
+  off in EDDI and EDDiscovery too, which Outrider cannot see.
+- Developer switches (environment, never settings): `OUTRIDER_INARA_DRYRUN=1` builds and logs the requests into
+  data/inara-dryrun.jsonl (no key) and sends nothing; `OUTRIDER_INARA_DEV=1` marks them `isBeingDeveloped`.
+- The upload hub: a service may follow the session itself (`uploads.TRACKERS`, kept in the session's snapshot) and keep
+  its own memory in the tick's checkpoint (`UploadHub(keep=...)`: Inara's record of what each profile has, meta
+  `inara_sent`, live-only); a service's hold sees the session.
+
 ## 2026-10-11 · Review fixes: Mining sites opens its body in Here
 - Materials -> Mining sites' 🔍 opened the body under its full name ("Smojooe AR-E b25-8 ABC 3 d") while Here and the
   body panel go by the short one ("ABC 3 d"): the row was not marked, the panel missed Here's facts and did not

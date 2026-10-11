@@ -1,0 +1,347 @@
+"""Unit tests: Inara's commander-profile uploads (outrider/inara.py; project/PLAN-inara-2026-10-11.md). What journal
+lines become, the batching, the request and Inara's answers, the per-commander record of what was sent, and the
+server's side (keys, the switch, the dry run). Nothing is sent anywhere.
+
+Run all: python3 -m unittest discover tests (or scripts/verify.sh).
+"""
+import json
+import os
+import shutil
+import tempfile
+import time
+import unittest
+import unittest.mock
+
+from support import ed_outrider  # also puts the repository root on sys.path
+import outrider.inara as I  # noqa: E402
+import outrider.uploads as U  # noqa: E402
+from outrider.core import iso_ts  # noqa: E402
+
+T0 = "2026-10-11T10:00:00Z"
+
+
+def ts(n):
+    """The n-th second after T0."""
+    return iso_ts(time.mktime(time.strptime(T0, "%Y-%m-%dT%H:%M:%SZ")) - time.timezone + n)
+
+
+def login(n=0, cmdr="Briadin", **kw):
+    return [{"timestamp": ts(n), "event": "Fileheader", "part": 1, "gameversion": "4.4.1.1", "build": "r332841/r0 "},
+            {"timestamp": ts(n), "event": "Commander", "FID": "F123", "Name": cmdr},
+            dict({"timestamp": ts(n), "event": "LoadGame", "FID": "F123", "Commander": cmdr, "Odyssey": True,
+                  "Ship": "mandalay", "ShipID": 74, "ShipName": "Wanderer", "ShipIdent": "WS-01",
+                  "Credits": 24_000_000_000, "Loan": 0}, **kw)]
+
+
+def jump(n, name="Sys A", dist=42.5, **kw):
+    return dict({"timestamp": ts(n), "event": "FSDJump", "StarSystem": name, "SystemAddress": 77, "StarPos": [1.0, 2.0, 3.0],
+                 "JumpDist": dist}, **kw)
+
+
+class Feed:
+    """A session fed like the hub's, and what each line builds for Inara."""
+
+    def __init__(self):
+        self.session, self.sent = U.Session(), I.Sent()
+
+    def __call__(self, *events):
+        out = []
+        for ev in events:
+            self.session.feed(ev, "Journal.2026-10-11T100000.01.log")
+            out += I.build(ev, self.session, self.sent)
+        return out
+
+
+def names(built):
+    return [n for n, _ in built]
+
+
+def data(built, name):
+    return [m["eventData"] for n, m in built if n == name]
+
+
+class Travel(unittest.TestCase):
+    """Batch B: the flight log (jumps, carrier jumps, docking, landing) and the current location."""
+
+    def test_jump_with_the_ship_flown(self):
+        f = Feed()
+        f(*login())
+        got = f(jump(10))
+        self.assertEqual(names(got), ["addCommanderTravelFSDJump"])
+        self.assertEqual(data(got, "addCommanderTravelFSDJump")[0],
+                         {"starsystemName": "Sys A", "starsystemCoords": [1.0, 2.0, 3.0], "jumpDistance": 42.5,
+                          "shipType": "mandalay", "shipGameID": 74})
+        self.assertEqual(got[0][1]["eventTimestamp"], ts(10))   # the journal's own time
+        self.assertEqual(got[0][1]["_fid"], "F123")             # for the request's header
+
+    def test_carrier_jump_location_and_landing(self):
+        f = Feed()
+        f(*login())
+        got = f({"timestamp": ts(5), "event": "CarrierJump", "Docked": True, "StationName": "G0X-85Z", "MarketID": 3700251648,
+                 "StarSystem": "Sys B", "SystemAddress": 78, "StarPos": [4.0, 5.0, 6.0]})
+        self.assertEqual(data(got, "addCommanderTravelCarrierJump")[0],
+                         {"starsystemName": "Sys B", "starsystemCoords": [4.0, 5.0, 6.0], "stationName": "G0X-85Z",
+                          "marketID": 3700251648, "shipType": "mandalay", "shipGameID": 74})
+        got = f({"timestamp": ts(9), "event": "Touchdown", "PlayerControlled": True, "StarSystem": "Sys B", "Body": "Sys B 1 a",
+                 "Latitude": 12.5, "Longitude": -40.25})
+        self.assertEqual(data(got, "addCommanderTravelLand")[0],
+                         {"starsystemName": "Sys B", "starsystemBodyName": "Sys B 1 a", "starsystemBodyCoords": [12.5, -40.25],
+                          "shipType": "mandalay", "shipGameID": 74})
+        self.assertEqual(f({"timestamp": ts(12), "event": "Touchdown", "PlayerControlled": False, "Body": "X"}), [])   # recalled ship
+        got = f({"timestamp": ts(20), "event": "Location", "Docked": True, "StationName": "Hub", "MarketID": 5, "StarSystem": "Sys C",
+                 "SystemAddress": 79, "StarPos": [0.0, 0.0, 0.0]})
+        self.assertEqual(data(got, "setCommanderTravelLocation")[0],
+                         {"starsystemName": "Sys C", "starsystemCoords": [0.0, 0.0, 0.0], "stationName": "Hub", "marketID": 5})
+        got = f({"timestamp": ts(30), "event": "SupercruiseExit", "StarSystem": "Sys C", "Body": "Sys C 2", "BodyType": "Planet"})
+        self.assertEqual(data(got, "setCommanderTravelLocation")[0], {"starsystemName": "Sys C", "starsystemBodyName": "Sys C 2"})
+
+    def test_docking_is_logged_once(self):
+        """EDMC's rules: no docking at a login docked (the Location says so), after a ship swap, or on docking again
+        where you undocked without entering supercruise; a real docking is logged."""
+        f = Feed()
+        f(*login())
+        dock = lambda n, st="Hub": {"timestamp": ts(n), "event": "Docked", "StationName": st, "MarketID": 5, "StarSystem": "Sys"}
+        f({"timestamp": ts(1), "event": "Location", "Docked": True, "StationName": "Hub", "MarketID": 5, "StarSystem": "Sys",
+           "SystemAddress": 1, "StarPos": [0, 0, 0]})
+        self.assertEqual(f(dock(2)), [])                                     # the login's
+        f({"timestamp": ts(3), "event": "Undocked", "StationName": "Hub"})
+        self.assertEqual(f(dock(4)), [])                                     # back on the pad, never left
+        f({"timestamp": ts(5), "event": "Undocked", "StationName": "Hub"}, {"timestamp": ts(6), "event": "SupercruiseEntry"})
+        got = f(dock(9, "Other"))
+        self.assertEqual(data(got, "addCommanderTravelDock")[0],
+                         {"starsystemName": "Sys", "stationName": "Other", "marketID": 5, "shipType": "mandalay", "shipGameID": 74})
+        f({"timestamp": ts(10), "event": "ShipyardSwap", "ShipType": "anaconda", "ShipID": 3})
+        self.assertEqual(f(dock(11, "Other")), [])                           # a swap writes one
+        f({"timestamp": ts(12), "event": "Undocked"}, {"timestamp": ts(13), "event": "SupercruiseEntry"})
+        self.assertEqual(data(f(dock(20, "Third")), "addCommanderTravelDock")[0]["shipType"], "anaconda")   # the new ship
+
+    def test_taxis(self):
+        f = Feed()
+        f(*login())
+        f({"timestamp": ts(1), "event": "BookTaxi", "Cost": 0})
+        self.assertEqual(data(f(jump(5, Taxi=True)), "addCommanderTravelFSDJump")[0]["isTaxiShuttle"], True)
+        f({"timestamp": ts(6), "event": "BookDropship", "Cost": 0})
+        got = data(f(jump(9, Taxi=True)), "addCommanderTravelFSDJump")[0]
+        self.assertEqual((got.get("isTaxiDropship"), "shipType" in got), (True, False))   # not the ship you own
+
+
+class Batching(unittest.TestCase):
+    def test_release_points(self):
+        f = Feed()
+        for ev in login():
+            f(ev)
+            self.assertEqual(I.hold(ev, f.session), I.HOLD_S)
+        cargo = {"timestamp": ts(3), "event": "Cargo", "Vessel": "Ship", "Count": 0, "Inventory": []}
+        f(cargo)
+        self.assertEqual(I.hold(cargo, f.session), 0)        # the start-up's lines end: they go together
+        f(cargo)
+        self.assertEqual(I.hold(cargo, f.session), I.HOLD_S)  # a later Cargo waits for company
+        for ev in (jump(9), {"timestamp": ts(10), "event": "Docked"}, {"timestamp": ts(11), "event": "Shutdown"}):
+            f(ev)
+            self.assertEqual(I.hold(ev, f.session), 0)
+
+    def test_one_commander_per_request(self):
+        rows = [{"id": 1, "cmdr": "A"}, {"id": 2, "cmdr": "A"}, {"id": 3, "cmdr": "B"}]
+        self.assertEqual([r["id"] for r in I.same_batch(rows)], [1, 2])
+        self.assertEqual(len(I.same_batch([{"id": i, "cmdr": "A"} for i in range(250)])), I.BATCH)
+
+
+class RequestAndAnswer(unittest.TestCase):
+    def rows(self):
+        f = Feed()
+        f(*login())
+        built = f(jump(10), jump(70, "Sys B"))
+        return [{"id": 10 + i, "cmdr": "Briadin", "message": json.dumps(m)} for i, (_, m) in enumerate(built)]
+
+    def test_request(self):
+        body = I.request(self.rows(), "abcd1234efgh5678", "2026.10.21", developing=True)
+        self.assertEqual(body["header"], {"appName": "ED Outrider", "appVersion": "2026.10.21", "isBeingDeveloped": True,
+                                          "APIkey": "abcd1234efgh5678", "commanderName": "Briadin", "commanderFrontierID": "F123"})
+        self.assertEqual([(e["eventName"], e["eventCustomID"]) for e in body["events"]],
+                         [("addCommanderTravelFSDJump", 10), ("addCommanderTravelFSDJump", 11)])
+        self.assertNotIn("_fid", json.dumps(body["events"]))   # ours, not Inara's
+
+    def test_answers(self):
+        rows = self.rows()
+        ok = {"header": {"eventStatus": 200}, "events": [{"eventCustomID": 11, "eventStatus": 400, "eventStatusText": "bad"},
+                                                         {"eventCustomID": 10, "eventStatus": 204, "eventStatusText": "No change"}]}
+        self.assertEqual(I.answer(rows, ok), [(10, "sent", "204 No change", None), (11, "dropped", "400 bad", None)])
+        refused = {"header": {"eventStatus": 400, "eventStatusText": "Invalid API key."}}
+        self.assertEqual({s for _, s, _, _ in I.answer(rows, refused)}, {"held"})        # the player must act
+        self.assertIn("Invalid API key", I.answer(rows, refused)[0][2])
+        rate = {"header": {"eventStatus": 400, "eventStatusText": "Slow down, cowboy. Access was temporarily revoked."}}
+        self.assertEqual({(s, r) for _, s, _, r in I.answer(rows, rate)}, {("queued", I.RATE_WAIT_S)})
+        for bad in (None, [], {"events": []}, {"header": {}}):
+            with self.assertRaises(ValueError):
+                I.answer(rows, bad)
+
+    def test_keys(self):
+        self.assertTrue(I.key_ok("a1B2c3D4e5F6g7H8i9J0"))
+        for bad in ("", "short", "has spaces in it at all", "x" * 200, "ключключключключключ", None):
+            self.assertFalse(I.key_ok(bad), bad)
+
+
+class SentRecord(unittest.TestCase):
+    def test_changed_and_restored(self):
+        saved = []
+        s = I.Sent(save=saved.append)
+        self.assertTrue(s.changed("A", "ranks", {"combat": 3}))
+        self.assertFalse(s.changed("A", "ranks", {"combat": 3}))   # the same: nothing to send
+        self.assertTrue(s.changed("B", "ranks", {"combat": 3}))    # another commander's profile
+        snap = s.snapshot()
+        self.assertTrue(s.changed("A", "ranks", {"combat": 4}))
+        s.restore(snap)                                            # a failed tick: as before it
+        self.assertTrue(s.changed("A", "ranks", {"combat": 4}))
+        self.assertEqual(len(saved), 4)
+        self.assertFalse(I.Sent(saved[-1]).changed("A", "ranks", {"combat": 4}))   # read back from the database
+
+
+class Server(unittest.TestCase):
+    """The server's side: the switch, the keys (never served), the sender, the dry run, EDMC's own Inara upload."""
+
+    def setUp(self):
+        import types
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir)
+        p = unittest.mock.patch.object(ed_outrider, "LIVE_DIRS", [self.dir])
+        p.start()
+        self.addCleanup(p.stop)
+        self.db = ed_outrider.open_db(":memory:")
+        self.addCleanup(self.db.close)
+        self.j = ed_outrider.Journals(self.db)
+        self.state = ed_outrider.State(self.db, self.j, types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+        self.state.game_pc = False
+        self.state.config_path = os.path.join(self.dir, "ed_outrider.toml")
+        self.path = os.path.join(self.dir, "Journal.2026-10-11T100000.01.log")
+
+    def write(self, *events):
+        with open(self.path, "a", encoding="utf-8") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+    def rows(self):
+        return [dict(r) for r in self.db.execute("SELECT * FROM upload_queue WHERE service='inara' ORDER BY id")]
+
+    def live_login(self):
+        now = time.time()
+        stamp = lambda ago: iso_ts(now - ago)
+        evs = [dict(e, timestamp=stamp(120)) for e in login()]
+        self.write(*evs)
+        self.j.scan_dir(self.dir, commit_each=True, upload="catchup")
+        return stamp
+
+    def test_live_lines_are_queued_and_batched(self):
+        stamp = self.live_login()
+        self.state.set_upload("inara", True)
+        self.write(dict(jump(0), timestamp=stamp(60)), {"timestamp": stamp(50), "event": "SupercruiseExit", "StarSystem": "Sys A"})
+        self.j.scan_dir(self.dir, upload="live")
+        self.db.commit()
+        rows = self.rows()
+        self.assertEqual([r["schema"] for r in rows], ["addCommanderTravelFSDJump", "setCommanderTravelLocation"])
+        self.assertEqual(rows[0]["next_try"], 0)        # the jump goes now
+        self.assertGreater(rows[1]["next_try"], 0)      # the location waits for company (the next jump or docking)
+        self.assertEqual(rows[0]["cmdr"], "Briadin")
+
+    def test_keys_never_served_and_the_sender(self):
+        import asyncio
+        out, status = self.state.set_inara_account("Briadin", "short")
+        self.assertEqual(status, 400)
+        out, status = self.state.set_inara_account("Briadin", "a1B2c3D4e5F6g7H8i9J0k1L2")
+        self.assertEqual((status, out["accounts"][0]["hint"]), (200, "a1B2…k1L2 (24 characters)"))
+        summary = json.dumps(self.state.uploads_summary())
+        self.assertNotIn("a1B2c3D4e5F6g7H8i9J0k1L2", summary)   # the page never gets the key
+        stamp = self.live_login()
+        self.state.set_upload("inara", True)
+        self.write(dict(jump(0), timestamp=stamp(60)))
+        self.j.scan_dir(self.dir, upload="live")
+        self.db.commit()
+        rows = U.due(self.db, "inara", time.time())
+        # the dry run: built and logged without the key, nothing sent
+        self.state.inara_dry_path = os.path.join(self.dir, "dry.jsonl")
+        with unittest.mock.patch.dict(os.environ, {I.DRY_ENV: "1"}), unittest.mock.patch("sys.stdout"):
+            got = asyncio.run(self.state.inara_send(rows))
+        self.assertEqual({s for _, s, _, _ in got}, {"dry"})
+        with open(self.state.inara_dry_path, encoding="utf-8") as f:
+            logged = f.read()
+        self.assertIn("addCommanderTravelFSDJump", logged)
+        self.assertNotIn("a1B2c3D4e5F6g7H8i9J0k1L2", logged)
+        # a commander with no key: dropped, and the status says why
+        self.state.set_inara_account("Briadin", remove=True)
+        got = asyncio.run(self.state.inara_send(rows))
+        self.assertEqual(got[0][1], "dropped")
+        self.assertIn("no Inara API key for CMDR Briadin", got[0][2])
+
+    def test_a_real_send_and_its_answer(self):
+        import asyncio
+
+        class Resp:
+            status = 200
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *a):
+                return False
+
+            async def json(self, content_type=None):
+                return {"header": {"eventStatus": 200}, "events": [{"eventCustomID": i, "eventStatus": 200} for i in ids]}
+        posted = []
+
+        class Session:
+            def post(self, url, json=None):
+                posted.append((url, json))
+                return Resp()
+        self.state.set_inara_account("Briadin", "a1B2c3D4e5F6g7H8i9J0k1L2")
+        stamp = self.live_login()
+        self.state.set_upload("inara", True)
+        self.write(dict(jump(0), timestamp=stamp(60)))
+        self.j.scan_dir(self.dir, upload="live")
+        self.db.commit()
+        rows = U.due(self.db, "inara", time.time())
+        ids = [r["id"] for r in rows]
+        self.state.upload_session = Session()
+        with unittest.mock.patch.dict(os.environ, {I.DRY_ENV: "", I.DEV_ENV: "1"}):
+            got = asyncio.run(self.state.inara_send(rows))
+        self.assertEqual([s for _, s, _, _ in got], ["sent"])
+        url, body = posted[0]
+        self.assertEqual((url, body["header"]["APIkey"], body["header"]["isBeingDeveloped"]), (I.URL, "a1B2c3D4e5F6g7H8i9J0k1L2", True))
+
+    def test_edmc_sending_to_inara_holds_ours(self):
+        self.state.edmc = {"running": True, "eddn": False, "edsm": False, "inara": True}
+        self.state.upload_cfg["inara"]["enabled"] = True
+        self.assertFalse(self.state.upload_on("inara"))
+        self.assertIn("EDMC on this PC sends to Inara", self.state.upload_conflict("inara"))
+        self.state.game_pc = True   # EDMC is looked for on the game PC
+        with unittest.mock.patch.object(U, "edmc_uploads", lambda: dict(self.state.edmc)):
+            self.assertEqual(self.state.check_upload_start("inara", False)[0], "edmc")
+
+    def test_a_failed_tick_sends_nothing_twice(self):
+        """What was sent (the Sent record) is in the hub's snapshot, which the tick's checkpoint takes."""
+        snap = self.state.uploads_hub.snapshot()
+        self.assertTrue(self.state.inara_sent.changed("Briadin", "ranks", {"combat": 1}))
+        self.state.uploads_hub.restore(snap)
+        self.assertTrue(self.state.inara_sent.changed("Briadin", "ranks", {"combat": 1}))
+        self.assertNotIn("inara_sent", ed_outrider.RESET_JOURNAL_DATA)   # live-only: a re-read keeps it
+        self.assertNotIn("inara_accounts", ed_outrider.RESET_JOURNAL_DATA)
+
+    def test_endpoint(self):
+        import asyncio
+        from aiohttp.test_utils import TestClient, TestServer
+
+        async def go():
+            async with TestClient(TestServer(ed_outrider.make_app(self.state))) as c:
+                out = [(await c.post("/api/uploads/inara", json={"commander": "Briadin", "api_key": "a1B2c3D4e5F6g7H8i9J0k1L2"})).status,
+                       (await c.post("/api/uploads/inara", json={"commander": "", "api_key": "x"})).status,
+                       (await c.post("/api/uploads/inara", data="[1]", headers={"Content-Type": "application/json"})).status]
+                j = await (await c.post("/api/uploads", json={"service": "inara", "on": True})).json()
+                return out, j
+        out, j = asyncio.run(go())
+        self.assertEqual(out, [200, 400, 400])
+        self.assertTrue(j["inara"]["wanted"])
+        self.assertEqual(j["inara"]["accounts"][0]["commander"], "Briadin")
+        with open(self.state.config_path, encoding="utf-8") as f:
+            self.assertRegex(f.read(), r"\[inara\][^\[]*\nenabled = true")
+
+
+if __name__ == "__main__":
+    unittest.main()

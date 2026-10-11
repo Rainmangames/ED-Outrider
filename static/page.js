@@ -7704,9 +7704,11 @@ function starWords(cls, lum) {
   }
   return LUMINOSITY_WORDS[l] || LUMINOSITY_WORDS[l.replace(/[ab]+$/, "")] || "";   // "Vab", "IIIb": their class
 }
-// ---- Settings → Uploads (EDDN, EDSM): the switches, what each has sent, why it is held, EDSM's accounts ----
+// ---- Settings → Uploads (EDDN, EDSM, Inara): the switches, what each has sent, why it is held, the accounts ----
 const UPLOAD_NAMES = {eddn: ["EDDN", "the data network Spansh, EDSM, Inara and others read: systems, scans, signals, markets, as they happen"],
-                      edsm: ["EDSM", "your flight log and scans, to your EDSM account (in batches: each jump, docking)"]};
+                      edsm: ["EDSM", "your flight log and scans, to your EDSM account (in batches: each jump, docking)"],
+                      inara: ["Inara", "your commander profile: travel, ranks, credits, ships, inventory, missions (in batches: each jump, docking)"]};
+const UPLOAD_SERVICES = Object.keys(UPLOAD_NAMES);
 let uploadsDrawn = "";
 // the Uploads section's last message (a refusal, a saved key, "could not reach Outrider"): part of what is drawn, so the
 // redraw right after an answer keeps it (the bug check of 2026-10-09: it was wiped as soon as it was written)
@@ -7715,14 +7717,14 @@ let uploadsNote = "";
 // was refused, live with each payload; nothing when no upload is in use
 function uploadLineHtml(u) {
   if (!u) return "";
-  const parts = ["eddn", "edsm"].map(s => {
+  const parts = UPLOAD_SERVICES.map(s => {
     const x = u[s] || {}, [name] = UPLOAD_NAMES[s];
     if (!x.on && !x.sent_24h && !x.queued && !x.dry_24h) return "";
     const bits = [`${(x.sent_24h || 0).toLocaleString("en-US")} sent`];
     if (x.queued) bits.push(`${x.queued.toLocaleString("en-US")} waiting`);
     if (x.dropped_24h) bits.push(`<span class="warnc">${x.dropped_24h.toLocaleString("en-US")} refused</span>`);
     if (x.dry_24h) bits.push(`${x.dry_24h.toLocaleString("en-US")} dry run`);
-    const mode = s === "eddn" && x.test ? " (test)" : s === "edsm" && x.dry_run ? " (dry run)" : "";
+    const mode = s === "eddn" && x.test ? " (test)" : x.dry_run ? " (dry run)" : s === "inara" && x.dev ? " (development)" : "";
     const state = x.held ? ` <span class="bad" title="${esc(x.held)}">held</span>` : !x.on ? ` <span class="unk">off</span>` : "";
     return `<div title="uploads in the last 24 hours (Settings → Uploads has the detail)"><b>${name}</b>${mode} ${bits.join(" · ")}${state}</div>`;
   }).filter(Boolean);
@@ -7738,7 +7740,9 @@ function uploadsHtml(u) {
       : x.on ? `<span class="ok">on</span>` : `<span class="unk">off</span>`;
     // OUTRIDER_EDDN_TEST: said whatever the state, so a developer's run is never mistaken for a live one
     const test = s === "eddn" && x.test ? ` <span class="warnc" title="OUTRIDER_EDDN_TEST is set: EDDN's test schemas only, nothing reaches the live data">(test schemas only)</span>`
-      : s === "edsm" && x.dry_run ? ` <span class="warnc" title="OUTRIDER_EDSM_DRYRUN is set: each request is built and logged (data/edsm-dryrun.jsonl), nothing is sent">(dry run: nothing sent)</span>` : "";
+      : s === "edsm" && x.dry_run ? ` <span class="warnc" title="OUTRIDER_EDSM_DRYRUN is set: each request is built and logged (data/edsm-dryrun.jsonl), nothing is sent">(dry run: nothing sent)</span>`
+      : s === "inara" && x.dry_run ? ` <span class="warnc" title="OUTRIDER_INARA_DRYRUN is set: each request is built and logged (data/inara-dryrun.jsonl), nothing is sent">(dry run: nothing sent)</span>`
+      : s === "inara" && x.dev ? ` <span class="warnc" title="OUTRIDER_INARA_DEV is set: requests say isBeingDeveloped (a test account's trial)">(development mode)</span>` : "";
     const nums = [x.queued ? `${x.queued} waiting` : "", x.sent_24h ? `${x.sent_24h} sent today` : "", x.dropped_24h ? `${x.dropped_24h} refused` : "", x.dry_24h ? `${x.dry_24h} in dry runs` : ""].filter(Boolean).join(" · ");
     // ticked by what the player switched (wanted), whatever holds or blocks it now
     const ticked = x.wanted ?? (x.on || !!x.held);
@@ -7752,9 +7756,18 @@ function uploadsHtml(u) {
     ` <button type="button" class="try edsmSave">Save</button>${a.set ? ` <a href="#" class="edsmRemove">remove</a>` : ""}` +
     // never the key itself: its ends, to compare with edsm.net → Settings → API key
     (a.hint ? `<div class="hint">stored key: <code title="its first and last four characters: compare them with your key on edsm.net">${esc(a.hint)}</code></div>` : "") + `</div>`).join("");
+  // Inara: one API key per in-game commander (never served back: its ends only)
+  const inacc = ((u.inara || {}).accounts || []).map(a =>
+    `<div class="inaraacc" data-cmdr="${esc(a.commander)}"><b>${esc(a.commander)}</b> → Inara` +
+    ` key <input type="password" class="inaraKey" autocomplete="new-password" placeholder="${a.set ? "set (type to change)" : "API key"}" size="22">` +
+    ` <button type="button" class="try inaraSave">Save</button>${a.set ? ` <a href="#" class="inaraRemove">remove</a>` : ""}` +
+    (a.hint ? `<div class="hint">stored key: <code title="its first and last four characters: compare them with your key on inara.cz">${esc(a.hint)}</code></div>` : "") + `</div>`).join("");
   return row("eddn") + row("edsm") +
     `<div class="hint">EDSM accounts, per in-game commander (your key is at <a href="https://www.edsm.net/en/settings/api" target="_blank" rel="noopener">edsm.net → Settings → API key</a>; it stays on this Outrider):</div>` +
-    (acc || `<div class="unk">no commander seen yet</div>`) + `<div class="hint" id="uploadsMsg">${esc(uploadsNote)}</div>` +
+    (acc || `<div class="unk">no commander seen yet</div>`) + row("inara") +
+    `<div class="hint">Inara API keys, per in-game commander (yours is at <a href="https://inara.cz/elite/cmdr-settings-api/" target="_blank" rel="noopener">inara.cz → Settings → API key</a>; it stays on this Outrider). ` +
+    `Switch Inara off in EDMC, EDDI or EDDiscovery first: two apps sending can get the key revoked (Outrider sees only EDMC's setting).</div>` +
+    (inacc || `<div class="unk">no commander seen yet</div>`) + `<div class="hint" id="uploadsMsg">${esc(uploadsNote)}</div>` +
     (u.simulate ? `<div class="unk">--simulate: nothing is uploaded</div>` : "");
 }
 function renderUploads() {
@@ -7764,15 +7777,20 @@ function renderUploads() {
   if (box.contains(document.activeElement) && document.activeElement.tagName === "INPUT" && document.activeElement.type !== "checkbox") return;
   const html = uploadsHtml(data.uploads);
   if (html === uploadsDrawn) return;
-  // what was typed in an EDSM account row and not saved yet stays (a redraw of the counts must not wipe it)
+  // what was typed in an account row and not saved yet stays (a redraw of the counts must not wipe it)
   const typed = [...box.querySelectorAll(".edsmacc")].map(row => [row.dataset.cmdr, row.querySelector(".edsmName").value,
                                                                    row.querySelector(".edsmKey").value, row.querySelector(".edsmName").defaultValue]);
+  const typedInara = [...box.querySelectorAll(".inaraacc")].map(row => [row.dataset.cmdr, row.querySelector(".inaraKey").value]);
   box.innerHTML = html; uploadsDrawn = html;
   for (const [cmdr, name, key, was] of typed) {
     const row = [...box.querySelectorAll(".edsmacc")].find(r => r.dataset.cmdr === cmdr);
     if (!row) continue;
     if (name !== was) row.querySelector(".edsmName").value = name;
     if (key) row.querySelector(".edsmKey").value = key;
+  }
+  for (const [cmdr, key] of typedInara) {
+    const row = [...box.querySelectorAll(".inaraacc")].find(r => r.dataset.cmdr === cmdr);
+    if (row && key) row.querySelector(".inaraKey").value = key;
   }
 }
 async function setUpload(service, on, confirmed) {
@@ -7795,6 +7813,26 @@ async function setUpload(service, on, confirmed) {
 document.getElementById("uploadsBox").addEventListener("change", e => {
   const box = e.target.closest("[data-upload]");
   if (box) setUpload(box.dataset.upload, box.checked);
+});
+document.getElementById("uploadsBox").addEventListener("click", async e => {
+  const row = e.target.closest(".inaraacc"); if (!row) return;
+  const save = e.target.closest(".inaraSave"), remove = e.target.closest(".inaraRemove");
+  if (!save && !remove) return;
+  e.preventDefault();
+  const body = remove ? {commander: row.dataset.cmdr, remove: true} : {commander: row.dataset.cmdr, api_key: row.querySelector(".inaraKey").value};
+  try {
+    const j = await apiJson("api/uploads/inara", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+    uploadsNote = j.error || (remove ? "removed" : "saved");
+    if (!j.error) {
+      if (data.uploads && data.uploads.inara) data.uploads.inara.accounts = j.accounts;
+      row.querySelector(".inaraKey").value = "";   // saved: nothing typed is kept over the redraw
+    }
+  } catch (err) {
+    uploadsNote = `could not reach Outrider: ${err.message}`;
+  } finally {
+    row.querySelectorAll("input").forEach(i => i.blur());
+    uploadsDrawn = ""; renderUploads();
+  }
 });
 document.getElementById("uploadsBox").addEventListener("click", async e => {
   const row = e.target.closest(".edsmacc"); if (!row) return;

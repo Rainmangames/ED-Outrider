@@ -85,6 +85,12 @@ def version_tuple(v):
     return tuple(out)
 
 
+# A service's own following of the session (Inara: the current ship, a taxi, the materials...): fn(session, ev) for
+# every line fed, after the session's own handling. What it keeps lives in the session (snapshot() covers it: a failed
+# tick's retry starts from the same place). outrider.inara adds its own on import.
+TRACKERS = []
+
+
 class Session:
     """The game session a journal line belongs to (see the module doc). feed() every line of the live folders, in
     order; nothing here reads the clock or the database."""
@@ -105,6 +111,7 @@ class Session:
         self.pending = {}                     # what waits on a companion file or the next line (EDDN's waits)
         self.source = None                    # the line being handled ("file:offset"; the hub sets it), and
         self.now = None                       # ...the server's clock then (EDDN's waits give up by it)
+        self.track = {}                       # the services' own following (TRACKERS): {service: what it keeps}
 
     # ---- what the line's session is ----
     @property
@@ -151,6 +158,11 @@ class Session:
         self.body = self.body_id = None
 
     def feed(self, ev, file=None):
+        self._feed(ev, file)
+        for fn in TRACKERS:
+            fn(self, ev)
+
+    def _feed(self, ev, file=None):
         if file:
             self.file = file
         name = ev.get("event")
@@ -331,8 +343,11 @@ class UploadHub:
     sets one: State.set_upload)."""
 
     def __init__(self, db, builders=None, enabled=None, clock=time.time, max_age=MAX_AGE_S, save=None, holds=None,
-                 max_ages=None, idlers=None, follow=None, quiet=None):
+                 max_ages=None, idlers=None, follow=None, quiet=None, keep=None):
         self.db = db
+        # {service: object with snapshot() / restore(snap)}: a service's own memory the builder changes (Inara: what was
+        # last sent), taken with the hub's own in snapshot(), so a failed tick's retry sends nothing twice
+        self.keep = dict(keep or {})
         self.builders = dict(builders or {})
         self.holds = dict(holds or {})
         self.idlers = dict(idlers or {})   # {service: fn(session) -> [(schema, message, source line)]}: idle()
@@ -422,7 +437,7 @@ class UploadHub:
             except (KeyError, TypeError, ValueError, AttributeError, IndexError) as e:   # an odd line: skip it
                 print(f"{service}: a line could not be prepared ({type(e).__name__}: {e})")
                 continue
-            wait = self.holds[service](ev) if service in self.holds else 0
+            wait = self.holds[service](ev, session) if service in self.holds else 0
             if service in self.holds and not wait:
                 release(self.db, service)
             go = 0
@@ -582,13 +597,17 @@ class UploadHub:
             if live and st.get("lat") is not None and st.get("lon") is not None and st.get("body") else None
 
     def snapshot(self):
-        return (self.session.snapshot(), set(self.primed), self.queued, copy.deepcopy(self.marks), self.marks_dirty)
+        return (self.session.snapshot(), set(self.primed), self.queued, copy.deepcopy(self.marks), self.marks_dirty,
+                {k: o.snapshot() for k, o in self.keep.items()})
 
     def restore(self, snap):
-        s, primed, self.queued, marks, self.marks_dirty = snap
+        s, primed, self.queued, marks, self.marks_dirty, keep = snap
         self.session.restore(s)
         self.primed = set(primed)
         self.marks = copy.deepcopy(marks)
+        for k, o in self.keep.items():
+            if k in keep:
+                o.restore(keep[k])
 
 
 def glob_journals(d):
@@ -599,13 +618,14 @@ def glob_journals(d):
 
 # ---- settings ----
 
-SERVICES = ("eddn", "edsm")
-DEFAULTS = {"eddn": {"enabled": False}, "edsm": {"enabled": False}}
+SERVICES = ("eddn", "edsm", "inara")
+DEFAULTS = {"eddn": {"enabled": False}, "edsm": {"enabled": False}, "inara": {"enabled": False}}
+NAMES = {"eddn": "EDDN", "edsm": "EDSM", "inara": "Inara"}   # as the player reads them
 TEST_ENV = "OUTRIDER_EDDN_TEST"   # a developer's switch, not a setting: EDDN's /test schemas while trying sender code
 
 
 def upload_settings(cfg):
-    """[eddn] enabled and [edsm] enabled from the config (written there by Settings -> Uploads, the only place to
+    """[eddn], [edsm] and [inara] enabled from the config (written there by Settings -> Uploads, the only place to
     switch them; hidden from the Server settings): bools, anything else off."""
     out = {}
     for service, keys in DEFAULTS.items():
@@ -629,11 +649,12 @@ IDLE_S = 2.0             # how often an empty or switched-off queue is looked at
 BACKOFF_S = (60, 120, 300, 600, 1800)   # after a network failure or a 5xx: at least a minute (EDDN's rule), growing
 
 
-async def upload_loop(service, db, send, on, clock=time.time, sleep=None, report=None, batch=50):
+async def upload_loop(service, db, send, on, clock=time.time, sleep=None, report=None, batch=50, min_gap=0):
     """Drain `service`'s outbox while it is on: send(rows) -> [(row id, state, status text, retry_in or None)] for
     each row it settled (state: sent, dropped, queued (retry after retry_in), held (stop until the player acts)); a raised
     exception is a network failure: those rows wait BACKOFF_S. report(service, outcome dict) after each round (the
-    status view). Runs until cancelled."""
+    status view). min_gap: at least this many seconds from one request to the next (Inara's rate). Runs until
+    cancelled."""
     import asyncio
     sleep = sleep or asyncio.sleep
     fails = 0
@@ -684,9 +705,9 @@ async def upload_loop(service, db, send, on, clock=time.time, sleep=None, report
         if report:
             report(service, {"error": error, "results": results, "at": now})
         if any(state == "held" for _, state, _, _ in results):
-            await sleep(IDLE_S * 15)   # waiting on the player (a refused key): look again now and then
+            await sleep(max(IDLE_S * 15, min_gap))   # waiting on the player (a refused key): look again now and then
         else:
-            await sleep(wait or GAP_S)
+            await sleep(max(wait or GAP_S, min_gap))
 
 
 # ---- one uploader at a time: lease files in the journal folder (the author's idea, 2026-10-08) ----

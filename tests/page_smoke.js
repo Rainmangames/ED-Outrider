@@ -4463,8 +4463,18 @@ const settle = async maxMs => {
               // test mode is said whatever the state: here while EDDN is unavailable
               /\(test schemas only\)/.test(uploadsHtml({eddn: {available: true, test: true, blocked: "the game version is not known yet"}, edsm: {}})),
               // EDSM's dry run (OUTRIDER_EDSM_DRYRUN) and what it built
-              /EDSM.*\(dry run: nothing sent\).*12 in dry runs/s.test(uploadsHtml({eddn: {}, edsm: {available: true, on: true, dry_run: true, dry_24h: 12}}))]; })()`);
-    const goodU = JSON.stringify(got) === JSON.stringify([true, true, true, 2, true, true, true, true]) && errors.length === before;
+              /EDSM.*\(dry run: nothing sent\).*12 in dry runs/s.test(uploadsHtml({eddn: {}, edsm: {available: true, on: true, dry_run: true, dry_24h: 12}})),
+              // Inara: its switch, a key per commander (its ends only, never the key), the other apps' warning, its developer marks
+              (() => { const b = document.createElement("div");
+                b.innerHTML = uploadsHtml({eddn: {}, edsm: {}, inara: {available: true, on: true, dev: true, sent_24h: 5,
+                  accounts: [{commander: "Briadin", set: true, hint: "a1B2…k1L2 (24 characters)"}, {commander: "Alt", set: false, hint: null}]}});
+                const x = b.textContent;
+                return [!!b.querySelector('[data-upload="inara"]'), !!b.querySelector('.inaraacc[data-cmdr="Briadin"] .inaraKey[placeholder^="set"]'),
+                        !!b.querySelector('.inaraacc[data-cmdr="Alt"] .inaraKey[placeholder="API key"]'), /stored key: a1B2…k1L2/.test(x),
+                        /\(development mode\)/.test(x), /EDMC, EDDI or EDDiscovery/.test(x),
+                        !!b.querySelector('a[href="https://inara.cz/elite/cmdr-settings-api/"]')].every(Boolean); })(),
+              /Inara.*\(dry run: nothing sent\)/s.test(uploadsHtml({eddn: {}, edsm: {}, inara: {available: true, dry_run: true}}))]; })()`);
+    const goodU = JSON.stringify(got) === JSON.stringify([true, true, true, 3, true, true, true, true, true, true]) && errors.length === before;
     allOk = allOk && goodU;
     console.log(goodU ? "OK" : "FAIL", "| uploads settings |", goodU ? "the switches, a hold, test only, EDSM's account without its key" : JSON.stringify(got), errors.slice(before));
   }
@@ -4475,9 +4485,10 @@ const settle = async maxMs => {
       const t = h => { const d = document.createElement("div"); d.innerHTML = h; return [...d.children].map(c => c.textContent).join(" | "); };
       return [t(uploadLineHtml({eddn: {on: true, sent_24h: 1234, queued: 2, dropped_24h: 1, test: true}, edsm: {on: true, sent_24h: 59, dry_run: true, dry_24h: 18}})),
               uploadLineHtml({eddn: {on: false}, edsm: {on: false}}), uploadLineHtml(null),
-              t(uploadLineHtml({eddn: {on: false, sent_24h: 3}, edsm: {on: true, held: "203 EDSM refused the commander name or API key"}}))]; })()`);
+              t(uploadLineHtml({eddn: {on: false, sent_24h: 3}, edsm: {on: true, held: "203 EDSM refused the commander name or API key"}})),
+              t(uploadLineHtml({eddn: {}, edsm: {}, inara: {on: true, sent_24h: 7, queued: 3, dev: true}}))]; })()`);
     const want = ["EDDN (test) 1,234 sent · 2 waiting · 1 refused | EDSM (dry run) 59 sent · 18 dry run", "", "",
-                  "EDDN 3 sent off | EDSM 0 sent held"];   // a line (div) per service
+                  "EDDN 3 sent off | EDSM 0 sent held", "Inara (development) 7 sent · 3 waiting"];   // a line (div) per service
     const goodL = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodL;
     console.log(goodL ? "OK" : "FAIL", "| uploads in the Data tile |", goodL ? "per service, test/dry-run marks, nothing when unused" : JSON.stringify(got), errors.slice(before));
@@ -4568,6 +4579,17 @@ const settle = async maxMs => {
       document.querySelector(".edsmacc .edsmSave").click();
       await new Promise(res => setTimeout(res, 50));
       r.saved = document.getElementById("uploadsMsg").textContent === "saved" && /stored key/.test(document.getElementById("uploadsBox").textContent);
+      // Inara's key: posted to its own endpoint with the commander, and only its ends shown afterwards
+      data.uploads = {eddn: {available: true}, edsm: {available: true}, inara: {available: true, accounts: [{commander: "Briadin", set: false}]}};
+      uploadsNote = ""; uploadsDrawn = ""; renderUploads();
+      const ik = document.querySelector(".inaraacc .inaraKey"); ik.value = "a1B2c3D4e5F6g7H8i9J0k1L2"; ik.focus();
+      let sentTo = null;
+      window.apiJson = async (u, o) => { sentTo = [u, JSON.parse(o.body)]; return {ok: true, accounts: [{commander: "Briadin", set: true, hint: "a1B2…k1L2 (24 characters)"}]}; };
+      document.querySelector(".inaraacc .inaraSave").click();
+      await new Promise(res => setTimeout(res, 50));
+      const ub = document.getElementById("uploadsBox").textContent;
+      r.inaraSaved = !!sentTo && sentTo[0] === "api/uploads/inara" && sentTo[1].commander === "Briadin" && sentTo[1].api_key === "a1B2c3D4e5F6g7H8i9J0k1L2"
+        && document.getElementById("uploadsMsg").textContent === "saved" && /stored key: a1B2…k1L2/.test(ub) && !ub.includes("a1B2c3D4e5F6g7H8i9J0k1L2");
       window.apiJson = aj; window.confirm = cf; data.uploads = keepU; uploadsNote = ""; uploadsDrawn = ""; renderUploads();
       // the thresholds followed across windows too (the night's sweep left them out)
       const hb = hlCfg.body;
@@ -4575,7 +4597,7 @@ const settle = async maxMs => {
       r.thresholds = hlCfg.body === 1234567 && document.getElementById("hlBody").value === "1234567";
       store.set("highlightCfg", {body: hb, bio: null}); window.dispatchEvent(Object.assign(new Event("storage"), {key: "highlightCfg"}));
       return r; })()`);
-    const want = {copilot: true, timeout: true, superseded: true, bell: true, reset: true, declined: true, saved: true, thresholds: true};
+    const want = {copilot: true, timeout: true, superseded: true, bell: true, reset: true, declined: true, saved: true, inaraSaved: true, thresholds: true};
     const goodF = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodF;
     console.log(goodF ? "OK" : "FAIL", "| the Fable sweep's page fixes |", goodF ? "co-pilot, poll timeout, superseded run, bell, reset, declined confirm" : JSON.stringify(got), errors.slice(before));

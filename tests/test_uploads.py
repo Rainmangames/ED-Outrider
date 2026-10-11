@@ -232,9 +232,10 @@ class Continuation(unittest.TestCase):
 class Settings(unittest.TestCase):
 
     def test_config(self):
-        self.assertEqual(U.upload_settings({})["uploads"], {"eddn": {"enabled": False}, "edsm": {"enabled": False}})
-        got = U.upload_settings({"eddn": {"enabled": True, "test": True}, "edsm": {"enabled": "yes"}})["uploads"]
-        self.assertEqual(got, {"eddn": {"enabled": True}, "edsm": {"enabled": False}})   # a non-bool is the default
+        self.assertEqual(U.upload_settings({})["uploads"], {"eddn": {"enabled": False}, "edsm": {"enabled": False},
+                                                          "inara": {"enabled": False}})
+        got = U.upload_settings({"eddn": {"enabled": True, "test": True}, "edsm": {"enabled": "yes"}, "inara": {"enabled": True}})["uploads"]
+        self.assertEqual(got, {"eddn": {"enabled": True}, "edsm": {"enabled": False}, "inara": {"enabled": True}})   # a non-bool is the default
 
     def test_test_mode_is_the_developers(self):
         """EDDN's test schemas: an environment variable, never a setting (nothing in the config reads it)."""
@@ -273,7 +274,7 @@ class StateSwitches(unittest.TestCase):
         self.assertEqual(self.written()["eddn"]["enabled"], False)   # written into the config file
         st.set_upload("edsm", True)
         self.assertTrue(st.upload_on("edsm"))
-        self.assertEqual(self.written(), {"eddn": {"enabled": False}, "edsm": {"enabled": True}})
+        self.assertEqual(self.written(), {"eddn": {"enabled": False}, "edsm": {"enabled": True}, "inara": {"enabled": False}})
         st.upload_report("edsm", {"error": None, "at": 1, "results": [(1, "held", "203 Commander name/API Key not found", None)]})
         self.assertFalse(st.upload_on("edsm"))                   # waiting on the player
         self.assertEqual(st.uploads_summary()["edsm"]["held"], "203 Commander name/API Key not found")
@@ -286,11 +287,11 @@ class StateSwitches(unittest.TestCase):
         """The console says whether each upload is on, and EDDN's test schemas whenever OUTRIDER_EDDN_TEST is set."""
         st = self.state
         with unittest.mock.patch.dict(os.environ, {U.TEST_ENV: ""}):
-            self.assertEqual(st.uploads_line(), "uploads: EDDN off, EDSM off (switched in Settings -> Uploads)")
+            self.assertEqual(st.uploads_line(), "uploads: EDDN off, EDSM off, Inara off (switched in Settings -> Uploads)")
         st.upload_cfg["eddn"]["enabled"] = True
         with unittest.mock.patch.dict(os.environ, {U.TEST_ENV: "1"}):
             self.assertEqual(st.uploads_line(), "uploads: EDDN on (TEST: EDDN's test schemas only, OUTRIDER_EDDN_TEST is set), "
-                                                "EDSM off (switched in Settings -> Uploads)")
+                                                "EDSM off, Inara off (switched in Settings -> Uploads)")
             self.assertTrue(st.uploads_summary()["eddn"]["test"])
 
     def test_written_in_place(self):
@@ -333,7 +334,7 @@ class StateSwitches(unittest.TestCase):
         async def go():
             async with TestClient(TestServer(ed_outrider.make_app(self.state))) as c:
                 out = [(await c.post("/api/uploads", json={"service": "eddn", "on": True})).status]
-                for bad in ({"service": "inara", "on": True}, {"service": "eddn", "on": "yes"}, ["eddn"]):
+                for bad in ({"service": "spansh", "on": True}, {"service": "eddn", "on": "yes"}, ["eddn"]):
                     out.append((await c.post("/api/uploads", json=bad)).status)
                 return out
         self.assertEqual(asyncio.run(go()), [200, 400, 400, 400])

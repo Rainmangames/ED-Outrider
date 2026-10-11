@@ -121,7 +121,7 @@ def build(ev, session, discard=DISCARD):
     return [(name, dict(_with_file(ev, session), **transient(session)))]
 
 
-def hold(ev):
+def hold(ev, session=None):
     """How long this line's event may wait for others (HOLD_S), or 0: it sends what waits, itself included."""
     return 0 if ev.get("event") in RELEASE else HOLD_S
 

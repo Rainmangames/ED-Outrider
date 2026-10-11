@@ -1,0 +1,305 @@
+"""Inara's commander-profile API (project/PLAN-inara-2026-10-11.md): what a journal line sends to the player's own Inara
+profile, and what Inara's answer means. Pure: the server (ed_outrider.py) owns the queue, the API keys and the sending.
+
+Inara takes a commander's career, not the galaxy: travel, ranks, credits, ships, inventory, missions and the like
+(https://inara.cz/elite/inara-api-docs/, saved by the author 2026-10-11). Its rules, kept here:
+- one POST of a batch of events per request, at most one request every MIN_GAP_S (Inara revokes a key that floods it);
+- only what changed: a snapshot (ranks, inventory, the ship) goes when it differs from what was last sent to this
+  commander's profile (Sent, kept in the database), never on every line the game writes;
+- the journal's own timestamps; Live game only (the hub's gates); never the fleet carrier's hold (the API has none).
+- `isBeingDeveloped` while the developer tries it (DEV_ENV, never a setting); DRY_ENV builds and logs, sends nothing.
+
+The session's own following (the ship flown, a taxi, docking that must not be logged twice) is `track`, fed every
+line through outrider.uploads.TRACKERS: build() then reads what the line meant.
+"""
+import hashlib
+import json
+import os
+
+from . import uploads
+
+URL = "https://inara.cz/inapi/v1/"
+SOFTWARE = "ED Outrider"   # appName: exactly as Inara whitelisted it
+HOLD_S = 300               # an event waits at most this long for others to go with it
+MIN_GAP_S = 35             # between two requests (EDMC's pace; Inara's limit is about two a minute)
+BATCH = 100                # events per request, at most
+RATE_WAIT_S = 3600         # Inara refused for the rate: an hour (it revokes access for that long)
+DRY_ENV = "OUTRIDER_INARA_DRYRUN"   # a developer's switch: build and log the requests, send nothing
+DEV_ENV = "OUTRIDER_INARA_DEV"      # a developer's switch: isBeingDeveloped (Inara skips the global events)
+# events that send what waits (the journal's natural moments: Inara asks for batches on jumps and docks)
+RELEASE = frozenset({"FSDJump", "CarrierJump", "Docked", "Shutdown"})
+
+
+def _flag(env, environ=None):
+    environ = os.environ if environ is None else environ
+    return str(environ.get(env, "")).strip().lower() in ("1", "true", "yes", "on")
+
+
+def dry_run(environ=None):
+    """Whether Inara requests are only built and logged, never sent (OUTRIDER_INARA_DRYRUN=1)."""
+    return _flag(DRY_ENV, environ)
+
+
+def dev_mode(environ=None):
+    """Whether requests say isBeingDeveloped (OUTRIDER_INARA_DEV=1): the developer's test account and trial."""
+    return _flag(DEV_ENV, environ)
+
+
+# ---- the session's own following (fed every line: outrider.uploads.TRACKERS) ----
+
+def _state(session):
+    t = session.track.get("inara")
+    if t is None:
+        t = session.track["inara"] = {"ship": {}, "taxi": None, "suppress_dock": False, "undocked": False,
+                                      "starting": False, "credits": None, "loan": None, "line": {}}
+    return t
+
+
+def track(session, ev):
+    """Follow what Inara's events need from earlier lines; `line` says what this one meant (build and hold read it)."""
+    t = _state(session)
+    name = ev.get("event")
+    line = t["line"] = {}
+    if name == "Fileheader" and not uploads.continued(ev):
+        t.update(ship={}, taxi=None, suppress_dock=False, undocked=False, starting=False, credits=None, loan=None)
+    elif name == "LoadGame":
+        # a new session: the start-up lines follow (ranks, inventory, the ship...) and end with the ship's Cargo
+        t.update(starting=True, suppress_dock=False, undocked=False, credits=ev.get("Credits"), loan=ev.get("Loan"),
+                 taxi=None, ship=_ship(ev.get("Ship"), ev.get("ShipID"), ev.get("ShipName"), ev.get("ShipIdent")))
+    elif name == "Cargo" and ev.get("Vessel", "Ship") == "Ship" and t["starting"]:
+        t["starting"] = False
+        line["release"] = True   # the start-up's lines go together, now
+    elif name == "Loadout":
+        t["ship"] = _ship(ev.get("Ship"), ev.get("ShipID"), ev.get("ShipName"), ev.get("ShipIdent"))
+    elif name == "ShipyardSwap":
+        t["ship"] = _ship(ev.get("ShipType"), ev.get("ShipID"))
+        t["suppress_dock"] = True
+    elif name == "ShipyardNew":
+        t["ship"] = _ship(ev.get("ShipType"), ev.get("NewShipID"))
+        t["suppress_dock"] = True
+    elif name == "SetUserShipName" and ev.get("ShipID") == t["ship"].get("id"):
+        t["ship"] = dict(t["ship"], name=ev.get("UserShipName"), ident=ev.get("UserShipId"))
+    elif name in ("BookTaxi", "BookDropship"):
+        t["taxi"] = "dropship" if name == "BookDropship" else "shuttle"
+    elif name == "Location":
+        if ev.get("Docked"):
+            t["suppress_dock"] = True   # docked at login: the Docked the game may write next is not a new docking
+    elif name == "Undocked":
+        t["undocked"] = True
+    elif name == "SupercruiseEntry":
+        t["undocked"] = False
+    elif name == "Docked":
+        # EDMC's rules: not the docking a login or a ship swap writes, nor docking again where you undocked without
+        # leaving (a hop between pads), so the flight log is not filled with docks
+        if t["undocked"]:
+            t["undocked"] = False
+        elif t["suppress_dock"]:
+            t["suppress_dock"] = False
+        else:
+            line["log_dock"] = True
+    if name in ("Docked", "FSDJump", "Touchdown") and not ev.get("Taxi"):
+        t["taxi"] = None if name == "FSDJump" else t["taxi"]
+
+
+uploads.TRACKERS.append(track)
+
+
+def _ship(kind, game_id, name=None, ident=None):
+    return {k: v for k, v in (("type", kind), ("id", game_id), ("name", name), ("ident", ident)) if v not in (None, "")}
+
+
+# ---- what was last sent, per commander (kept in the database: State's meta inara_sent) ----
+
+class Sent:
+    """{commander: {what: digest}}: whether a snapshot (ranks, inventory, a ship...) differs from what was last sent
+    to that commander's profile. changed() records it as sent at once (the event is queued in the same transaction);
+    snapshot() / restore() for the tick's checkpoint, so a retried tick sends nothing twice."""
+
+    def __init__(self, data=None, save=None):
+        self.data = {c: dict(v) for c, v in (data or {}).items() if isinstance(v, dict)}
+        self.save = save
+
+    @staticmethod
+    def digest(value):
+        return hashlib.sha1(json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()[:16]
+
+    def changed(self, cmdr, what, value):
+        d = self.digest(value)
+        mine = self.data.setdefault(cmdr or "", {})
+        if mine.get(what) == d:
+            return False
+        mine[what] = d
+        if self.save:
+            self.save(self.data)
+        return True
+
+    def snapshot(self):
+        return json.loads(json.dumps(self.data))
+
+    def restore(self, snap):
+        self.data = json.loads(json.dumps(snap))
+
+
+# ---- building Inara's events ----
+
+def _event(ev, name, data):
+    return (name, {"eventName": name, "eventTimestamp": ev.get("timestamp"), "eventData": data})
+
+
+def _ship_fields(t, ev):
+    """The ship flown (shipType, shipGameID), or a taxi's flag instead (the API's isTaxiShuttle / isTaxiDropship)."""
+    if ev.get("Taxi"):
+        return {"isTaxiDropship": True} if t["taxi"] == "dropship" else {"isTaxiShuttle": True}
+    s = t["ship"]
+    return {k: v for k, v in (("shipType", s.get("type")), ("shipGameID", s.get("id"))) if v is not None}
+
+
+def _coords(ev):
+    pos = ev.get("StarPos")
+    return list(pos) if isinstance(pos, (list, tuple)) and len(pos) == 3 else None
+
+
+def _travel(ev, session, t, sent):
+    """The flight log and the current location."""
+    name = ev.get("event")
+    out = []
+    if name == "FSDJump":
+        data = {"starsystemName": ev.get("StarSystem"), "starsystemCoords": _coords(ev), "jumpDistance": ev.get("JumpDist")}
+        out.append(_event(ev, "addCommanderTravelFSDJump", _clean(dict(data, **_ship_fields(t, ev)))))
+    elif name == "CarrierJump":
+        data = {"starsystemName": ev.get("StarSystem"), "starsystemCoords": _coords(ev), "stationName": ev.get("StationName"),
+                "marketID": ev.get("MarketID")}
+        out.append(_event(ev, "addCommanderTravelCarrierJump", _clean(dict(data, **_ship_fields(t, ev)))))
+    elif name == "Docked" and t["line"].get("log_dock"):
+        data = {"starsystemName": ev.get("StarSystem"), "stationName": ev.get("StationName"), "marketID": ev.get("MarketID")}
+        out.append(_event(ev, "addCommanderTravelDock", _clean(dict(data, **_ship_fields(t, ev)))))
+    elif name == "Touchdown" and ev.get("PlayerControlled", True):
+        data = {"starsystemName": ev.get("StarSystem") or session.system, "starsystemBodyName": ev.get("Body"),
+                "starsystemBodyCoords": _latlon(ev)}
+        out.append(_event(ev, "addCommanderTravelLand", _clean(dict(data, **_ship_fields(t, ev)))))
+    elif name == "DropshipDeploy":
+        data = {"starsystemName": ev.get("StarSystem") or session.system, "starsystemBodyName": ev.get("Body"),
+                "isTaxiDropship": True}
+        out.append(_event(ev, "addCommanderTravelLand", _clean(data)))
+    elif name == "Location":
+        data = {"starsystemName": ev.get("StarSystem"), "starsystemCoords": _coords(ev)}
+        if ev.get("Docked"):
+            data.update(stationName=ev.get("StationName"), marketID=ev.get("MarketID"))
+        if ev.get("Latitude") is not None and ev.get("BodyType") == "Planet":   # landed, or on foot on a body
+            data.update(starsystemBodyName=ev.get("Body"), starsystemBodyCoords=_latlon(ev))
+        out.append(_event(ev, "setCommanderTravelLocation", _clean(data)))
+    elif name == "SupercruiseExit":
+        data = {"starsystemName": ev.get("StarSystem") or session.system}
+        if ev.get("BodyType") == "Planet":
+            data["starsystemBodyName"] = ev.get("Body")
+        out.append(_event(ev, "setCommanderTravelLocation", _clean(data)))
+    elif name == "ApproachSettlement":
+        data = {"starsystemName": session.system, "starsystemBodyName": ev.get("BodyName"),
+                "stationName": ev.get("Name_Localised") or ev.get("Name"), "marketID": ev.get("MarketID"),
+                "starsystemBodyCoords": _latlon(ev)}
+        out.append(_event(ev, "setCommanderTravelLocation", _clean(data)))
+    return out
+
+
+def _latlon(ev):
+    lat, lon = ev.get("Latitude"), ev.get("Longitude")
+    return [lat, lon] if isinstance(lat, (int, float)) and isinstance(lon, (int, float)) else None
+
+
+def _clean(data):
+    """Inara's event data without the fields not known (None): it sets what it is given."""
+    return {k: v for k, v in data.items() if v is not None}
+
+
+BUILDERS = (_travel,)
+
+
+def build(ev, session, sent=None):
+    """[(event name, Inara event)] for one journal line (the session, and track(), have seen it already). sent: the
+    Sent record of what each commander's profile already has (snapshots go only when they differ)."""
+    t = _state(session)
+    sent = sent if sent is not None else Sent()
+    out = []
+    for fn in BUILDERS:   # each: (ev, session, the tracker's state, sent) -> [(name, event)]
+        out += fn(ev, session, t, sent)
+    # who the event is for: the request's header needs the commander's Frontier ID, kept with each row
+    return [(n, dict(m, _fid=session.fid)) for n, m in out if m["eventData"] or n.startswith("reset")]
+
+
+def hold(ev, session=None):
+    """How long this line's events may wait for others (HOLD_S), or 0: they send what waits, themselves included. A
+    jump, a docking, the end of the start-up lines (the ship's first Cargo after LoadGame) or a shut-down."""
+    if ev.get("event") in RELEASE:
+        return 0
+    if session is not None and _state(session)["line"].get("release"):
+        return 0
+    return HOLD_S
+
+
+# ---- the request and the answer ----
+
+def same_batch(rows, limit=BATCH):
+    """The leading rows that may go in one request: one commander (the API key is the commander's)."""
+    out = []
+    for r in rows[:limit]:
+        if out and r["cmdr"] != out[0]["cmdr"]:
+            break
+        out.append(r)
+    return out
+
+
+def request(rows, key, version, developing=False):
+    """The POST body for rows of one commander (same_batch): the header with the commander's own API key, then the
+    events in the order they were queued, each with its row id as eventCustomID (the answer is paired by it)."""
+    fid = next((json.loads(r["message"]).get("_fid") for r in reversed(rows) if json.loads(r["message"]).get("_fid")), None)
+    header = {"appName": SOFTWARE, "appVersion": version, "isBeingDeveloped": bool(developing), "APIkey": key,
+              "commanderName": rows[0]["cmdr"]}
+    if fid:
+        header["commanderFrontierID"] = str(fid)
+    events = []
+    for r in rows:
+        m = json.loads(r["message"])
+        events.append({"eventName": m["eventName"], "eventTimestamp": m["eventTimestamp"], "eventData": m["eventData"],
+                       "eventCustomID": r["id"]})
+    return {"header": header, "events": events}
+
+
+# words in a refusal of the whole batch that mean "too many requests": wait an hour, the key is not wrong
+RATE_WORDS = ("slow down", "too many", "too much", "revoked", "temporarily")
+
+
+def answer(rows, reply):
+    """Inara's reply (decoded JSON) for these rows -> [(row id, state, status text, retry_in)] (upload_loop's results).
+    The header's 400 refuses the whole batch: a rate refusal waits an hour, anything else (a wrong key, an app Inara has
+    not let in yet) holds the service with Inara's words until the player acts. Per event: 200, 202 and 204 are taken
+    (204: formally fine, nothing to change); 400 drops that event with its words."""
+    if not isinstance(reply, dict) or not isinstance(reply.get("header"), dict):
+        raise ValueError(f"Inara's answer has no header: {str(reply)[:200]}")
+    head = reply["header"]
+    try:
+        code = int(head.get("eventStatus"))
+    except (TypeError, ValueError):
+        raise ValueError(f"Inara's answer has no eventStatus: {str(head)[:200]}")
+    text = str(head.get("eventStatusText") or "")
+    if code >= 400:
+        if any(w in text.lower() for w in RATE_WORDS):
+            return [(r["id"], "queued", f"{code} {text}".strip(), RATE_WAIT_S) for r in rows]
+        return [(r["id"], "held", f"Inara refused: {text or code}", None) for r in rows]
+    events = reply.get("events") if isinstance(reply.get("events"), list) else []
+    by_id = {e.get("eventCustomID"): e for e in events if isinstance(e, dict) and e.get("eventCustomID") is not None}
+    out = []
+    for i, r in enumerate(rows):
+        e = by_id.get(r["id"]) or (events[i] if i < len(events) and isinstance(events[i], dict) else {})
+        try:
+            n = int(e.get("eventStatus"))
+        except (TypeError, ValueError):
+            n = None
+        said = f"{n} {e.get('eventStatusText') or ''}".strip() if n is not None else "200 (no answer for this event)"
+        out.append((r["id"], "dropped" if n is not None and n >= 400 else "sent", said, None))
+    return out
+
+
+def key_ok(key):
+    """A plausible Inara API key (inara.cz/elite/cmdr-settings-api): letters and digits, nothing that would break the header."""
+    key = str(key or "").strip()
+    return 16 <= len(key) <= 128 and key.isascii() and key.replace("-", "").replace("_", "").isalnum()

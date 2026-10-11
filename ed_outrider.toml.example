@@ -1,7 +1,7 @@
 # ED Outrider configuration — copy to ed_outrider.toml next to ed_outrider.py and edit.
 #
 # You do not have to edit this file by hand: every setting in it can be changed in Outrider's web page, under
-# ⚙ Settings (Server settings for most of them, Uploads for [eddn] and [edsm], In-game overlay for [overlay]). The
+# ⚙ Settings (Server settings for most of them, Uploads for [eddn], [edsm] and [inara], In-game overlay for [overlay]). The
 # page writes your changes into ed_outrider.toml itself, keeping its comments and the previous copy as a .bak; most
 # take effect the next time Outrider starts (the overlay's switches at once).
 #
@@ -262,4 +262,10 @@
 [edsm]
 # EDSM, the Elite Dangerous Star Map: your flight log and scans, to your EDSM account in batches (each jump, docking).
 # Switched in Settings -> Uploads, which writes this; your EDSM commander name and API key are set there too.
+# enabled = false
+
+[inara]
+# Inara: keeps your commander profile there current (travel, ranks, credits, ships, inventory, missions...), in
+# batches. Switched in Settings -> Uploads, which writes this; your Inara API key is set there too. Switch Inara off in
+# EDMC, EDDI or EDDiscovery first: two apps sending can get the key revoked.
 # enabled = false

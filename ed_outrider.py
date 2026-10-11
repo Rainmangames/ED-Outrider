@@ -199,6 +199,7 @@ import outrider.mcp        # the MCP bridge's [mcp] settings (the bridge itself 
 import outrider.uploads    # EDDN / EDSM uploads (opt-in): the session, the live gate, the outbox
 import outrider.eddn       # EDDN's messages from journal events, and what its answers mean
 import outrider.edsm       # EDSM's journal upload: the events with where you were, and what its answers mean
+import outrider.inara      # Inara's commander profile: travel, ranks, ships, inventory..., and what its answers mean
 import outrider.checklist  # the exobiology checklist: every species by region, with your state (pure)
 import outrider.codex_images  # the checklists' pictures: Canonn's links and credits, refreshed once a day
 import outrider.overlay    # the in-game overlay's panels as draw lists (the window: python3 -m outrider.overlay_window)
@@ -1134,6 +1135,10 @@ enabled = {"true" if st["uploads"]["eddn"]["enabled"] else "false"}   # send to 
 [edsm]
 # EDSM uploads: switched on and off in the page's Settings -> Uploads, which writes this (the key is set there too).
 enabled = {"true" if st["uploads"]["edsm"]["enabled"] else "false"}   # send your flight log and scans to EDSM
+
+[inara]
+# Inara uploads: switched on and off in the page's Settings -> Uploads, which writes this (the API key is set there too).
+enabled = {"true" if st["uploads"]["inara"]["enabled"] else "false"}   # keep your Inara commander profile current
 
 """
 
@@ -5622,25 +5627,32 @@ class State:
         self.riches_plotting = None
         self.riches_task = None
         self.dock_cache = {}   # the Nearest finder's last Spansh search and permit check (DOCK_CACHE_S)
-        # uploads (EDDN, EDSM: opt-in, off by default; outrider/uploads.py): switched in Settings -> Uploads, which
-        # writes [eddn]/[edsm] enabled into the config file. senders: {service: async fn(rows)} (the services add theirs).
+        # uploads (EDDN, EDSM, Inara: opt-in, off by default; outrider/uploads.py): switched in Settings -> Uploads, which
+        # writes [eddn]/[edsm]/[inara] enabled into the config file. senders: {service: async fn(rows)}.
         self.upload_cfg = json.loads(json.dumps(outrider.uploads.DEFAULTS))
         self.upload_senders, self.upload_tasks, self.upload_session = {}, {}, None
         self.upload_status = {}   # service -> {error, at, held}: the last round's outcome for the status view
-        self.uploads_hub = outrider.uploads.UploadHub(db, {"eddn": self.eddn_build, "edsm": self.edsm_build},
-                                                      enabled=self.upload_queueing, holds={"edsm": outrider.edsm.hold},
+        # what each commander's Inara profile already has (meta inara_sent, live-only: a re-read must not send it again)
+        self.inara_sent = outrider.inara.Sent(meta_get(db, "inara_sent") if isinstance(meta_get(db, "inara_sent"), dict) else {},
+                                              save=lambda data: meta_set(self.db, "inara_sent", data))
+        self.uploads_hub = outrider.uploads.UploadHub(db, {"eddn": self.eddn_build, "edsm": self.edsm_build,
+                                                           "inara": self.inara_build},
+                                                      enabled=self.upload_queueing,
+                                                      holds={"edsm": outrider.edsm.hold, "inara": outrider.inara.hold},
                                                       max_ages={"eddn": outrider.eddn.CATCHUP_MAX_S},
                                                       idlers={"eddn": self.eddn_idle}, follow=self.upload_wanted,
-                                                      quiet={"eddn": outrider.eddn.quiet},
+                                                      quiet={"eddn": outrider.eddn.quiet}, keep={"inara": self.inara_sent},
                                                       save=lambda marks: meta_set(self.db, "upload_marks", marks))
         marks = meta_get(db, "upload_marks")   # how far each service has queued (live-only: a re-read keeps it)
         self.uploads_hub.marks = {k: v for k, v in marks.items() if isinstance(v, list)} if isinstance(marks, dict) else {}
         self.upload_senders["eddn"] = self.eddn_send
         self.upload_senders["edsm"] = self.edsm_send
+        self.upload_senders["inara"] = self.inara_send
         self.eddn_hold = outrider.eddn.SchemaHold()
         self.edsm_discard = outrider.edsm.DISCARD   # EDSM's list of unwanted events: the built-in copy until fetched
         self.edsm_discard_task = None
         self.edsm_dry_path = None                   # OUTRIDER_EDSM_DRYRUN: where the requests are logged (run(): data/)
+        self.inara_dry_path = None                  # OUTRIDER_INARA_DRYRUN: the same for Inara
         journals.uploads = self.uploads_hub
         # one uploader at a time (PLAN-edmc-functionality "One uploader at a time"): leases in the journal folders,
         # and EDMC on this PC. Refreshed by watch_leases every LEASE_EVERY_S.
@@ -9776,7 +9788,8 @@ class State:
             return f"also uploading from {other}"
         e = self.edmc or {}
         if e.get("running") and e.get(service):
-            return f"EDMC on this PC sends to {service.upper()} too: switch its {service.upper()} off (or this one)"
+            n = outrider.uploads.NAMES.get(service, service)
+            return f"EDMC on this PC sends to {n} too: switch its {n} off (or this one)"
         return None
 
     def upload_queueing(self, service):
@@ -9805,7 +9818,8 @@ class State:
                     else f"Already uploading from {other['host']}: switch it off there first")
         e = self.edmc or {}
         if e.get("running") and e.get(service):
-            return ("edmc", f"EDMC on this PC is sending to {service.upper()}: switch its {service.upper()} off first")
+            n = outrider.uploads.NAMES.get(service, service)
+            return ("edmc", f"EDMC on this PC is sending to {n}: switch its {n} off first")
         if readonly and not confirmed:
             return ("confirm_needed", "Is this the only Outrider uploading? Other instances can't see this one")
         return None
@@ -9995,6 +10009,7 @@ class State:
         out["eddn"]["test"] = outrider.uploads.eddn_test_mode()
         out["edsm"]["dry_run"] = outrider.edsm.dry_run()
         out["edsm"]["accounts"] = self.edsm_account_list()
+        out["inara"].update(dry_run=outrider.inara.dry_run(), dev=outrider.inara.dev_mode(), accounts=self.inara_account_list())
         out["readonly"] = bool(self.lease_writable) and not any(self.lease_writable.values())
         out["simulate"] = bool(self.simulate)
         return out
@@ -10133,6 +10148,85 @@ class State:
             out.insert(0, {"commander": cur, "name": cur, "set": False, "hint": None})
         return out
 
+    def inara_build(self, ev, session):
+        """What a live journal line sends to the commander's Inara profile (outrider.inara.build: only what changed)."""
+        return outrider.inara.build(ev, session, self.inara_sent)
+
+    async def inara_send(self, rows):
+        """Send the leading rows of one commander (outrider.inara.same_batch) to Inara with that commander's API key, in
+        one request. A commander with no key: dropped, and the status says so. Under the developer's
+        OUTRIDER_INARA_DRYRUN the request is logged (the key left out) and nothing is sent; OUTRIDER_INARA_DEV marks it
+        isBeingDeveloped (a test account's trial)."""
+        batch = outrider.inara.same_batch(rows)
+        cmdr = batch[0]["cmdr"]
+        key = (self.inara_accounts().get(cmdr or "") or {}).get("key")
+        if not key:
+            why = f"not sent: no Inara API key for CMDR {cmdr} (Settings -> Uploads)"
+            return [(r["id"], "dropped", why, None) for r in batch]
+        body = outrider.inara.request(batch, key, outrider.__version__, developing=outrider.inara.dev_mode())
+        if outrider.inara.dry_run():
+            self.inara_dry_log(body)
+            return [(r["id"], "dry", "dry run: not sent", None) for r in batch]
+        async with self.upload_session.post(outrider.inara.URL, json=body) as resp:
+            if resp.status != 200:
+                raise ConnectionError(f"Inara answered HTTP {resp.status}")
+            reply = await resp.json(content_type=None)
+        results = outrider.inara.answer(batch, reply)
+        bad = next((status for _, state, status, _ in results if state in ("held", "dropped")), None)
+        if bad:
+            print(f"Inara: {bad}", file=sys.stderr)
+        return results
+
+    def inara_dry_log(self, body):
+        """A dry run's request: one line on the console, the whole request (never the key) appended to inara_dry_path."""
+        names = collections.Counter(e.get("eventName") for e in body["events"])
+        print(f"Inara dry run: {len(body['events'])} event{'' if len(body['events']) == 1 else 's'} for "
+              f"{body['header'].get('commanderName')} (" + ", ".join(f"{n} x{c}" if c > 1 else n for n, c in names.items())
+              + "), not sent")
+        if self.inara_dry_path:
+            try:
+                with open(self.inara_dry_path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(dict(body, header=dict(body["header"], APIkey="(not logged)")), separators=(",", ":")) + "\n")
+            except OSError as e:
+                print(f"Inara dry run: cannot write {self.inara_dry_path}: {e}", file=sys.stderr)
+
+    def inara_accounts(self):
+        """{in-game commander: {key: Inara API key}} (meta inara_accounts, live-only). Never served: the page sees the
+        key's ends only (inara_account_list)."""
+        a = meta_get(self.db, "inara_accounts")
+        return {k: v for k, v in a.items() if isinstance(v, dict)} if isinstance(a, dict) else {}
+
+    def set_inara_account(self, commander, key=None, remove=False):
+        """Add, change or remove one in-game commander's Inara API key. An empty key keeps the one stored. (answer,
+        status)."""
+        commander = str(commander or "").strip()
+        if not commander or len(commander) > 64:
+            return {"error": "commander: the in-game commander's name"}, 400
+        accounts = self.inara_accounts()
+        if remove:
+            accounts.pop(commander, None)
+        else:
+            key = str(key or "").strip() or (accounts.get(commander) or {}).get("key")
+            if not outrider.inara.key_ok(key):
+                return {"error": "api_key: the key from inara.cz -> Settings -> API key (letters and digits)"}, 400
+            accounts[commander] = {"key": key}
+        meta_set(self.db, "inara_accounts", accounts)
+        self.upload_status.pop("inara", None)   # a new key: try again
+        self.db.commit()
+        self.bump()
+        return {"ok": True, "accounts": self.inara_account_list()}, 200
+
+    def inara_account_list(self):
+        """For the page: [{commander, set, hint}], the commander in the journals first if missing. Never the key: hint is
+        its first and last four characters and its length (the page may be open to the network without a password)."""
+        accounts = self.inara_accounts()
+        hint = lambda k: f"{k[:4]}…{k[-4:]} ({len(k)} characters)" if k and len(k) >= 16 else None
+        out = [{"commander": c, "set": bool(a.get("key")), "hint": hint(a.get("key"))} for c, a in sorted(accounts.items())]
+        cur = (self.journals.commander or {}).get("name")
+        if cur and cur not in accounts:
+            out.insert(0, {"commander": cur, "set": False, "hint": None})
+        return out
+
     def catch_up_uploads(self):
         """At start: each service that is on queues what was played while Outrider was not running (from its mark to
         where the start-up scan got to, at most a week back); one with no mark yet starts where the reader is."""
@@ -10164,11 +10258,15 @@ class State:
     def uploads_line(self):
         """The start-up line: each upload on or off, and EDDN's test schemas when the developer's OUTRIDER_EDDN_TEST
         is set (said even while EDDN is off, so a test run is never mistaken for a live one)."""
-        parts = [f"{s.upper()} {'on' if self.upload_wanted(s) else 'off'}" for s in outrider.uploads.SERVICES]
+        parts = [f"{outrider.uploads.NAMES[s]} {'on' if self.upload_wanted(s) else 'off'}" for s in outrider.uploads.SERVICES]
         if outrider.uploads.eddn_test_mode():
             parts[0] += f" (TEST: EDDN's test schemas only, {outrider.uploads.TEST_ENV} is set)"
         if outrider.edsm.dry_run():
             parts[1] += f" (DRY RUN: built and logged, nothing sent, {outrider.edsm.DRY_ENV} is set)"
+        if outrider.inara.dry_run():
+            parts[2] += f" (DRY RUN: built and logged, nothing sent, {outrider.inara.DRY_ENV} is set)"
+        elif outrider.inara.dev_mode():
+            parts[2] += f" (development mode: {outrider.inara.DEV_ENV} is set)"
         return "uploads: " + ", ".join(parts) + ("" if self.simulate else " (switched in Settings -> Uploads)")
 
     def start_uploads(self):
@@ -10181,9 +10279,10 @@ class State:
             self.edsm_discard_task = asyncio.get_running_loop().create_task(self.watch_edsm_discard())
         for service, send in self.upload_senders.items():
             if service not in self.upload_tasks:
+                batch = {"eddn": 1, "inara": outrider.inara.BATCH}.get(service, outrider.edsm.BATCH)   # EDDN: one per request
                 self.upload_tasks[service] = asyncio.get_running_loop().create_task(outrider.uploads.upload_loop(
-                    service, self.db, send, self.upload_on, report=self.upload_report,
-                    batch=1 if service == "eddn" else outrider.edsm.BATCH))   # EDDN takes one message per request
+                    service, self.db, send, self.upload_on, report=self.upload_report, batch=batch,
+                    min_gap=outrider.inara.MIN_GAP_S if service == "inara" else 0))
 
     def set_autohonk(self, enabled):
         """Switch auto honk on or off (the page's toggle; remembered over restarts)."""
@@ -13685,10 +13784,11 @@ def make_app(state, hosts=None):
         return web.json_response(state.autohonk_info())
 
     async def uploads_view(request):
-        """POST /api/uploads {service: "eddn" | "edsm", on: bool}: the page's switch for one uploader."""
+        """POST /api/uploads {service: "eddn" | "edsm" | "inara", on: bool}: the page's switch for one uploader."""
         body = await json_object(request)
         if body is None or body.get("service") not in outrider.uploads.SERVICES or not isinstance(body.get("on"), bool):
-            return web.json_response({"error": "expected {service: \"eddn\" or \"edsm\", on: true or false}"}, status=400)
+            return web.json_response({"error": "expected {service: \"eddn\", \"edsm\" or \"inara\", on: true or false}"},
+                                     status=400)
         if body["on"]:
             why = state.check_upload_start(body["service"], body.get("confirm") is True)
             if why:
@@ -13696,6 +13796,15 @@ def make_app(state, hosts=None):
         note = state.set_upload(body["service"], body["on"])
         state.refresh_leases()   # the lease says so at once
         return web.json_response(dict(state.uploads_summary(), **({"note": note} if note else {})))
+
+    async def inara_account_view(request):
+        """POST /api/uploads/inara {commander, api_key?, remove?}: an in-game commander's Inara API key (it stays here;
+        nothing answers with it)."""
+        body = await json_object(request)
+        if body is None:
+            return web.json_response({"error": "expected a JSON object"}, status=400)
+        out, status = state.set_inara_account(body.get("commander"), body.get("api_key"), remove=body.get("remove") is True)
+        return web.json_response(out, status=status)
 
     async def edsm_account_view(request):
         """POST /api/uploads/edsm {commander, name?, api_key?, remove?}: an in-game commander's EDSM account (the key
@@ -13913,6 +14022,7 @@ def make_app(state, hosts=None):
     app.router.add_post("/api/autohonk", pc_only(autohonk_view))
     app.router.add_post("/api/uploads", uploads_view)
     app.router.add_post("/api/uploads/edsm", edsm_account_view)
+    app.router.add_post("/api/uploads/inara", inara_account_view)
     app.router.add_post("/api/autohonk/test", pc_only(autohonk_test_view))
     app.router.add_post("/api/autohonk/forget", pc_only(autohonk_forget_view))
     app.router.add_get("/api/firsts", firsts_view)
@@ -14318,6 +14428,7 @@ async def run(args, st):
     state.overlay_cfg = dict(st["overlay"])
     state.upload_cfg = json.loads(json.dumps(st["uploads"]))   # [eddn]/[edsm] enabled, as Settings -> Uploads wrote them
     state.edsm_dry_path = os.path.join(outrider.DATA_DIR, "edsm-dryrun.jsonl")   # OUTRIDER_EDSM_DRYRUN's log
+    state.inara_dry_path = os.path.join(outrider.DATA_DIR, "inara-dryrun.jsonl")   # OUTRIDER_INARA_DRYRUN's log
     saved = meta_get(db, "autotarget")   # the Highway tab's toggle and delay beat the config file once used
     if isinstance(saved, dict):
         if isinstance(saved.get("enabled"), bool):
