@@ -1475,6 +1475,11 @@ CREATE TABLE IF NOT EXISTS sale_estimates (ts TEXT, kind TEXT, estimate INTEGER,
 -- the game writes them as identical lines, all in the same moment). Journal-derived.
 CREATE TABLE IF NOT EXISTS phenomena (
     system INTEGER, kind TEXT, ts TEXT, reached_ts TEXT, n INTEGER, PRIMARY KEY (system, kind));
+-- Each drop at a phenomenon (SupercruiseDestinationDrop): the site it was, told apart by the body the live Status.json
+-- named as you dropped (the journal says only "a ring phenomenon", not which of three), else the drop's own time
+-- (counts each drop: an old journal read again, a cloud far from any body). Visited = the distinct sites, at most n.
+-- Live-only (the bodies cannot be read back): a journal re-read adds only the drops it does not have.
+CREATE TABLE IF NOT EXISTS phenomena_sites (system INTEGER, kind TEXT, ts TEXT, site TEXT, PRIMARY KEY (system, kind, ts));
 -- The firsts watch: what Spansh showed of a system holding your unsold first discoveries when last checked (see
 -- firsts_reported). reported_ts is the earliest report by someone else of a body you discovered (the first sighting);
 -- bodies how many of yours Spansh has from others, spansh_bodies of body_count the bodies it has in all. Live only
@@ -3536,6 +3541,10 @@ class Journals:
             system = self.pos["id64"]
             self.db.execute("INSERT INTO phenomena (system, kind, ts, reached_ts, n) VALUES (?, ?, ?, ?, 1) ON CONFLICT(system, kind) "
                             "DO UPDATE SET reached_ts = coalesce(reached_ts, excluded.reached_ts)", (system, kind, ts, ts))
+            # which site: the body Status.json names as you drop (live), else this drop on its own
+            st = self.status_json or {}
+            near = st.get("body") if st.get("live") and live_event(ts) else None
+            self.db.execute("INSERT OR IGNORE INTO phenomena_sites VALUES (?, ?, ?, ?)", (system, kind, ts, f"body:{near}" if near else f"drop:{ts}"))
         else:
             return
         self.dirty.add(system)
@@ -8329,7 +8338,7 @@ class State:
         spansh_recs = (base or {}).get("records") or []
         partial = bool(spansh_recs) and not any(x.get("full") for x in spansh_recs) \
             and self.dump_tries.get(id64, 0) < DUMP_MAX_TRIES and not (base or {}).get("no_dump")
-        phenomena = [dict(r) for r in self.db.execute("SELECT kind, ts, reached_ts, coalesce(n, 1) AS n FROM phenomena WHERE system=?", (id64,))]
+        phenomena = [dict(r) for r in self.db.execute("SELECT kind, ts, reached_ts, coalesce(n, 1) AS n, max((SELECT count(DISTINCT site) FROM phenomena_sites ps WHERE ps.system = phenomena.system AND ps.kind = phenomena.kind), reached_ts IS NOT NULL) AS visited FROM phenomena WHERE system=?", (id64,))]
         leaving = self.leaving_summary(id64)
         if leaving is not None:   # the checklist's "N not on Spansh" (leaving_summary itself runs on every poll)
             leaving["base_known"] = base_known(base, source)
@@ -9345,7 +9354,7 @@ class State:
                      (id64,)).fetchone()[0])
         s.update(self.system_value(id64, base["name"], records, star, ctx))
         s["no_dump"] = bool(base.get("no_dump"))   # Spansh has no body details: the popup stops saying "loading"
-        s["phenomena"] = [dict(r) for r in self.db.execute("SELECT kind, reached_ts, coalesce(n, 1) AS n FROM phenomena WHERE system=?", (id64,))]
+        s["phenomena"] = [dict(r) for r in self.db.execute("SELECT kind, reached_ts, coalesce(n, 1) AS n, max((SELECT count(DISTINCT site) FROM phenomena_sites ps WHERE ps.system = phenomena.system AND ps.kind = phenomena.kind), reached_ts IS NOT NULL) AS visited FROM phenomena WHERE system=?", (id64,))]
         s["rare_stars"] = rare_stars(records, base["name"])   # from Spansh's records too: seen before you go
         raws = {short_name(base["name"], r_["name"]): json.loads(r_["raw"]) for r_ in self.db.execute(
             "SELECT name, raw FROM own_bodies WHERE system=? AND raw IS NOT NULL", (id64,))}

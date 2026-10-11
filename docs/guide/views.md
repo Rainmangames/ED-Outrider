@@ -121,7 +121,7 @@ follows your system's light mode. Each browser keeps its own choice, and the tab
 
 **Now** is the cockpit view for a second monitor or a tablet, in big text: the system, the target, fuel,
 what to do next, the body you have targeted, any rare star here ("⭐ A black hole (main star)"), the notable stellar phenomena here ("🌀 Three notable stellar phenomena,
-all in rings · none visited yet") and the nearest unvisited system. The target says how much of it is
+all in rings · 1 of 3 visited": each drop is told apart by the body you were next to) and the nearest unvisited system. The target says how much of it is
 known ("3/12 known", Spansh's bodies of its count) and what EDSM has ("EDSM 5/12", or "not logged"): two databases
 with different reporters.
 

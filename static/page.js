@@ -196,15 +196,19 @@ const oldDataTag = o => { if (!o || !o.bodies) return "";
 // 🌀 notable stellar phenomena your FSS found in a system (life clouds, rings), with how many; dimmed once you have been
 // to every kind
 const phenomenaCount = list => (list || []).reduce((a, p) => a + (p.n || 1), 0);
+// how many sites you have dropped at (each told apart by the body you were next to: State's phenomena_sites), at most n
+const phenomenaVisited = list => (list || []).reduce((a, p) => a + Math.min(p.n || 1, p.visited ?? (p.reached_ts ? 1 : 0)), 0);
+const phenomenaLeftText = list => { const n = phenomenaCount(list), v = phenomenaVisited(list);
+  return !v ? "none visited yet" : v >= n ? "all visited" : `${v} of ${n} visited`; };
 // ⭐ rare stars in a system (a black hole, a Wolf-Rayet...: from Spansh's records too, before you go), what on hover
 const rareStarText = list => (list || []).map(r => r.main || !r.body ? `${r.what} (main star)` : `${r.what} at ${r.body}`).join(", ");
 const rareStarTag = list => !list || !list.length ? "" :
   `<span class="nb rarestar" title="rare: ${esc(rareStarText(list))}">⭐${list.length > 1 ? " " + list.length : ""}</span>`;
 function phenomenaTag(list) {
   if (!list || !list.length) return "";
-  const left = list.filter(p => !p.reached_ts), n = phenomenaCount(list);
-  return `<span class="nb nsp${left.length ? "" : " done"}" title="${esc(phenomenaWhat(Object.fromEntries(list.map(p => [p.kind, p.n || 1]))))}` +
-    `${list.some(p => p.reached_ts) ? " (reached: " + list.filter(p => p.reached_ts).map(p => p.kind).join(", ") + ")" : ""}">🌀 ${n}</span>`;
+  const n = phenomenaCount(list), done = phenomenaVisited(list) >= n;
+  return `<span class="nb nsp${done ? " done" : ""}" title="${esc(phenomenaWhat(Object.fromEntries(list.map(p => [p.kind, p.n || 1]))))}` +
+    ` · ${phenomenaLeftText(list)}">🌀 ${n}</span>`;
 }
 // Journal ship ids -> the names the game shows.
 const SHIP_NAMES = {sidewinder: "Sidewinder", eagle: "Eagle", hauler: "Hauler", adder: "Adder", empire_eagle: "Imperial Eagle",
@@ -846,9 +850,9 @@ function renderNow() {
     const nsp = hd && hd.phenomena && hd.phenomena.length ? hd.phenomena : null;
     if (nsp) {
       const what = phenomenaWhat(Object.fromEntries(nsp.map(p => [p.kind, p.n || 1])));
-      const left = nsp.filter(p => !p.reached_ts);
-      lines.push(`<div class="now-line now-nsp"><span class="${left.length ? "warnc" : "ok"}">🌀 ${esc(what[0].toUpperCase() + what.slice(1))}</span>` +
-        ` <span class="unk">${left.length ? (left.length === nsp.length ? "none visited yet" : "some still to visit") : "visited"}</span></div>`);
+      const all = phenomenaVisited(nsp) >= phenomenaCount(nsp);
+      lines.push(`<div class="now-line now-nsp"><span class="${all ? "ok" : "warnc"}">🌀 ${esc(what[0].toUpperCase() + what.slice(1))}</span>` +
+        ` <span class="unk">${phenomenaLeftText(nsp)}</span></div>`);
     }
   }
   const hz = horizon(), sk = data.streak;

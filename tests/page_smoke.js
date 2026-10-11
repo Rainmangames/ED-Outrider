@@ -4250,6 +4250,10 @@ const settle = async maxMs => {
                   phenomena: [{kind: "ring", n: 3, reached_ts: null}]};
       renderNow();
       o.now = /🌀 Three notable stellar phenomena, all in rings none visited yet/.test(document.getElementById("nowView").textContent.replace(/\\s+/g, " "));
+      hereData.phenomena = [{kind: "ring", n: 3, reached_ts: "x", visited: 1}]; renderNow();
+      o.nowOne = /1 of 3 visited/.test(document.getElementById("nowView").textContent);
+      const t3 = document.createElement("div"); t3.innerHTML = phenomenaTag([{kind: "ring", n: 3, reached_ts: "x", visited: 3}]);
+      o.allDone = t3.firstChild.classList.contains("done") && /all visited/.test(t3.firstChild.title);
       hereData = hd; Object.assign(data, saved); renderNow();
       const ao = window.alertOut; let said = null;
       window.alertOut = (kind, title, body, opt) => { said = [kind, title, typeof opt.say === "function" ? opt.say() : opt.say]; };
@@ -4265,7 +4269,7 @@ const settle = async maxMs => {
       const rows = ["phenomena", "rare_star"].every(k => document.querySelector('#alertOpts [data-aspeak="' + k + '"]') && document.querySelector('#alertOpts [data-alert="' + k + '"]'));
       return JSON.stringify([s.textContent, s.title, head.length === 1 && /^Discoveries/.test(head[0]), rows]); })()`));
     const want = {what: ["three notable stellar phenomena, all in rings", "a notable stellar phenomenon, in a cloud",
-                         "three notable stellar phenomena: two in rings and one in a cloud", ""], tag: "🌀 3", now: true, said: true,
+                         "three notable stellar phenomena: two in rings and one in a cloud", ""], tag: "🌀 3", now: true, nowOne: true, allDone: true, said: true,
                   rare: ["⭐ 2", "rare: a black hole (main star), a Wolf-Rayet star at B", true, true]};
     const ok = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && ok;

@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Notable stellar phenomena: which ones you have visited
+- The journal says only "a ring phenomenon" when you drop at one, not which of the system's three. Each drop is kept
+  with the body the live Status.json names as you drop (`phenomena_sites`, live-only), so the sites are told apart:
+  Now says "1 of 3 visited" (then "all visited"), the 🌀's hover the same, and it dims only once every one is visited.
+  A drop with no body named (an old journal read again, a cloud far from any body) counts on its own. Asked by the
+  author, 2026-10-11.
+
 ## 2026-10-11 · Rare stars, announced and marked
 - A new alert, "Rare star": a black hole, Wolf-Rayet, carbon, MS/S-type, O-type or Herbig Ae/Be star, a supergiant, a
   rarer white dwarf (pulsating DAV/DBV..., DO, DX...) or an exotic type, resolved live by the arrival's own scan or the
