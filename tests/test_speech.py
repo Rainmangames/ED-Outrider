@@ -131,7 +131,9 @@ class Speech(unittest.TestCase):
         self.assertEqual(d(live(gui_focus=9), t), ("wait", "the FSS is open"))
         self.assertEqual(d(live(flags=1 << 30), t), ("wait", "still in the jump"))
         self.assertEqual(d(live(gui_focus=6), t + 120), ("press", None))   # stale reading: behave as before
-        self.assertEqual(d(dict(live(gui_focus=6), live=False), t), ("press", None))
+        # quit to the menu or the desktop (or closed) during the wait: never a key into another window (review 2026-10-11)
+        self.assertEqual(d(dict(live(gui_focus=6), live=False), t), ("wait", "the game is not live"))
+        self.assertEqual(d({"live": False, "ts": ts}, t + 120), ("wait", "the game is not live"))
         self.assertEqual(d(None, t), ("press", None))
 
     def test_autohonk_waits_for_cockpit(self):
@@ -161,6 +163,49 @@ class Speech(unittest.TestCase):
         waiting = asyncio.run(go())
         self.assertEqual(waiting, ([], "waiting: the galaxy map is open"))
         self.assertEqual(len(presses), 1)
+
+    def test_autohonk_waits_while_the_game_is_at_its_menu_and_a_failed_press_resets_the_status(self):
+        """Quit to the menu during the cockpit wait: nothing pressed (the key would reach another window); a press that
+        raises leaves Settings saying ready, not "waiting: ..." (review 2026-10-11)."""
+        import asyncio, datetime as _dt
+        now = lambda: _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        presses = []
+
+        class FakeHonker:
+            ready, available, status, fail = True, True, "ready", False
+
+            def press(self, check=None, cancel=None):
+                if check and check():
+                    raise outrider.honk.NotNow()
+                presses.append(time.time())
+                if self.fail:
+                    raise OSError("uinput gone")
+                return True
+        self.state.honker = FakeHonker()
+        self.state.autohonk = dict(ed_outrider.AUTOHONK, enabled=True, delay=0)
+        self.state.honk_confirm = 0.2
+        self.j.status_json = {"live": True, "ts": now(), "flags": 1 << 4 | 1 << 27, "gui_focus": 6}   # galaxy map open
+        self.j.handle({"event": "FSDJump", "timestamp": now(), "StarSystem": "S41", "SystemAddress": 41, "StarPos": [1, 0, 0]})
+
+        async def go():
+            self.state.maybe_honk()
+            await asyncio.sleep(0.5)
+            self.j.status_json = {"live": False, "ts": now()}             # quit to the main menu
+            await asyncio.sleep(0.8)
+            return list(presses), self.state.honker.status
+        self.assertEqual(asyncio.run(go()), ([], "waiting: the game is not live"))
+        # a press that raises: the moment says why, and the status is ready again
+        self.state.honker.fail, self.state.honker.status = True, "ready"   # (the first run was cancelled mid-wait)
+        self.j.status_json = {"live": True, "ts": now(), "flags": 1 << 4 | 1 << 27, "gui_focus": 6}
+        self.j.handle({"event": "FSDJump", "timestamp": now(), "StarSystem": "S42", "SystemAddress": 42, "StarPos": [2, 0, 0]})
+
+        async def again():
+            self.state.maybe_honk()
+            await asyncio.sleep(0.5)
+            self.j.status_json = dict(self.j.status_json, gui_focus=0)   # map closed: the press goes and fails
+            await asyncio.sleep(0.8)
+        asyncio.run(again())
+        self.assertEqual((len(presses), self.state.honker.status), (1, "ready"))
 
     def test_arrival_without_target(self):
         self.jump("2026-01-01T00:01:00Z", 2, 30)
@@ -1397,6 +1442,27 @@ class VoiceCatalogue(unittest.TestCase):
         self.assertEqual((status, d["current"], [v["name"] for v in d["voices"] if v["installed"]]), (200, "en_GB-cori-medium", ["en_GB-cori-medium"]))
         self.assertEqual((out[2][0], out[2][1]["code"]), (502, "catalogue_unavailable"))
         self.assertEqual(out[3][0], 503)   # no Piper: nothing to download for
+
+    def test_catalogue_cut_off_is_an_os_error(self):
+        """A connection cut mid-body raises http.client.IncompleteRead, which is no OSError: the server answered a bare
+        500 instead of its 502 catalogue_unavailable (review 2026-10-11)."""
+        import http.client
+        import tempfile
+        import outrider.tts
+
+        class Cut:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def read(self):
+                raise http.client.IncompleteRead(b"{")
+        with tempfile.TemporaryDirectory() as d, \
+                unittest.mock.patch.object(outrider.tts.urllib.request, "urlopen", lambda *a, **k: Cut()):
+            with self.assertRaises(OSError):
+                outrider.tts.fetch_catalogue(force=True, cache=os.path.join(d, "voices.json"))
 
     def test_fetch_catalogue_shared(self):
         """The voice lab and the server read the same cached catalogue (tts.fetch_catalogue), refetched after a week."""

@@ -89,8 +89,9 @@ def client_key(remote, headers):
         fwd = (headers.get("X-Forwarded-For") or "").split(",")[-1].strip() or (headers.get("X-Real-IP") or "").strip()
         if fwd:
             return fwd
-        if headers.get("Forwarded"):
-            return "forwarded"
+        if headers.get("Forwarded"):   # RFC 7239: the last for= (the hop the proxy added), else one shared bucket
+            hops = re.findall(r'for="?\[?([^;,\]"\s]+)', headers["Forwarded"], re.IGNORECASE)
+            return hops[-1] if hops else "forwarded"
     return str(remote)
 
 
@@ -135,8 +136,12 @@ class RateLimit:
         return max(1, int(self.window - (self.clock() - recent[0])) + 1)
 
     def failed(self, who):
+        now = self.clock()
+        # every address whose last failure is out of the window goes: one that never tries again is not kept for the
+        # life of an always-on Outrider
+        self.failures = {k: v for k, v in self.failures.items() if v and now - v[-1] < self.window}
         self._recent(who)
-        self.failures.setdefault(who, []).append(self.clock())
+        self.failures.setdefault(who, []).append(now)
 
     def clear(self, who):
         self.failures.pop(who, None)

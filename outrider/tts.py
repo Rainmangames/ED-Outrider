@@ -18,6 +18,7 @@ one or turns it off). LinePlayer does the playing and render_sound turns static/
 import asyncio
 import glob
 import hashlib
+import http.client
 import io
 import json
 import math
@@ -176,8 +177,11 @@ def fetch_catalogue(force=False, cache=None):
                 return doc
         except (OSError, ValueError):   # a cut-short copy: fetch it again rather than trust it for a week
             pass
-    with urllib.request.urlopen(CATALOGUE_URL, timeout=30) as r:
-        data = r.read()
+    try:
+        with urllib.request.urlopen(CATALOGUE_URL, timeout=30) as r:
+            data = r.read()
+    except http.client.HTTPException as e:   # cut off mid-answer (IncompleteRead) is no OSError: said as one
+        raise OSError(f"{type(e).__name__}: {e}") from e
     doc = json.loads(data)
     os.makedirs(os.path.dirname(cache), exist_ok=True)
     # a temp file moved into place: an interrupted write never leaves a truncated catalogue behind

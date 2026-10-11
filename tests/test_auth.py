@@ -181,6 +181,23 @@ class Auth(Base):
         self.assertEqual(A.client_key("127.0.0.1", {"X-Forwarded-For": "10.0.0.9, 192.168.1.50"}), "192.168.1.50")
         self.assertEqual(A.client_key("127.0.0.1", {"X-Real-IP": "192.168.1.51"}), "192.168.1.51")
         self.assertEqual(A.client_key("192.168.1.7", {"X-Forwarded-For": "1.2.3.4"}), "192.168.1.7")   # not trusted
+        # a proxy that sends only RFC 7239's Forwarded: each device its own count (review 2026-10-11)
+        self.assertEqual(A.client_key("127.0.0.1", {"Forwarded": "for=192.168.1.50;proto=https"}), "192.168.1.50")
+        self.assertEqual(A.client_key("127.0.0.1", {"Forwarded": 'for=10.0.0.1, for="[2001:db8::7]:4711"'}), "2001:db8::7")
+        self.assertEqual(A.client_key("127.0.0.1", {"Forwarded": "proto=https"}), "forwarded")
+
+    def test_rate_limit_forgets_quiet_addresses(self):
+        """Review 2026-10-11: an address that never tries again was kept for the life of the process."""
+        now = [0.0]
+        rl = outrider.auth.RateLimit(tries=3, window=60, clock=lambda: now[0])
+        for i in range(50):
+            rl.failed(f"10.0.0.{i}")
+        now[0] = 61
+        rl.failed("10.0.0.200")
+        self.assertEqual(list(rl.failures), ["10.0.0.200"])
+        for _ in range(3):
+            rl.failed("10.0.0.200")
+        self.assertGreater(rl.wait("10.0.0.200"), 0)   # still limited within its window
 
     def test_odd_tokens_are_refused_as_json(self):
         """Review 2026-10-08 #11: a token whose signature held non-ASCII characters crashed the guard (hmac compares

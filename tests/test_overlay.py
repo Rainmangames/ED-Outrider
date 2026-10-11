@@ -758,6 +758,14 @@ class Server(unittest.TestCase):
         self.state.surface_summary = lambda now=None: None
         self.assertEqual(self.state.overlay_panels(now=1), [])
 
+    def test_loopback_for_the_window(self):
+        """The window always asks http://127.0.0.1:<port>: with [server] host one LAN address Outrider listens on
+        loopback too, or the window draws nothing (review 2026-10-11)."""
+        self.assertTrue(ed_outrider.loopback_too("192.168.1.20"))
+        self.assertTrue(ed_outrider.loopback_too("mypc.lan"))
+        for h in ("127.0.0.1", "::1", "localhost", "0.0.0.0", "::", ""):
+            self.assertFalse(ed_outrider.loopback_too(h), h)
+
     def test_window_wanted(self):
         import outrider.overlay_runner as R
         self.assertFalse(self.state.overlay_wanted(now=100))

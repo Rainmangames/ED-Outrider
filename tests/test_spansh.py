@@ -77,6 +77,21 @@ class DumpRetries(unittest.TestCase):
         self.assertNotIn(7, self.state.failed_dumps)
         self.assertEqual(err.getvalue().count("RuntimeError"), 2)   # first failure and giving up, not every retry
 
+    def test_failed_lookups_name_spansh(self):
+        """The page labels a status by its words: "Spansh failed" when it names Spansh, else "server error". Failed
+        body-detail lookups are Spansh's (review 2026-10-11)."""
+        import asyncio, contextlib, io
+
+        async def boom(*a):
+            raise RuntimeError("dump endpoint down")
+        self.state.spansh.full_records = boom
+        self.state.bases[7] = ("spansh", {"records": [], "body_count": 1})
+        self.state.failed_dumps = {7}
+        self.state.schedule_retry = lambda: 60
+        with contextlib.redirect_stderr(io.StringIO()):
+            asyncio.run(self.state.retry_dumps(None))
+        self.assertIn("Spansh body lookups failed", self.state.status)
+
     def test_partial_while_details_pending(self):
         self.db.execute("INSERT INTO visits VALUES (7, 'Sys', 0, 0, 0, 't', 't', 1)")
         search_level = {"name": "Sys 1", "type": "Planet", "subtype": "Icy body", "full": False, "value": 1000,

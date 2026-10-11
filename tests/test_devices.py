@@ -171,9 +171,9 @@ class BatchGHonkBackups(unittest.TestCase):
         self.assertEqual(d(self.live(fire_group=1), t, groups), ("press", None))   # unknown group: still pressed
         self.assertEqual(d(self.live(fire_group=0), t, groups), ("press", None))
         self.assertEqual(d(self.live(fire_group=2), t), ("press", None))            # nothing learned for this ship
-        # a stale reading presses, whatever it says
+        # a stale reading presses, whatever it says; one saying the game is not live waits (review 2026-10-11)
         self.assertEqual(d(self.live(fire_group=2, flags=1 << 4), t + 120, groups), ("press", None))
-        self.assertEqual(d(dict(self.live(fire_group=2), live=False), t, groups), ("press", None))
+        self.assertEqual(d(dict(self.live(fire_group=2), live=False), t, groups), ("wait", "the game is not live"))
 
     def test_honk_learn(self):
         learn = ed_outrider.honk_learn

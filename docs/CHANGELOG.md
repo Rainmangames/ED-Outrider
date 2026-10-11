@@ -2,6 +2,17 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Review fixes: auto honk and the server
+- Auto honk no longer presses Primary Fire when Status.json says the game is at its menu or closed: quitting during
+  its wait for the cockpit (galaxy map open after arriving, say) sent the key into whatever window had focus. It waits,
+  then gives up as the other waits do. A press that fails puts its status back to ready (it stayed "waiting: ...").
+- Sign-in: a proxy that sends only RFC 7239 `Forwarded` gets each device its own count of wrong passwords (all shared
+  one before); addresses that stopped trying are forgotten, not kept for the life of the process.
+- Failed body-detail lookups say "Spansh body lookups failed", so the Data tile names Spansh, not "server error".
+- More voices: a catalogue download cut off mid-way answers the page's "cannot be fetched" (502), not a bare 500.
+- With `[server] host` set to one LAN address, Outrider also listens on 127.0.0.1 for the overlay window, which
+  always talks to loopback: it drew nothing.
+
 ## 2026-10-11 · Review fixes: the overlay
 - The overlay's figures are written as the page writes them: 999,999 was "1000k" (the page: "1.0M"), 999.95M
   "1000.0M", 1.25B "1.2B" (`overlay.credits` follows page.js `credits`).

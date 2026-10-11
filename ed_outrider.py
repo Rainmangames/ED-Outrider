@@ -528,9 +528,12 @@ def honk_decision(status, now, groups=None):
     running, something other than the cockpit has focus (the galaxy map straight after arriving, say), since
     Primary Fire does nothing there, or the HUD is in combat mode (Primary Fire would fire the weapons). With
     this ship's learned fire groups (honk_learn: {"good": [...], "bad": [...]}) it also waits while a group
-    where honks missed before is selected; an unknown group still gets the press. Without a live, recent
-    Status.json it presses, as before."""
+    where honks missed before is selected; an unknown group still gets the press. A reading that says the game is not
+    live (its menu, or closed) waits: the key would go to whatever window has focus. Without a recent reading at all
+    it presses, as before."""
     st = status or {}
+    if st and st.get("live") is False:
+        return "wait", "the game is not live"
     if not status_fresh(st, now):
         return "press", None
     flags = st.get("flags")
@@ -9438,9 +9441,9 @@ class State:
             self.safe_row(id64)
             self.bump()
         if failed and self.failed_dumps:
-            self.status = f"ok ({failed} body lookups failed again, retrying in {self.schedule_retry()}s)"
+            self.status = f"ok ({failed} Spansh body lookups failed again, retrying in {self.schedule_retry()}s)"
         elif failed:   # every failure has used up its tries: stop retrying, but say so
-            self.status = f"ok ({failed} body lookups failed; giving up on them until you move)"
+            self.status = f"ok ({failed} Spansh body lookups failed; giving up on them until you move)"
         else:
             self.retry_backoff = 30
             self.status = "ok"
@@ -9570,9 +9573,9 @@ class State:
         await asyncio.gather(*(one(*t) for t in need_dump))
         if need_dump:
             if failed and self.failed_dumps:
-                self.status = f"ok ({failed} body lookups failed, retrying in {self.schedule_retry()}s)"
+                self.status = f"ok ({failed} Spansh body lookups failed, retrying in {self.schedule_retry()}s)"
             elif failed:
-                self.status = f"ok ({failed} body lookups failed; giving up on them until you move)"
+                self.status = f"ok ({failed} Spansh body lookups failed; giving up on them until you move)"
             else:
                 self.retry_backoff = 30
                 self.status = "ok"
@@ -10306,10 +10309,14 @@ class State:
             except ValueError as e:   # nothing to press: Primary Fire has no keyboard binding, say
                 if switched_off():
                     return
+                if shown:   # not left saying "waiting: ..." in Settings
+                    self.honker.status = ready_status
                 self.journals.moment("honk", a["ts"], ok=False, system=a["name"], why=str(e))
                 self.bump()
                 return
             except Exception as e:  # noqa: BLE001 -- say so on the page rather than die quietly
+                if shown:
+                    self.honker.status = ready_status
                 self.journals.moment("honk", a["ts"], ok=False, system=a["name"], why=f"{type(e).__name__}: {e}")
                 self.bump()
                 return
@@ -12857,6 +12864,12 @@ def own_addresses():
     return {n for n in names if n and "%" not in n}   # a link-local address with a scope never appears in Host
 
 
+def loopback_too(host):
+    """Whether Outrider listens on 127.0.0.1 as well as `host`: the overlay window talks to this PC's loopback (where no
+    sign-in is asked), and a [server] host set to one LAN address does not listen there."""
+    return host not in WILDCARD_HOSTS and host != "localhost" and not outrider.auth.is_loopback(host)
+
+
 def allowed_hosts(host, port, extra=(), own=own_addresses):
     """The Host header values the server answers (DNS rebinding: a page on attacker.example that re-resolves
     to 127.0.0.1 would otherwise read everything): loopback names and the configured host, each with the
@@ -14333,6 +14346,11 @@ async def run(args, st):
         await spansh.close()
         await state.upload_session.close()
         raise SystemExit(1)
+    if state.overlay_runner and loopback_too(args.host):
+        try:
+            await web.TCPSite(runner, "127.0.0.1", args.port).start()
+        except OSError as e:
+            print(f"cannot listen on 127.0.0.1:{args.port} for the in-game overlay window: {e.strerror or e}", file=sys.stderr)
     # a wildcard address is not a place a browser can go (and not a name the Host check answers): loopback is
     shown = "127.0.0.1" if args.host in WILDCARD_HOSTS else _host_name(args.host)
     print(f"serving on http://{shown}:{args.port}/  (Ctrl-C to stop)")
