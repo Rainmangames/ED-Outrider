@@ -1225,7 +1225,8 @@ WANTED = tuple(f'"event":"{e}"'.encode()
 #     were dropped; the SRV's refinery and scoop stay out of the ship's hold; an older Location's relog is judged
 #     against the arrival before it (a legacy folder read late counted every login as a visit).
 # 43: a system's population (system_population) and own_firsts.bio_x5: no x5 bio bonus in populated systems.
-PARSER_VERSION = 48
+PARSER_VERSION = 49
+# 49: named listening posts ("Listening Post Pollux D568") are kept, and two indexed ones in a system are two rows
 # 48: FSS signals worth a detour are kept (poi: Titans, Guardian beacons, generation ships, listening posts...)
 # 47: body signals keep Guardian, Thargoid, planetary anomaly and other counts (own_signals.sites)
 # 46: each drop at a notable stellar phenomenon is kept (phenomena_sites): "1 of 3 visited"
@@ -3573,8 +3574,9 @@ class Journals:
         system = ev.get("SystemAddress")
         if not kind or system is None:
             return
+        known = self.db.execute("SELECT 1 FROM poi WHERE system=? AND kind=? LIMIT 1", (system, kind)).fetchone()
         cur = self.db.execute("INSERT OR IGNORE INTO poi VALUES (?, ?, ?, ?)", (system, kind, name, ts))
-        if cur.rowcount and kind in POI_SPOKEN and live_event(ts):
+        if cur.rowcount and not known and kind in POI_SPOKEN and live_event(ts):   # a second listening post is no news
             self.moment("signal_poi", ts, system=str(system), poi=kind, name=name, what=poi_words(kind, name))
 
     def phenomenon_found(self, system, kind, ts):
@@ -4092,6 +4094,8 @@ class Journals:
                 sites = {k: signals[t] for k, t in SITE_SIGNALS.items() if signals.get(t)}
                 had = self.db.execute("SELECT sites FROM own_signals WHERE system=? AND name=?", (system, body)).fetchone()
                 had = json.loads(had["sites"]) if had and had["sites"] else {}
+                if name == "FSSBodySignals":   # the FSS sees only the anomaly: the DSS's Guardian/Thargoid sites stay
+                    sites = {**had, **sites}
                 self.db.execute("INSERT OR REPLACE INTO own_signals (system, name, bio, geo, ts, mining, sites) "
                                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
                                 (system, body, signals.get(BIO, 0), signals.get(GEO, 0), ts, signals.get(MINING, 0),
@@ -4718,7 +4722,7 @@ def surface_sites(records, system_name=None):
 
 
 # FSS signals worth a detour (FSSSignalDiscovered; the reader lets these through by POI_BYTES): kind, matched how
-POI_BYTES = (b'"SignalType":"Titan"', b'"SignalType":"TouristBeacon"', b"$ListeningPost", b"$NumberStation",
+POI_BYTES = (b'"SignalType":"Titan"', b'"SignalType":"TouristBeacon"', b"$ListeningPost", b"Listening Post", b"$NumberStation",
              b"Generation Ship", b"Guardian Beacon", b"Memorial")
 POI_SPOKEN = ("titan", "guardian_beacon", "generation_ship", "listening_post")   # the rest are shown, not said
 
@@ -4732,10 +4736,13 @@ def poi_kind(ev):
         return "generation_ship", label
     if "Guardian Beacon" in label:
         return "guardian_beacon", label
-    if code.startswith("$ListeningPost"):
-        return "listening_post", label
+    # two in one system are both "Listening Post" in the game's words: the index keeps them apart
+    index = re.search(r"#index=(\d+);", code) if code.startswith("$") else None
+    numbered = f"{label} #{index.group(1)}" if index else label
+    if code.startswith("$ListeningPost") or "Listening Post" in label:   # some are named: "Listening Post Pollux D568"
+        return "listening_post", numbered
     if code.startswith("$NumberStation"):
-        return "number_station", label
+        return "number_station", numbered
     if kind == "TouristBeacon":
         return "tourist", label
     if kind == "Generic" and "Memorial" in label:
@@ -10393,6 +10400,7 @@ class State:
         key = (self.inara_accounts().get(cmdr or "") or {}).get("key")
         if not key:
             why = f"not sent: no Inara API key for CMDR {cmdr} (Settings -> Uploads)"
+            self.inara_sent.forget(cmdr)   # its snapshots never arrived: sent again once there is a key
             return [(r["id"], "dropped", why, None) for r in batch]
         body = outrider.inara.request(batch, key, outrider.__version__, developing=outrider.inara.dev_mode())
         if outrider.inara.dry_run():
@@ -10434,13 +10442,16 @@ class State:
         if not commander or len(commander) > 64:
             return {"error": "commander: the in-game commander's name"}, 400
         accounts = self.inara_accounts()
+        had = (accounts.get(commander) or {}).get("key")
         if remove:
             accounts.pop(commander, None)
         else:
-            key = str(key or "").strip() or (accounts.get(commander) or {}).get("key")
+            key = str(key or "").strip() or had
             if not outrider.inara.key_ok(key):
                 return {"error": "api_key: the key from inara.cz -> Settings -> API key (letters and digits)"}, 400
             accounts[commander] = {"key": key}
+        if remove or key != had:   # maybe another Inara profile: it has none of what the old one was sent
+            self.inara_sent.forget(commander)
         meta_set(self.db, "inara_accounts", accounts)
         self.upload_status.pop("inara", None)   # a new key: try again
         self.db.commit()
@@ -12294,15 +12305,16 @@ class State:
             return
         said = getattr(self, "_curious_said", None)
         if said is None:
-            said = self._curious_said = set(meta_get(self.db, "curious_said") or [])
+            # oldest first (a dict keeps the order said): the oldest are the ones dropped past CURIOUS_KEEP
+            said = self._curious_said = dict.fromkeys(meta_get(self.db, "curious_said") or [])
         if pos["id64"] in said:
             return
         detail = self.overlay_detail(pos["id64"])   # cached until your scans or the system's record change
         bodies = [b["name"] for b in (detail or {}).get("bodies") or [] if b.get("curiosities")]
         if not bodies:
             return
-        said.add(pos["id64"])
-        meta_set(self.db, "curious_said", sorted(said)[-CURIOUS_KEEP:])
+        said[pos["id64"]] = None
+        meta_set(self.db, "curious_said", list(said)[-CURIOUS_KEEP:])
         self.journals.moment("curious", iso_ts(time.time()), system=str(pos["id64"]), bodies=bodies[:6])
         self.bump()
 

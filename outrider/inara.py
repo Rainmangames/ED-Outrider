@@ -95,8 +95,9 @@ def track(session, ev):
             t["suppress_dock"] = True   # docked at login: the Docked the game may write next is not a new docking
     elif name == "Undocked":
         t["undocked"] = True
-    elif name == "SupercruiseEntry":
-        t["undocked"] = False
+        t["suppress_dock"] = False   # a login's or a swap's Docked the game did not write: none is coming now
+    elif name in ("SupercruiseEntry", "FSDJump", "CarrierJump"):
+        t["undocked"] = False   # left (a hyperspace jump can start from normal space, with no SupercruiseEntry)
     elif name == "Docked":
         # EDMC's rules: not the docking a login or a ship swap writes, nor docking again where you undocked without
         # leaving (a hop between pads), so the flight log is not filled with docks
@@ -141,6 +142,12 @@ class Sent:
         if self.save:
             self.save(self.data)
         return True
+
+    def forget(self, cmdr):
+        """Nothing of this commander's counts as sent (dropped unsent, or a new key: maybe another Inara account): the
+        next login sends every snapshot again."""
+        if self.data.pop(cmdr or "", None) is not None and self.save:
+            self.save(self.data)
 
     def snapshot(self):
         return json.loads(json.dumps(self.data))

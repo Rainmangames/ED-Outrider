@@ -2,6 +2,25 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Review fixes: today's code
+A Fable review of everything written since v2026.10.21 (d7be805..2cb1e60): six bugs confirmed, all fixed.
+- Inara: snapshots dropped because the commander had no API key yet were still recorded as sent, so ranks, reputation,
+  the ship and friends never reached the profile once the key was entered (until each changed). A drop for no key now
+  forgets that commander's record, and so does a new or removed key (maybe another Inara profile).
+- Inara: a dock after a hyperspace jump charged straight from normal space (no SupercruiseEntry, the usual way off a
+  carrier) was taken for docking again where you undocked and left out of the flight log; a login's dock suppression
+  also outlived the undocking when the game wrote no Docked. Both cleared by the jump and the undocking now.
+- Surface sites: a later FSS line for a body (it names only the anomaly) wiped the DSS's Guardian and Thargoid sites, and
+  mapping it again announced them again. The FSS now adds to what is known.
+- FSS signals: named listening posts ("Listening Post Pollux D568") never passed the reader's filter, and two indexed
+  ones in a system were one row ("Listening Post #1", "#2" now; said once per system and kind). PARSER_VERSION 49: the
+  next start re-reads the journals.
+- Curiosities: the systems already told (meta `curious_said`) were trimmed to the 2000 largest id64s, not the 2000 most
+  recent: kept in the order said now.
+- Launchers: the PyQt6 step ran in the repository while Outrider runs in the caller's folder, so a relative `--config`
+  named two different files and the early install was skipped. It runs in the caller's folder too (the repository on
+  PYTHONPATH); the .bat is untested on Windows.
+
 ## 2026-10-11 · Tidier bio lists for bodies not DSS'd
 - Here's bio cell for signals not identified yet read "3 signals, not DSS'd", then "3 of these, 24.8M to 64.6M:", then
   each genus on a line ending in "or" (the author: clean it up). Now one line for the count and the range ("3 signals,

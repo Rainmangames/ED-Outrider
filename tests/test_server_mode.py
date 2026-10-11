@@ -232,7 +232,7 @@ class Packaging(unittest.TestCase):
             script = self.read(name)
             step = script.index("-m outrider.overlay_runner --setup")
             self.assertLess(step, script.index("ed_outrider.py\" \"$@\"" if name.endswith(".sh") else "ed_outrider.py\" %*"), name)
-        self.assertIn('--setup "$@" || true', self.read("launch_outrider.sh"))   # never stops Outrider starting
+        self.assertIn('--setup "$@") || true', self.read("launch_outrider.sh"))   # never stops Outrider starting
         self.assertNotIn("/api/overlay/install", self.read("ed_outrider.py") + self.read("static/page.js"))
 
     def test_bundle_rewrites_the_compose_file(self):
@@ -378,7 +378,8 @@ class FableScriptFixes(unittest.TestCase):
             f.write(hashlib.sha256(b"aiohttp\n").hexdigest() + "\n")
         fake = os.path.join(d, ".venv", "bin", "python")   # nothing to install; Outrider says where and what it got
         with open(fake, "w") as f:
-            f.write('#!/bin/sh\nif [ "$1" = "-c" ]; then exec %s "$@"; fi\nif [ "$1" = "-m" ]; then exit 0; fi\n'
+            f.write('#!/bin/sh\nif [ "$1" = "-c" ]; then exec %s "$@"; fi\n'
+                    'if [ "$1" = "-m" ]; then echo "SETUP CWD=$(pwd) PATH0=${PYTHONPATH%%%%:*} ARGS=$*"; exit 0; fi\n'
                     'echo "CWD=$(pwd) ARGS=$*"\n' % shutil.which("python3"))
         os.chmod(fake, 0o755)
         with open(os.path.join(d, ".venv", "bin", "activate"), "w") as f:
@@ -389,6 +390,10 @@ class FableScriptFixes(unittest.TestCase):
                            capture_output=True, text=True, env=env, timeout=60)
         self.assertIn(f"CWD={os.path.realpath(caller)} ARGS={os.path.realpath(d)}/ed_outrider.py --config my.toml",
                       r.stdout.replace(caller, os.path.realpath(caller)).replace(d, os.path.realpath(d)), r.stderr)
+        # the overlay's PyQt6 step reads the same config: the caller's folder, the repository importable (review)
+        out = r.stdout.replace(caller, os.path.realpath(caller)).replace(d, os.path.realpath(d))
+        self.assertIn(f"SETUP CWD={os.path.realpath(caller)} PATH0={os.path.realpath(d)} ARGS=-m outrider.overlay_runner "
+                      "--setup --config my.toml", out, r.stderr)
 
     def test_a_gone_python_remakes_the_environment(self):
         """A .venv whose Python link dangles (the system Python upgraded) is made again, not met with the

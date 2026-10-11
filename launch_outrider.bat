@@ -72,9 +72,13 @@ goto fail
 copy /y requirements.txt "%STAMP%" >nul
 
 :run
-rem the in-game overlay's PyQt6, installed when [overlay] enabled is true in the config and it is missing
-"%VPY%" -m outrider.overlay_runner --setup %*
+rem the in-game overlay's PyQt6, installed when [overlay] enabled is true in the config and it is missing; run in the
+rem caller's folder like Outrider, so a relative --config is the same file
 cd /d "%CALLER%"
+set "PP=%HERE%"
+if defined PYTHONPATH set "PP=%HERE%;%PYTHONPATH%"
+set "PYTHONPATH=%PP%"
+"%HERE%\%VPY%" -m outrider.overlay_runner --setup %*
 "%HERE%\%VPY%" "%HERE%\ed_outrider.py" %*
 if errorlevel 1 goto stopped
 exit /b 0

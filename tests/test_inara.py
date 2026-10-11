@@ -95,6 +95,19 @@ class Travel(unittest.TestCase):
         got = f({"timestamp": ts(30), "event": "SupercruiseExit", "StarSystem": "Sys C", "Body": "Sys C 2", "BodyType": "Planet"})
         self.assertEqual(data(got, "setCommanderTravelLocation")[0], {"starsystemName": "Sys C", "starsystemBodyName": "Sys C 2"})
 
+    def test_dock_after_jumping_straight_out(self):
+        """A hyperspace jump charged in normal space writes no SupercruiseEntry: the first dock in the new system is a
+        real one (review 2026-10-11)."""
+        f = Feed()
+        f(*login())
+        f({"timestamp": ts(1), "event": "Location", "Docked": True, "StationName": "G0X-85Z", "MarketID": 3700251648,
+           "StarSystem": "Sys A", "SystemAddress": 77, "StarPos": [1.0, 2.0, 3.0]})
+        f({"timestamp": ts(5), "event": "Undocked", "StationName": "G0X-85Z", "MarketID": 3700251648})
+        f(jump(60, name="Sys B"))
+        got = f({"timestamp": ts(120), "event": "Docked", "StationName": "Station X", "MarketID": 9, "StarSystem": "Sys B",
+                 "SystemAddress": 78})
+        self.assertEqual(data(got, "addCommanderTravelDock")[0]["stationName"], "Station X")
+
     def test_docking_is_logged_once(self):
         """EDMC's rules: no docking at a login docked (the Location says so), after a ship swap, or on docking again
         where you undocked without entering supercruise; a real docking is logged."""
@@ -597,9 +610,16 @@ class Server(unittest.TestCase):
         self.assertNotIn("a1B2c3D4e5F6g7H8i9J0k1L2", logged)
         # a commander with no key: dropped, and the status says why
         self.state.set_inara_account("Briadin", remove=True)
+        self.state.inara_sent.changed("Briadin", "rank:combat", 3)
         got = asyncio.run(self.state.inara_send(rows))
         self.assertEqual(got[0][1], "dropped")
         self.assertIn("no Inara API key for CMDR Briadin", got[0][2])
+        # what was dropped never arrived: sent again once the key is there (review 2026-10-11)
+        self.assertTrue(self.state.inara_sent.changed("Briadin", "rank:combat", 3))
+        self.state.set_inara_account("Briadin", "a1B2c3D4e5F6g7H8i9J0k1L2")       # a new key: maybe another profile
+        self.assertTrue(self.state.inara_sent.changed("Briadin", "rank:combat", 3))
+        self.state.set_inara_account("Briadin", "")                               # the same key kept: nothing resent
+        self.assertFalse(self.state.inara_sent.changed("Briadin", "rank:combat", 3))
 
     def test_a_real_send_and_its_answer(self):
         import asyncio

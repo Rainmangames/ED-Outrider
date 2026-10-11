@@ -70,8 +70,8 @@ if needs_install; then
 fi
 
 # the in-game overlay's PyQt6, installed when [overlay] enabled is true in the config and it is missing (never stops
-# Outrider from starting)
-"$VENV/bin/python" -m outrider.overlay_runner --setup "$@" || true
+# Outrider from starting). Run in the caller's folder like Outrider, so a relative --config is the same file.
+(cd "$CALLER" && PYTHONPATH="$HERE${PYTHONPATH:+:$PYTHONPATH}" "$HERE/$VENV/bin/python" -m outrider.overlay_runner --setup "$@") || true
 
 # Plot Route's clipboard copy (and auto-target's paste) on Linux needs a system program, not pip's: wl-copy under
 # Wayland, xclip under X11 (outrider/highway.py Clipboard: wl-copy when WAYLAND_DISPLAY is set, else xclip when DISPLAY

@@ -422,6 +422,13 @@ class Batch2Server(unittest.TestCase):
         body = next(b for b in self.state.system_detail(8)["bodies"] if b["name"] == "10 b")
         self.assertEqual(body["sites"], {"guardian": 2, "thargoid": 1, "anomaly": 1, "other": 4})
         self.assertEqual(body["geo"], 3)                                         # the rest as before
+        # a later honk's FSS line names only the anomaly: the DSS's sites stay, and mapping again is no news (review)
+        self.j.handle(sig(15, "FSSBodySignals", [("$SAA_SignalType_PlanetAnomaly;", 1)]))
+        body = next(b for b in self.state.system_detail(8)["bodies"] if b["name"] == "10 b")
+        self.assertEqual(body["sites"], {"guardian": 2, "thargoid": 1, "anomaly": 1, "other": 4})
+        self.j.handle(sig(16, "SAASignalsFound", [("$SAA_SignalType_PlanetAnomaly;", 1), ("$SAA_SignalType_Guardian;", 2),
+                                                   ("$SAA_SignalType_Thargoid;", 1), ("$SAA_SignalType_Other;", 4)]))
+        self.assertEqual(len([m for m in self.j.moments if m["kind"] == "surface_site"]), 2)
         self.j.handle(sig(20, "SAASignalsFound", [("$SAA_SignalType_Guardian;", 2)]))
         self.assertEqual(len([m for m in self.j.moments if m["kind"] == "surface_site"]), 2)   # mapped again: nothing new
 
@@ -437,6 +444,10 @@ class Batch2Server(unittest.TestCase):
                  {"timestamp": at(5), "event": "FSSSignalDiscovered", "SystemAddress": 11, "SignalName": "Titan Cocijo", "SignalType": "Titan"},
                  {"timestamp": at(5), "event": "FSSSignalDiscovered", "SystemAddress": 11, "SignalName": "$ListeningPost:#index=1;",
                   "SignalName_Localised": "Listening Post", "SignalType": "Generic"},
+                 {"timestamp": at(5), "event": "FSSSignalDiscovered", "SystemAddress": 11, "SignalName": "$ListeningPost:#index=2;",
+                  "SignalName_Localised": "Listening Post", "SignalType": "Generic"},
+                 {"timestamp": at(5), "event": "FSSSignalDiscovered", "SystemAddress": 11, "SignalName": "Listening Post Pollux D568",
+                  "SignalType": "Generic"},
                  {"timestamp": at(5), "event": "FSSSignalDiscovered", "SystemAddress": 11, "SignalName": "Europa Ice Geyser", "SignalType": "TouristBeacon"},
                  {"timestamp": at(5), "event": "FSSSignalDiscovered", "SystemAddress": 11, "SignalName": "$USS_DegradedEmissions;", "SignalType": "USS"}]
         with open(os.path.join(d, "Journal.2026-10-11T100000.01.log"), "w") as f:
@@ -444,10 +455,13 @@ class Batch2Server(unittest.TestCase):
                 f.write(_j.dumps(e, separators=(",", ":")) + "\n")   # the game's own spacing, as the filter sees it
         self.j.scan_dir(d)
         rows = [tuple(r) for r in self.db.execute("SELECT kind, name FROM poi WHERE system=11 ORDER BY kind")]
-        self.assertEqual(rows, [("listening_post", "Listening Post"), ("titan", "Titan Cocijo"), ("tourist", "Europa Ice Geyser")])
+        # two indexed posts are two, and a named one passes the filter too (review 2026-10-11)
+        self.assertEqual(rows, [("listening_post", "Listening Post #1"), ("listening_post", "Listening Post #2"),
+                                ("listening_post", "Listening Post Pollux D568"), ("titan", "Titan Cocijo"),
+                                ("tourist", "Europa Ice Geyser")])
         said = [m["what"] for m in self.j.moments if m["kind"] == "signal_poi"]
         self.assertEqual(said, ["the Titan Cocijo", "a listening post"])   # the tourist beacon is shown, not said
-        self.assertEqual(len(self.state.system_detail(11)["pois"]), 3)
+        self.assertEqual(len(self.state.system_detail(11)["pois"]), 5)
         self.j.handle(dict(lines[1], timestamp=at(30)))                     # the FSS lists it again
         self.assertEqual(len([m for m in self.j.moments if m["kind"] == "signal_poi"]), 2)
         self.assertIn("DELETE FROM poi", ed_outrider.RESET_JOURNAL_DATA)    # journal-derived
@@ -471,11 +485,14 @@ class Batch2Server(unittest.TestCase):
         self.state.maybe_curious()
         self.assertEqual([m for m in self.j.moments if m["kind"] == "curious"], [])   # the game not live: nothing said
         self.j.status_json = {"live": True}
-        self.state.maybe_curious()
-        self.state.maybe_curious()
+        ed_outrider.meta_set(self.db, "curious_said", [99, 5])   # said before: 99, then 5
+        with unittest.mock.patch.object(ed_outrider, "CURIOUS_KEEP", 2):
+            self.state.maybe_curious()
+            self.state.maybe_curious()
         said = [m for m in self.j.moments if m["kind"] == "curious"]
         self.assertEqual([(m["system"], m["bodies"]) for m in said], [("12", ["3"])])   # once
-        self.assertEqual(ed_outrider.meta_get(self.db, "curious_said"), [12])          # and never again after a restart
+        # kept for after a restart; past CURIOUS_KEEP the oldest said goes, not the smallest id64 (review 2026-10-11)
+        self.assertEqual(ed_outrider.meta_get(self.db, "curious_said"), [5, 12])
 
     def test_rare_stars_announced_and_shown(self):
         """A rare star (a black hole, a Wolf-Rayet...) resolved live is a "rare_star" moment, once; Nearby and Here list
