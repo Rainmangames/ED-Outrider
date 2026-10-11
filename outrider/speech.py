@@ -51,6 +51,8 @@ KEYS = {
     "signal_poi": "the FSS found a signal worth a detour, new to this system: a Titan, a Guardian beacon, a generation ship "
                   "or a listening post (said with delight, in every style): {what} (already phrased, e.g. 'the Titan "
                   "Cocijo', 'a Guardian beacon')",
+    "curious": "the system you are in shows curiosities for the first time (rare planet classes, odd orbits, ringed "
+               "landables...): one line that there is something to look at on the panels, never the list",
     "fuel_low": "the game's low fuel warning: {pct}",
     "fuel_star": "arrived under 30% fuel at a star you cannot scoop: {pct}, {star}",
     "fuel_target": "targeted a star you cannot scoop with under 30% fuel: {pct}, {system}",
@@ -402,6 +404,7 @@ SAMPLES = {
     "rare_star": {"what": "a black hole at B"},
     "surface_site": {"what": "Guardian sites on B 3"},
     "signal_poi": {"what": "a Guardian beacon"},
+    "curious": {},
     "fuel_low": {"pct": 18}, "fuel_star": {"pct": 22, "star": "white dwarf"},
     "fuel_target": {"pct": 22, "system": "Drojau LL-O b26-3"},
     "fuel_topup": {"rate": "8 of the last 20 stars were scoopable", "jumps": "about 6 jumps"}, "hull": {"pct": 42}, "interdicted": {"by": "someone"},

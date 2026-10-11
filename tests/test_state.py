@@ -452,6 +452,31 @@ class Batch2Server(unittest.TestCase):
         self.assertEqual(len([m for m in self.j.moments if m["kind"] == "signal_poi"]), 2)
         self.assertIn("DELETE FROM poi", ed_outrider.RESET_JOURNAL_DATA)    # journal-derived
 
+    def test_rare_planet_curiosities_and_the_curious_line(self):
+        """Rare planet classes are curiosities (a water giant, helium giants, Sudarsky class V; a green gas giant from its
+        codex entry), and a system with curiosities gets one "curious" line, once ever, while the game is live: "check
+        your panels", not the list (the author, 2026-10-11)."""
+        tags = lambda r: [t for t, _ in ed_outrider.curiosities(dict({"type": "Planet"}, **r))]
+        self.assertEqual(tags({"subtype": "Water giant"}), ["water giant"])
+        self.assertEqual(tags({"subtype": "Helium gas giant"}), ["helium giant"])
+        self.assertEqual(tags({"subtype": "Class V gas giant"}), ["class V giant"])
+        self.assertEqual(tags({"subtype": "Class I gas giant", "codex": [{"name": "Green Class I Gas Giant"}]}), ["green gas giant"])
+        self.assertEqual(tags({"subtype": "Class I gas giant"}), [])
+        now = time.time()
+        self.j.handle({"event": "FSDJump", "timestamp": ed_outrider.iso_ts(now - 30), "StarSystem": "Odd", "SystemAddress": 12, "StarPos": [0, 0, 0]})
+        self.j.handle({"event": "Scan", "timestamp": ed_outrider.iso_ts(now - 20), "ScanType": "Detailed", "StarSystem": "Odd",
+                       "SystemAddress": 12, "BodyID": 3, "BodyName": "Odd 3", "PlanetClass": "Water giant", "DistanceFromArrivalLS": 400.0,
+                       "WasDiscovered": False, "WasMapped": False})
+        self.j.status_json = {"live": False}
+        self.state.maybe_curious()
+        self.assertEqual([m for m in self.j.moments if m["kind"] == "curious"], [])   # the game not live: nothing said
+        self.j.status_json = {"live": True}
+        self.state.maybe_curious()
+        self.state.maybe_curious()
+        said = [m for m in self.j.moments if m["kind"] == "curious"]
+        self.assertEqual([(m["system"], m["bodies"]) for m in said], [("12", ["3"])])   # once
+        self.assertEqual(ed_outrider.meta_get(self.db, "curious_said"), [12])          # and never again after a restart
+
     def test_rare_stars_announced_and_shown(self):
         """A rare star (a black hole, a Wolf-Rayet...) resolved live is a "rare_star" moment, once; Nearby and Here list
         the rare stars, Spansh's included (seen before you go); common stars say nothing."""

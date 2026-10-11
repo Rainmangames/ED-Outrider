@@ -1231,6 +1231,7 @@ PARSER_VERSION = 48
 # 46: each drop at a notable stellar phenomenon is kept (phenomena_sites): "1 of 3 visited"
 # 45: notable stellar phenomena are counted (phenomena.n: the most in one FSS burst; the game writes several of a kind
 #     as identical lines, which the (system, kind) key had folded into one)
+CURIOUS_KEEP = 2000   # systems remembered as told about their curiosities (meta curious_said)
 NSP_BURST_S = 5   # s: the FSS's lines for a system's phenomena that count as one listing (they come in the same second)
 # Scans read off a nav beacon (as outrider.unsold.NAV_BEACON_SCANS): their Was* flags are not the game's record of the body.
 NAV_BEACON_SCANS = ("NavBeaconDetail", "NavBeacon")
@@ -4809,7 +4810,20 @@ def curiosities(r, parent=None, raw=None, binary=False):
         out.append(("moon of a moon", "a moon orbiting a moon"))
     if planet and binary:
         out.append(("planet pair", "circles a shared centre with another planet"))
+    rare = RARE_PLANETS.get(r.get("subtype") or "")
+    if planet and rare:   # rare classes: a sight, if not a fortune
+        out.append(rare)
+    if planet and any("green" in str((c or {}).get("name") or "").lower() and "gas giant" in str((c or {}).get("name") or "").lower()
+                      for c in r.get("codex") or []):   # the codex is the only place the game says it
+        out.append(("green gas giant", "a green gas giant: one of the rarest sights"))
     return out
+
+
+# rare planet classes as curiosities (the same names in your scans and Spansh's records)
+RARE_PLANETS = {"Water giant": ("water giant", "a water giant: rare"),
+                "Helium-rich gas giant": ("helium-rich", "a helium-rich gas giant: rare"),
+                "Helium gas giant": ("helium giant", "a helium gas giant: very rare"),
+                "Class V gas giant": ("class V giant", "a Sudarsky class V gas giant: rare")}
 
 
 def system_curiosities(system, records, raws=None):
@@ -12247,6 +12261,27 @@ class State:
             self.bump()
         self.unsold_task = asyncio.create_task(run())
 
+    def maybe_curious(self):
+        """Once per system ever (meta curious_said, live-only): the first time the system you are in shows curiosities
+        (🔭: rare classes, odd orbits, ringed landables...) while the game is live, a "curious" moment: one line that
+        there is something to look at, not a list (the author, 2026-10-11)."""
+        pos, st = self.journals.pos, self.journals.status_json or {}
+        if not pos or not st.get("live"):
+            return
+        said = getattr(self, "_curious_said", None)
+        if said is None:
+            said = self._curious_said = set(meta_get(self.db, "curious_said") or [])
+        if pos["id64"] in said:
+            return
+        detail = self.overlay_detail(pos["id64"])   # cached until your scans or the system's record change
+        bodies = [b["name"] for b in (detail or {}).get("bodies") or [] if b.get("curiosities")]
+        if not bodies:
+            return
+        said.add(pos["id64"])
+        meta_set(self.db, "curious_said", sorted(said)[-CURIOUS_KEEP:])
+        self.journals.moment("curious", iso_ts(time.time()), system=str(pos["id64"]), bodies=bodies[:6])
+        self.bump()
+
     def maybe_sale_left(self, now=None):
         """Once a live sale's pages have stopped coming (SALE_QUIET_S with no further page: Universal
         Cartographics sells 50 systems a page) and an estimate started after the last page has finished, say
@@ -12347,6 +12382,7 @@ class State:
             for name, step in (("watch_status", lambda: self.watch_status(time.time())), ("maybe_refresh", self.maybe_refresh),
                                ("apply_own_changes", self.apply_own_changes), ("maybe_classify_target", self.maybe_classify_target),
                                ("maybe_unsold", self.maybe_unsold), ("maybe_sale_left", self.maybe_sale_left),
+                               ("maybe_curious", self.maybe_curious),
                                ("maybe_locate_carrier", self.maybe_locate_carrier), ("maybe_find_sellers", self.maybe_find_sellers),
                                ("maybe_backup_on_quit", self.maybe_backup_on_quit), ("highway_copy_next", self.highway_copy_next), ("riches_copy_next", self.riches_copy_next),
                                ("highway_heavy_check", self.highway_heavy_check), ("maybe_autotarget", self.maybe_autotarget)):

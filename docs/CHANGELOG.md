@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Rare planet classes, and one line for curiosities
+- Rare planet classes are 🔭 curiosities now: water giants, helium-rich and helium gas giants, Sudarsky class V gas
+  giants, and green gas giants (from their codex entry: the game says it nowhere else).
+- A new alert under Discoveries, "Curiosities": the first time the system you are in shows curiosities while the game is
+  live, one line to look at the panels, never the list ("You might be interested in some curious things I found here.
+  Check your panels.": the author's idea), with its own `curious` lines in every personality (50 a list). Once per
+  system ever (meta `curious_said`, live-only): a revisit stays quiet.
+
 ## 2026-10-11 · FSS signals worth a detour
 - The reader's filter threw away every FSS signal but the phenomena: Titans, Guardian beacons, generation ships,
   listening posts, number stations, tourist beacons and memorials now pass and are kept per system (`poi`;

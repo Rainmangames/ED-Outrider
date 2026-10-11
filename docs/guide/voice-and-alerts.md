@@ -23,6 +23,8 @@ notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts
     only then) or an unknown planetary anomaly (said when the FSS finds it)
   - an FSS signal worth a detour, new to the system: a Titan, a Guardian beacon, a generation ship, a listening post
     (tourist beacons, number stations and memorials are shown on the page, not said)
+  - curiosities (the 🔭 marks: rare planet classes, odd orbits, ringed landables...) in the system you are in, once per
+    system: one line to check your panels ("You might be interested in some curious things I found here"), not the list
 - low fuel where you cannot scoop, and a top-up worth taking before a dry stretch
 - docking where the station buys your data, and what you banked when you sold
 - a sale that left data aboard (Universal Cartographics sells 50 systems a page; at Vista Genomics, the species

@@ -8,7 +8,8 @@
 <tr>
 <td width="50%" valign="top">
 <b>Nearby</b> — every known system within range (20–50 ly, the Where tile's dropdown): distance, how much
-is scanned, the main star and whether it scoops, notable bodies, curiosities (🔭) and a credit estimate. Sort,
+is scanned, the main star and whether it scoops, notable bodies, curiosities (🔭: odd orbits, ringed landables, rare
+classes such as water giants, helium giants, Sudarsky class V and green gas giants) and a credit estimate. Sort,
 or hide visited and fully scanned systems. A dashed <i>old data</i> mark flags Spansh records from before
 Odyssey (thin-atmosphere planets there may hold unsampled life). ⛏ N counts planetary mining locations on
 ground worth a Rhino. 🌀 N counts the notable stellar phenomena your FSS found there (life in clouds or rings; hover

@@ -4266,7 +4266,7 @@ const settle = async maxMs => {
       const s = d.firstChild;
       // the Discoveries group heading in Settings -> Alerts, its alerts each with their own switches
       const head = [...document.querySelectorAll("#alertOpts tr.agroup th")].map(th => th.textContent);
-      const rows = ["phenomena", "rare_star"].every(k => document.querySelector('#alertOpts [data-aspeak="' + k + '"]') && document.querySelector('#alertOpts [data-alert="' + k + '"]'));
+      const rows = ["phenomena", "rare_star", "surface_site", "signal_poi", "curious"].every(k => document.querySelector('#alertOpts [data-aspeak="' + k + '"]') && document.querySelector('#alertOpts [data-alert="' + k + '"]'));
       const st = document.createElement("div"); st.innerHTML = siteTags({guardian: 2, anomaly: 1});
       const nb = document.createElement("div"); nb.innerHTML = sitesTag([{body: "10 b", sites: {guardian: 2, thargoid: 1}}]);
       const pt = poiText([{kind: "titan", name: "Titan Cocijo"}, {kind: "tourist", name: "A"}, {kind: "tourist", name: "B"}, {kind: "listening_post", name: "Listening Post"}]);
