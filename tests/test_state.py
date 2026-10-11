@@ -381,6 +381,31 @@ class Batch2Server(unittest.TestCase):
                        "SignalName": "$Fixed_Event_Life_Cloud;", "SignalType": "Codex"})
         self.assertEqual(len([m for m in self.j.moments if m["kind"] == "phenomena"]), 1)
 
+    def test_rare_stars_announced_and_shown(self):
+        """A rare star (a black hole, a Wolf-Rayet...) resolved live is a "rare_star" moment, once; Nearby and Here list
+        the rare stars, Spansh's included (seen before you go); common stars say nothing."""
+        now = time.time()
+        at = lambda s: ed_outrider.iso_ts(now - 60 + s)
+        self.j.handle({"event": "FSDJump", "timestamp": at(0), "StarSystem": "Rare", "SystemAddress": 9, "StarPos": [0, 0, 0]})
+        star = lambda s, bid, name, kind, dist=0.0: {"event": "Scan", "timestamp": at(s), "ScanType": "AutoScan", "StarSystem": "Rare",
+                                                     "SystemAddress": 9, "BodyID": bid, "BodyName": name, "StarType": kind,
+                                                     "DistanceFromArrivalLS": dist, "WasDiscovered": False, "WasMapped": False}
+        self.j.handle(star(1, 0, "Rare A", "H"))                          # the arrival star
+        self.j.handle(star(2, 1, "Rare B", "WC", 1200.0))                 # another, from the FSS
+        self.j.handle(star(3, 2, "Rare C", "M", 3000.0))                  # a red dwarf: nothing
+        self.j.handle(star(4, 1, "Rare B", "WC", 1200.0))                 # scanned again: not news again
+        said = [m["what"] for m in self.j.moments if m["kind"] == "rare_star"]
+        self.assertEqual(said, ["a black hole, the main star", "a Wolf-Rayet star at B"])
+        detail = self.state.system_detail(9)
+        self.assertEqual([r["what"] for r in detail["rare_stars"]], ["a black hole", "a Wolf-Rayet star"])
+        self.assertEqual(ed_outrider.rare_stars([{"name": "X A", "type": "Star", "subtype": "Herbig Ae/Be Star"},
+                                                 {"name": "X B", "type": "Star", "subtype": "Neutron Star"},
+                                                 {"name": "X 1", "type": "Planet", "subtype": "Black Hole"}], "X"),
+                         [{"body": "A", "what": "a Herbig Ae Be star", "main": False}])   # Spansh's names too
+        self.j.handle({"event": "Scan", "timestamp": "2020-01-01T00:00:00Z", "ScanType": "AutoScan", "StarSystem": "Old",
+                       "SystemAddress": 10, "BodyID": 0, "BodyName": "Old", "StarType": "H", "DistanceFromArrivalLS": 0.0})
+        self.assertEqual(len([m for m in self.j.moments if m["kind"] == "rare_star"]), 2)   # a re-read: never said
+
     def test_phenomena_lines_pass_the_filter(self):
         import tempfile, json as _j
         d = tempfile.mkdtemp()

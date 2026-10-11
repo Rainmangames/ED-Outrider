@@ -13,9 +13,12 @@ notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts
 - a valuable body the moment the FSS resolves it, and a new codex entry. A body someone else has already mapped is
   never pointed out (nor warned about when you leave): the first one in a system gets one line instead, "Already
   mapped, but there are still valuable bodies to map if you want to jump on the train"
-- notable stellar phenomena the FSS finds in a system where you have none on record ("three notable stellar
-  phenomena, all in rings"): said with delight in every personality, the sarcastic and profane ones included, since
-  the co-pilot likes new things
+- **discoveries**, grouped together in Settings → Alerts, each with its own switches, said with delight in every
+  personality (the sarcastic and profane ones included: the co-pilot likes new things):
+  - notable stellar phenomena the FSS finds in a system where you have none on record ("three notable stellar
+    phenomena, all in rings");
+  - a rare star resolved by the arrival's own scan or the FSS ("a black hole, the main star", "a Wolf-Rayet star at
+    B": black holes, Wolf-Rayet, carbon, O-type and Herbig Ae/Be stars, supergiants, the rarer white dwarfs)
 - low fuel where you cannot scoop, and a top-up worth taking before a dry stretch
 - docking where the station buys your data, and what you banked when you sold
 - a sale that left data aboard (Universal Cartographics sells 50 systems a page; at Vista Genomics, the species

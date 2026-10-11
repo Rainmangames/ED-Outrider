@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Rare stars, announced and marked
+- A new alert, "Rare star": a black hole, Wolf-Rayet, carbon, MS/S-type, O-type or Herbig Ae/Be star, a supergiant, a
+  rarer white dwarf (pulsating DAV/DBV..., DO, DX...) or an exotic type, resolved live by the arrival's own scan or the
+  FSS, once per star ("a black hole, the main star", "a Wolf-Rayet star at B"), with its own `rare_star` lines in
+  every personality, all delighted (50 a list). Neutron stars and ordinary giants are too common to count.
+- ⭐ on Nearby and Here marks rare stars, Spansh's records included (a black hole nearby shows before you go); Now has
+  a line for them.
+- Settings -> Alerts groups the discoveries under one heading ("Discoveries"), each still with its own sound,
+  notification and voice switches (the author: a toggle per type, together in the list).
+
 ## 2026-10-11 · Notable stellar phenomena: counted, in Now, and announced
 - The FSS lists a system's phenomena as identical lines (the author's Smojooe XF-G b24-0: three rings in one second),
   and the (system, kind) key folded them into one: each kind now keeps how many (`phenomena.n`, the most one FSS

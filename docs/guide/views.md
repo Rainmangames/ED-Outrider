@@ -12,7 +12,8 @@ is scanned, the main star and whether it scoops, notable bodies, curiosities (�
 or hide visited and fully scanned systems. A dashed <i>old data</i> mark flags Spansh records from before
 Odyssey (thin-atmosphere planets there may hold unsampled life). ⛏ N counts planetary mining locations on
 ground worth a Rhino. 🌀 N counts the notable stellar phenomena your FSS found there (life in clouds or rings; hover
-for what they are), dimmed once you have been to them.
+for what they are), dimmed once you have been to them. ⭐ marks a rare star (a black hole, a Wolf-Rayet, a carbon,
+O-type or Herbig Ae/Be star, a supergiant, a rare white dwarf), from Spansh's records too, so you see it before you go.
 <br><br><img src="../images/nearby.png" alt="Nearby systems">
 </td>
 <td width="50%" valign="top">
@@ -119,7 +120,7 @@ follows your system's light mode. Each browser keeps its own choice, and the tab
 </p>
 
 **Now** is the cockpit view for a second monitor or a tablet, in big text: the system, the target, fuel,
-what to do next, the body you have targeted, the notable stellar phenomena here ("🌀 Three notable stellar phenomena,
+what to do next, the body you have targeted, any rare star here ("⭐ A black hole (main star)"), the notable stellar phenomena here ("🌀 Three notable stellar phenomena,
 all in rings · none visited yet") and the nearest unvisited system. The target says how much of it is
 known ("3/12 known", Spansh's bodies of its count) and what EDSM has ("EDSM 5/12", or "not logged"): two databases
 with different reporters.

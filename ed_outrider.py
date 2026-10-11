@@ -3971,6 +3971,12 @@ class Journals:
                                 (system, ev["BodyID"], ev["BodyName"], json.dumps(record), ts, json.dumps(ev)))
                 flag = lambda k: None if k not in ev else int(bool(ev[k]))
                 undisc = ts if ev.get("WasDiscovered") is False else None
+                if record["type"] == "Star" and not known and live_event(ts):
+                    words = rare_star_words(record.get("subtype"))
+                    if words:   # a rare star resolved (the arrival's own scan, or the FSS): said with delight
+                        body = short_name(ev.get("StarSystem") or (self.pos or {}).get("name"), ev.get("BodyName") or "")
+                        what = f"{words}, the main star" if record.get("main") or not body else f"{words} at {body}"
+                        self.moment("rare_star", ts, system=str(system), what=what, star=record.get("subtype"))
                 if record["type"] == "Planet" and not known:
                     self.moment("scan", ts, system=system, body_id=ev["BodyID"])
                     if ev.get("Landable") and ev.get("Materials"):
@@ -4577,6 +4583,54 @@ def star_short(subtype):
     if subtype.startswith("Wolf-Rayet"):
         return "W"
     return subtype.split()[0]
+
+
+# rare stars, as the voice and the page say them (any star's subtype: your own scans and Spansh's records name them
+# alike): black holes, Wolf-Rayet, carbon, O, Herbig Ae/Be, supergiants, the rarer white dwarfs, the exotic types
+CARBON_STARS = {"CS Star", "C Star", "CN Star", "CJ Star", "CH Star", "CHd Star"}
+RARE_WHITE_DWARFS = {"DAV", "DBV", "DCV", "DAO", "DO", "DOV", "DX", "DBZ"}
+SUPERGIANT_WORDS = {"Blue-White": "a blue-white supergiant", "White": "a white supergiant",
+                    "White-Yellow": "a yellow-white supergiant", "Red": "a red supergiant"}
+
+
+def rare_star_words(subtype):
+    """'a black hole', 'a Wolf-Rayet star', 'a red supergiant'... for a rare star's subtype, else None."""
+    st = str(subtype or "")
+    if st == "Supermassive Black Hole":
+        return "the supermassive black hole"
+    if st == "Black Hole":
+        return "a black hole"
+    if st.startswith("Wolf-Rayet"):
+        return "a Wolf-Rayet star"
+    if st in CARBON_STARS:
+        return "a carbon star"
+    if st == "MS-type Star":
+        return "an MS-type star"
+    if st == "S-type Star":
+        return "an S-type star"
+    if st.startswith("O ("):
+        return "an O-type star"
+    if st == "Herbig Ae/Be Star":
+        return "a Herbig Ae Be star"
+    m = re.match(r"^[ABFGKM] \(([\w-]+) super giant\)", st)
+    if m:
+        return SUPERGIANT_WORDS.get(m.group(1), "a supergiant")
+    m = re.match(r"^White Dwarf \((\w+)\)", st)
+    if m and m.group(1) in RARE_WHITE_DWARFS:
+        return "a pulsating white dwarf" if m.group(1).endswith("V") else "a rare white dwarf"
+    return {"X": "an exotic star", "RoguePlanet": "a rogue planet", "Nebula": "a nebula",
+            "StellarRemnantNebula": "a stellar remnant nebula"}.get(st)
+
+
+def rare_stars(records, system_name=None):
+    """[{body, what}] for the rare stars among a system's records (as rare_star_words), main star first."""
+    out = []
+    for r in sorted((r for r in records or [] if r.get("type") == "Star"), key=lambda r: not r.get("main")):
+        what = rare_star_words(r.get("subtype"))
+        if what:
+            body = short_name(system_name, r.get("name")) if system_name else r.get("name")
+            out.append({"body": body or "", "what": what, "main": bool(r.get("main"))})
+    return out
 
 
 def subtype_scoopable(subtype):
@@ -8280,7 +8334,7 @@ class State:
         if leaving is not None:   # the checklist's "N not on Spansh" (leaving_summary itself runs on every poll)
             leaving["base_known"] = base_known(base, source)
         return {"id64": str(id64), "name": name, "bodies": out, "tree": tree, "partial": partial, "region": region,
-                "phenomena": phenomena,
+                "phenomena": phenomena, "rare_stars": rare_stars(out),
                 "leaving": leaving,
                 "firsts": own_firsts(self.db, id64, name),
                 "value_now": sum(b["value_now"] for b in out), "value_max": sum(b["value_max"] for b in out),
@@ -9292,6 +9346,7 @@ class State:
         s.update(self.system_value(id64, base["name"], records, star, ctx))
         s["no_dump"] = bool(base.get("no_dump"))   # Spansh has no body details: the popup stops saying "loading"
         s["phenomena"] = [dict(r) for r in self.db.execute("SELECT kind, reached_ts, coalesce(n, 1) AS n FROM phenomena WHERE system=?", (id64,))]
+        s["rare_stars"] = rare_stars(records, base["name"])   # from Spansh's records too: seen before you go
         raws = {short_name(base["name"], r_["name"]): json.loads(r_["raw"]) for r_ in self.db.execute(
             "SELECT name, raw FROM own_bodies WHERE system=? AND raw IS NOT NULL", (id64,))}
         cur = system_curiosities(base["name"], records, raws)
