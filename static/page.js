@@ -176,7 +176,7 @@ function notable(s) {
   return ["ELW", "WW", "AW", "T"].filter(k => n[k]).map(k =>
     `<span class="nb ${k}" title="${names[k]}${n[k] > 1 ? "s" : ""}">${k}${n[k] > 1 ? "×" + n[k] : ""}</span>`).join("") +
     (s.bio_potential ? `<span class="nb bio" title="exobiology: up to this much across ${s.bio_bodies_guessed} bod${s.bio_bodies_guessed === 1 ? "y" : "ies"}, from spawn rules">🧬≤${credits(s.bio_potential)}</span>` : "") +
-    phenomenaTag(s.phenomena) + rareStarTag(s.rare_stars) + oldDataTag(s.stale_bio) + bioUnknownTag(s.bio_unknown) +
+    phenomenaTag(s.phenomena) + rareStarTag(s.rare_stars) + sitesTag(s.sites) + oldDataTag(s.stale_bio) + bioUnknownTag(s.bio_unknown) +
     (s.curiosities ? `<span class="nb cur" title="${(s.curiosity_list || []).map(c => esc(`${c.body}: ${c.tag} (${c.why})`)).join("&#10;")}">🔭${s.curiosities > 1 ? "×" + s.curiosities : ""}</span>` : "");
 }
 // pre-Odyssey Spansh data (stale_bio {bodies, genera_top, up_to, reported}): thin-atmosphere worlds marked not
@@ -200,6 +200,14 @@ const phenomenaCount = list => (list || []).reduce((a, p) => a + (p.n || 1), 0);
 const phenomenaVisited = list => (list || []).reduce((a, p) => a + Math.min(p.n || 1, p.visited ?? (p.reached_ts ? 1 : 0)), 0);
 const phenomenaLeftText = list => { const n = phenomenaCount(list), v = phenomenaVisited(list);
   return !v ? "none visited yet" : v >= n ? "all visited" : `${v} of ${n} visited`; };
+// surface sites on a body (body signals): Guardian, Thargoid, a planetary anomaly, others nobody has named yet
+const SITE_LOOK = {guardian: ["🏛", "Guardian sites"], thargoid: ["👾", "Thargoid sites"], anomaly: ["❔", "an unknown planetary anomaly"],
+                   other: ["📡", "unidentified surface signals"]};
+const siteIcons = sites => Object.keys(SITE_LOOK).filter(k => (sites || {})[k]).map(k => SITE_LOOK[k][0]).join("");
+const siteTags = sites => Object.keys(SITE_LOOK).filter(k => (sites || {})[k]).map(k =>
+  `<span class="sp site site-${k}" title="${esc(SITE_LOOK[k][1])}: ${sites[k]} signal${sites[k] === 1 ? "" : "s"}">${SITE_LOOK[k][0]}</span>`).join("");
+const siteText = list => (list || []).map(x => `${siteIcons(x.sites)} ${Object.keys(SITE_LOOK).filter(k => x.sites[k]).map(k => SITE_LOOK[k][1]).join(", ")} on ${x.body}`).join(" · ");
+const sitesTag = list => !list || !list.length ? "" : `<span class="nb sites" title="${esc(siteText(list))}">${[...new Set([...list.map(x => siteIcons(x.sites)).join("")])].join("")}${list.length > 1 ? " " + list.length : ""}</span>`;
 // ⭐ rare stars in a system (a black hole, a Wolf-Rayet...: from Spansh's records too, before you go), what on hover
 const rareStarText = list => (list || []).map(r => r.main || !r.body ? `${r.what} (main star)` : `${r.what} at ${r.body}`).join(", ");
 const rareStarTag = list => !list || !list.length ? "" :
@@ -844,6 +852,9 @@ function renderNow() {
     // a body targeted that is not the next item: an extra line, never in place of Next (Status.json keeps the target
     // after you finish a body, so Next must stay visible)
     if (dest && !destIsNext) lines.push(`<div class="now-line now-small">${nowDestText(hd, l, plan, dest)}</div>`);
+    const siteBodies = hd ? (hd.bodies || []).filter(b => b.sites && ["guardian", "thargoid", "anomaly"].some(k => b.sites[k])) : [];
+    if (siteBodies.length)   // Guardian or Thargoid sites, an anomaly, on this system's bodies
+      lines.push(`<div class="now-line now-sites"><span class="ok">${esc(siteText(siteBodies.map(b => ({body: b.name, sites: b.sites}))))}</span></div>`);
     if (hd && hd.rare_stars && hd.rare_stars.length)   // a black hole, a Wolf-Rayet...: rare stars here
       lines.push(`<div class="now-line now-rare"><span class="ok">⭐ ${esc(rareStarText(hd.rare_stars).replace(/^./, c => c.toUpperCase()))}</span></div>`);
     // notable stellar phenomena the FSS found here: how many and where, and how many are still to visit
@@ -1539,6 +1550,7 @@ const ALERTS = [["discovery", "targeting a system: the fanfare if nobody has rep
   ["carrier", "your carrier arrives somewhere", "chime"], ["codex", "a new codex entry", "chime"],
   ["phenomena", "notable stellar phenomena (life in clouds or rings) the FSS finds in a system where you have none on record: how many", "find"],
   ["rare_star", "a rare star resolved (a black hole, Wolf-Rayet, carbon, O-type, Herbig Ae/Be, a supergiant, a rare white dwarf...)", "find"],
+  ["surface_site", "surface sites on a body: Guardian or Thargoid sites (once the DSS has mapped it) or an unknown planetary anomaly (the FSS)", "find"],
   ["loss", "your ship was destroyed with data aboard (or samples died with you): what was lost, and the nearest system to rescan", "danger"],
   ["rigs", "Rhino mining rigs: the co-pilot button's confirmation (rig placed, picked up, six out) and what a rig collected", null],
   ["rigleash", "a Rhino mining rig too far from you (over the rig warning distance, again at 4.5 km; the game destroys it at 5 km)", "danger"],
@@ -1716,10 +1728,10 @@ const JUMP_LINE_WAIT = 8000;   // ms: the jump line's latest start after the cha
 // ms after Status.json says "in the tunnel" (it says so about 2 s before the countdown ends): the line then starts
 // with the tunnel itself (the author's timing, in game 2026-10-03)
 const JUMP_TUNNEL_DELAY = 2500;
-const SPEECH_SYS_BOUND = new Set(["find", "signals", "jump", "honk", "brief", "fss", "mapped", "approach", "bodybrief", "jumponium", "phenomena", "rare_star", "highway", "riches", "exo", "trade", "autotarget"]);
+const SPEECH_SYS_BOUND = new Set(["find", "signals", "jump", "honk", "brief", "fss", "mapped", "approach", "bodybrief", "jumponium", "phenomena", "rare_star", "surface_site", "highway", "riches", "exo", "trade", "autotarget"]);
 // a rig confirmation answers your own press, like a line asked for
 const speechPrio = (kind, tag) => DANGER.has(tag) || kind === "hull" || kind === "fuel" ? 0 : kind === "manual" || kind === "rigs" ? 1
-  : ["find", "signals", "codex", "phenomena", "rare_star", "bodybrief", "supercharge", "jumponium"].includes(kind) ? 3 : 2;
+  : ["find", "signals", "codex", "phenomena", "rare_star", "surface_site", "bodybrief", "supercharge", "jumponium"].includes(kind) ? 3 : 2;
 // the queue without what went stale by `now` with the ship at `pos`
 const speechExpire = (items, now, pos) => items.filter(it => now - it.notBefore <= SPEECH_MAX_AGE
   && (it.sys == null || it.sys === pos) && (!it.still || it.still()));
@@ -2085,6 +2097,7 @@ const LINE_SAMPLES = {
   find_bio: {body: "B 7", value: "19.0M"}, sample_clear: {genus: "Stratum"},
   codex: {entry: "Stratum Tectonicas", what: "new to your codex for this region"},
   phenomena: {what: "three notable stellar phenomena, all in rings"}, rare_star: {what: "a black hole at B"},
+  surface_site: {what: "Guardian sites on B 3"},
   fuel_low: {pct: 18}, fuel_star: {pct: 22, star: "white dwarf"}, fuel_target: {pct: 22, system: "Drojau LL-O b26-3"},
   fuel_topup: {rate: "8 of the last 20 stars were scoopable", jumps: "about 6 jumps"}, hull: {pct: 42}, interdicted: {by: "someone"},
   docked_sell: {value: "114.1M", station: "Jaques Station"}, undocked_unsold: {value: "260.4M"},
@@ -2989,7 +3002,7 @@ function renderHere() {
       <td class="num c2hide">${b.dist_ls != null ? Math.round(b.dist_ls).toLocaleString() : ""}</td>
       <td class="num${b.gravity >= highGravity() ? " noscoop" : ""}">${b.gravity != null && b.type === "Planet" ? b.gravity.toFixed(2) : ""}${atm ? `<div class="sf2 atm2" title="${esc(atm)}">${esc(shortForm("atmosphere", atm))}</div>` : ""}</td>
       <td class="hide-sm c2hide">${b.type === "Planet" ? (atm ? sfText("atmosphere", atm) : b.landable ? dual("none · landable", "landable") : "") : ""}${b.stale_bio ? ` <span class="unk old" title="${esc(staleBodyTitle(b))}">${dual("landable? (old data)", "landable?", {title: `landable? (old data): ${staleBodyTitle(b)}`})}</span>` : ""}${b.bio_unknown ? ` <span class="warnc" title="${BIO_UNKNOWN_TITLE}">${dual("bio possible: check the FSS", "🧬?")}</span>` : ""}</td>
-      <td class="bio">${bio.join(" ")}${geoTag(b)}${volcanoIcon(b)}${codex}${b.mining || (b.mined || []).length ? `<span class="sf2"> ${mineTag(b)}</span>` : ""}</td>
+      <td class="bio">${bio.join(" ")}${geoTag(b)}${volcanoIcon(b)}${codex}${siteTags(b.sites)}${b.mining || (b.mined || []).length ? `<span class="sf2"> ${mineTag(b)}</span>` : ""}</td>
       <td class="num mine c2hide">${mineTag(b)}</td>
       <td class="c2hide">${b.rings ? dual(esc(ringsText(b)), `${b.rings}${b.rings_mapped ? ` (${b.rings_mapped}🗺${b.hotspots < b.rings_mapped ? `, ${b.hotspots} hot` : ""})` : ""}`) : ""}</td>
       <td class="c2hide">${firsts}</td>
@@ -3057,6 +3070,10 @@ const HERE_LEGEND = [
   [(q, s) => q(".sp.geo") || s("🪨"), "🪨", "geological signals"],
   [q => q(".volc, #hereSchematic .badges span[title]:not(.nb):not(.scoop):not(.unk)"), "🌋", "volcanism (brighter: landable, geological sites possible)"],
   [(q, s) => q(".minec") || s("⛏"), "⛏", "planetary mining locations (hover for the likely minerals)"],
+  [q => q(".site-guardian"), "🏛", "Guardian sites (the DSS's map found them)"],
+  [q => q(".site-thargoid"), "👾", "Thargoid sites (the DSS's map found them)"],
+  [q => q(".site-anomaly"), "❔", "a planetary anomaly (the FSS found it; nobody knows what it is yet)"],
+  [q => q(".site-other"), "📡", "other surface signals the game does not name"],
 ];
 function drawHereLegend() {
   const el = document.getElementById("hereLegend");
@@ -7055,6 +7072,9 @@ function onData() {
       }
       else if (m.kind === "jumponium" && m.jumponium) sayJumponium(m.jumponium);
       else if (m.kind === "phenomena" && m.count) sayPhenomena(m);
+      else if (m.kind === "surface_site" && m.what)   // Guardian / Thargoid sites, an anomaly: said with delight
+        alertOut("surface_site", `${siteIcons(m.sites)} ${m.what[0].toUpperCase()}${m.what.slice(1)}`, "",
+                 {say: () => line("surface_site", {what: m.what}, `Surface sites: ${m.what}.`)});
       else if (m.kind === "rare_star" && m.what)   // a rare star resolved: said with delight
         alertOut("rare_star", `⭐ ${m.what[0].toUpperCase()}${m.what.slice(1)}`, m.star || "",
                  {say: () => line("rare_star", {what: m.what}, `Rare star: ${m.what}.`)});
@@ -7309,7 +7329,7 @@ const speechLogFacts = e => [e.kind + (e.tag ? "/" + e.tag : ""), e.style, e.voi
 const ALERT_SHORT = {arrival: "Arrival", game: "Game start and quit", jump: "FSD charge", honk: "Honk", brief: "Arrival brief", fss: "FSS",
   leaving: "Leaving", fuel: "Fuel", scoop: "Tank full", scoopstop: "Scooping stopped", supercharge: "Supercharge", find: "Find",
   jumponium: "Jumponium", sampling: "Sampling", approach: "High-g approach", bodybrief: "Body brief", sell: "Selling", saleleft: "Sale left data",
-  unsold: "Unsold", hull: "Hull and danger", carrier: "Carrier", codex: "Codex", phenomena: "Stellar phenomena", rare_star: "Rare star", loss: "Ship lost", rigs: "Rigs", rigleash: "Rig leash",
+  unsold: "Unsold", hull: "Hull and danger", carrier: "Carrier", codex: "Codex", phenomena: "Stellar phenomena", rare_star: "Rare star", surface_site: "Surface sites", loss: "Ship lost", rigs: "Rigs", rigleash: "Rig leash",
   rigsout: "Rigs out", mapped: "Mapped", signals: "Signals", highway: "Neutron Highway", autotarget: "Auto-target", manual: "Asked for",
   exo: "Exomastery route", riches: "Road to Riches", trade: "Trade route"};
 const speechMuted = new Set();   // kinds turned off from the tally this session (each shows an undo)
@@ -8870,7 +8890,7 @@ const TAB_ALERT_NAMES = {discovery: "Targeting a system", arrival: "Arriving som
   supercharge: "Supercharged", highway: "Highway next stop", autotarget: "Auto-target", find: "Valuable body",
   jumponium: "Jumponium materials", sampling: "Exobiology unfinished", approach: "High gravity", bodybrief: "Bio signals on approach",
   sell: "Selling", saleleft: "Data left after a sale", unsold: "Unsold data", hull: "Hull, heat, interdiction",
-  carrier: "Carrier arrived", codex: "New codex entry", phenomena: "Stellar phenomena", rare_star: "Rare star", loss: "Ship lost", rigs: "Mining rigs", rigleash: "Rig too far",
+  carrier: "Carrier arrived", codex: "New codex entry", phenomena: "Stellar phenomena", rare_star: "Rare star", surface_site: "Surface sites", loss: "Ship lost", rigs: "Mining rigs", rigleash: "Rig too far",
   rigsout: "Rigs still out"};
 function tabDrawAlerts() {
   const tog = (attr, k, on, what) => `<label class="tb-tog"><input type="checkbox" data-${attr}="${esc(k)}"${on ? " checked" : ""}> ${what}</label>`;

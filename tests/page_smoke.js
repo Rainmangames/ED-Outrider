@@ -4267,10 +4267,14 @@ const settle = async maxMs => {
       // the Discoveries group heading in Settings -> Alerts, its alerts each with their own switches
       const head = [...document.querySelectorAll("#alertOpts tr.agroup th")].map(th => th.textContent);
       const rows = ["phenomena", "rare_star"].every(k => document.querySelector('#alertOpts [data-aspeak="' + k + '"]') && document.querySelector('#alertOpts [data-alert="' + k + '"]'));
-      return JSON.stringify([s.textContent, s.title, head.length === 1 && /^Discoveries/.test(head[0]), rows]); })()`));
+      const st = document.createElement("div"); st.innerHTML = siteTags({guardian: 2, anomaly: 1});
+      const nb = document.createElement("div"); nb.innerHTML = sitesTag([{body: "10 b", sites: {guardian: 2, thargoid: 1}}]);
+      return JSON.stringify([s.textContent, s.title, head.length === 1 && /^Discoveries/.test(head[0]), rows,
+                             st.textContent, nb.firstChild.textContent, nb.firstChild.title]); })()`));
     const want = {what: ["three notable stellar phenomena, all in rings", "a notable stellar phenomenon, in a cloud",
                          "three notable stellar phenomena: two in rings and one in a cloud", ""], tag: "🌀 3", now: true, nowOne: true, allDone: true, said: true,
-                  rare: ["⭐ 2", "rare: a black hole (main star), a Wolf-Rayet star at B", true, true]};
+                  rare: ["⭐ 2", "rare: a black hole (main star), a Wolf-Rayet star at B", true, true,
+                         "🏛❔", "🏛👾", "🏛👾 Guardian sites, Thargoid sites on 10 b"]};
     const ok = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && ok;
     console.log(ok ? "OK" : "FAIL", "| stellar phenomena |", ok ? "counted, in Now and the 🌀, said from its lines" : JSON.stringify(got), errors.slice(before));

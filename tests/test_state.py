@@ -400,6 +400,31 @@ class Batch2Server(unittest.TestCase):
         self.assertEqual(visited(), 2)
         self.assertIn("phenomena_sites", ed_outrider.RESET_JOURNAL_DATA)   # journal-derived: a re-read rebuilds it
 
+    def test_surface_sites_kept_and_announced(self):
+        """Guardian, Thargoid and planetary-anomaly body signals were dropped (only bio, geo and mining were kept): now
+        kept per body and said once (live). The FSS says an anomaly; the DSS's map adds Guardian and Thargoid (HIP 22460
+        10 b on EDDN, 2026-10-10). "Other" is kept but never said: nobody knows what it is yet."""
+        now = time.time()
+        at = lambda s: ed_outrider.iso_ts(now - 60 + s)
+        self.j.handle({"event": "FSDJump", "timestamp": at(0), "StarSystem": "HIP 22460", "SystemAddress": 8, "StarPos": [0, 0, 0]})
+        self.j.handle({"event": "Scan", "timestamp": at(1), "ScanType": "Detailed", "StarSystem": "HIP 22460", "SystemAddress": 8,
+                       "BodyID": 40, "BodyName": "HIP 22460 10 b", "PlanetClass": "Rocky body", "DistanceFromArrivalLS": 900.0,
+                       "Landable": True, "WasDiscovered": True, "WasMapped": True})
+        sig = lambda s, name, types: {"event": name, "timestamp": at(s), "SystemAddress": 8, "StarSystem": "HIP 22460",
+                                      "BodyName": "HIP 22460 10 b", "BodyID": 40,
+                                      "Signals": [{"Type": t, "Count": n} for t, n in types]}
+        self.j.handle(sig(2, "FSSBodySignals", [("$SAA_SignalType_PlanetAnomaly;", 1), ("$SAA_SignalType_Geological;", 3)]))
+        self.j.handle(sig(9, "SAASignalsFound", [("$SAA_SignalType_PlanetAnomaly;", 1), ("$SAA_SignalType_Geological;", 3),
+                                                  ("$SAA_SignalType_Guardian;", 2), ("$SAA_SignalType_Thargoid;", 1),
+                                                  ("$SAA_SignalType_Other;", 4), ("$SAA_SignalType_Human;", 2)]))
+        said = [m["what"] for m in self.j.moments if m["kind"] == "surface_site"]
+        self.assertEqual(said, ["an unknown planetary anomaly on 10 b", "Guardian and Thargoid sites on 10 b"])   # each news once
+        body = next(b for b in self.state.system_detail(8)["bodies"] if b["name"] == "10 b")
+        self.assertEqual(body["sites"], {"guardian": 2, "thargoid": 1, "anomaly": 1, "other": 4})
+        self.assertEqual(body["geo"], 3)                                         # the rest as before
+        self.j.handle(sig(20, "SAASignalsFound", [("$SAA_SignalType_Guardian;", 2)]))
+        self.assertEqual(len([m for m in self.j.moments if m["kind"] == "surface_site"]), 2)   # mapped again: nothing new
+
     def test_rare_stars_announced_and_shown(self):
         """A rare star (a black hole, a Wolf-Rayet...) resolved live is a "rare_star" moment, once; Nearby and Here list
         the rare stars, Spansh's included (seen before you go); common stars say nothing."""

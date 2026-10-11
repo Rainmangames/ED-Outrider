@@ -19,6 +19,8 @@ notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts
     phenomena, all in rings");
   - a rare star resolved by the arrival's own scan or the FSS ("a black hole, the main star", "a Wolf-Rayet star at
     B": black holes, Wolf-Rayet, carbon, O-type and Herbig Ae/Be stars, supergiants, the rarer white dwarfs)
+  - surface sites on a body: Guardian or Thargoid sites (said once the DSS has mapped the body: the journal names them
+    only then) or an unknown planetary anomaly (said when the FSS finds it)
 - low fuel where you cannot scoop, and a top-up worth taking before a dry stretch
 - docking where the station buys your data, and what you banked when you sold
 - a sale that left data aboard (Universal Cartographics sells 50 systems a page; at Vista Genomics, the species

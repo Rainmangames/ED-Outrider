@@ -1225,7 +1225,8 @@ WANTED = tuple(f'"event":"{e}"'.encode()
 #     were dropped; the SRV's refinery and scoop stay out of the ship's hold; an older Location's relog is judged
 #     against the arrival before it (a legacy folder read late counted every login as a visit).
 # 43: a system's population (system_population) and own_firsts.bio_x5: no x5 bio bonus in populated systems.
-PARSER_VERSION = 46
+PARSER_VERSION = 47
+# 47: body signals keep Guardian, Thargoid, planetary anomaly and other counts (own_signals.sites)
 # 46: each drop at a notable stellar phenomenon is kept (phenomena_sites): "1 of 3 visited"
 # 45: notable stellar phenomena are counted (phenomena.n: the most in one FSS burst; the game writes several of a kind
 #     as identical lines, which the (system, kind) key had folded into one)
@@ -1379,7 +1380,7 @@ CREATE TABLE IF NOT EXISTS own_barycentres (
     system INTEGER, body_id INTEGER, record TEXT, ts TEXT,
     PRIMARY KEY (system, body_id));
 CREATE TABLE IF NOT EXISTS own_signals (
-    system INTEGER, name TEXT, bio INTEGER, geo INTEGER, ts TEXT, mining INTEGER,
+    system INTEGER, name TEXT, bio INTEGER, geo INTEGER, ts TEXT, mining INTEGER, sites TEXT,
     PRIMARY KEY (system, name));
 -- Discovery flags from your *first* scan of each body (later rescans say "discovered" once you've sold).
 -- bio_x5: whether Vista Genomics pays the x5 first-footfall bonus for its samples: nobody had set foot there when you
@@ -2077,6 +2078,8 @@ def own_data(db, id64, system):
         r = records.get(short_name(system, row["name"]))
         if r:
             r["bio"], r["geo"], r["mining"] = row["bio"], row["geo"], row["mining"] or 0
+            if row["sites"]:
+                r["sites"] = json.loads(row["sites"])   # Guardian, Thargoid, anomaly, other: {kind: signals}
             r["signals_seen"] = True   # an FSS or DSS of yours counted its signals
     hotspots = {}
     for row in db.execute("SELECT * FROM own_ring_signals WHERE system=?", (id64,)):
@@ -4059,9 +4062,19 @@ class Journals:
                 self.db.execute("INSERT OR REPLACE INTO own_ring_signals VALUES (?, ?, ?, ?)",
                                 (system, body, json.dumps(minerals(signals)), ts))
             else:
-                self.db.execute("INSERT OR REPLACE INTO own_signals (system, name, bio, geo, ts, mining) "
-                                "VALUES (?, ?, ?, ?, ?, ?)",
-                                (system, body, signals.get(BIO, 0), signals.get(GEO, 0), ts, signals.get(MINING, 0)))
+                # surface sites: Guardian, Thargoid, a planetary anomaly (the FSS says it), others (the DSS says them)
+                sites = {k: signals[t] for k, t in SITE_SIGNALS.items() if signals.get(t)}
+                had = self.db.execute("SELECT sites FROM own_signals WHERE system=? AND name=?", (system, body)).fetchone()
+                had = json.loads(had["sites"]) if had and had["sites"] else {}
+                self.db.execute("INSERT OR REPLACE INTO own_signals (system, name, bio, geo, ts, mining, sites) "
+                                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                                (system, body, signals.get(BIO, 0), signals.get(GEO, 0), ts, signals.get(MINING, 0),
+                                 json.dumps(sites) if sites else None))
+                news = [k for k in SITE_SPOKEN if sites.get(k) and not had.get(k)]
+                if news and live_event(ts):   # Guardian or Thargoid sites, an anomaly: news once per body, said with delight
+                    short = short_name(ev.get("StarSystem") or (self.pos or {}).get("name"), body) or body
+                    self.moment("surface_site", ts, system=str(system), body=short, sites={k: sites[k] for k in news},
+                                what=site_words(news, short))
                 if name == "FSSBodySignals" and (signals.get(BIO) or signals.get(GEO)):   # the FSS just found them
                     self.moment("signals", ts, system=system, body_name=body, bio=signals.get(BIO, 0), geo=signals.get(GEO, 0))
                 if signals.get(BIO) and ev.get("BodyID") is not None and name == "FSSBodySignals":
@@ -4639,6 +4652,28 @@ def rare_stars(records, system_name=None):
             body = short_name(system_name, r.get("name")) if system_name else r.get("name")
             out.append({"body": body or "", "what": what, "main": bool(r.get("main"))})
     return out
+
+
+# body signals that are surface sites (Settings' "Surface sites" alert): SAASignalsFound / FSSBodySignals types. The
+# FSS says a planetary anomaly; Guardian, Thargoid and the others only once the DSS has mapped the body.
+SITE_SIGNALS = {"guardian": "$SAA_SignalType_Guardian;", "thargoid": "$SAA_SignalType_Thargoid;",
+                "anomaly": "$SAA_SignalType_PlanetAnomaly;", "other": "$SAA_SignalType_Other;"}
+SITE_SPOKEN = ("guardian", "thargoid", "anomaly")   # "other" is shown, never said: nobody knows what it is yet
+
+
+def site_words(kinds, body):
+    """'Guardian sites on B 3', 'Guardian and Thargoid sites on A 1', 'an unknown planetary anomaly on C 2'."""
+    names = [{"guardian": "Guardian", "thargoid": "Thargoid"}[k] for k in kinds if k in ("guardian", "thargoid")]
+    parts = [" and ".join(names) + " sites"] if names else []
+    if "anomaly" in kinds:
+        parts.append("an unknown planetary anomaly")
+    return " and ".join(parts) + (f" on {body}" if body else "")
+
+
+def surface_sites(records, system_name=None):
+    """[{body, sites}] for the bodies with surface sites among a system's records (your own scans only)."""
+    return [{"body": short_name(system_name, r.get("name")) if system_name else r.get("name"), "sites": r["sites"]}
+            for r in records or [] if r.get("sites")]
 
 
 def subtype_scoopable(subtype):
@@ -8311,6 +8346,7 @@ class State:
                 "bio_options": bio_options(r, star, ctx, {o["genus"] for o in held}) if r.get("bio") and not known_genera else None,
                 # a codex entry with no body (a phenomenon in space) is no unscanned body's: those have bid None too
                 "organics": organics.get(bid, []), "codex": codex.get(bid, []) if bid is not None else [],
+                "sites": r.get("sites") or None,
                 "scanned": bid is not None, "first_discovered": first_disc, "mapped": is_mapped,
                 "first_mapped": first_map, "map_state": map_state, "footfall": bool(f and f["foot_ts"]),
                 "first_footfall": bool(f and f["was_footfalled"] == 0 and f["foot_ts"]),
@@ -9355,6 +9391,7 @@ class State:
         s["no_dump"] = bool(base.get("no_dump"))   # Spansh has no body details: the popup stops saying "loading"
         s["phenomena"] = [dict(r) for r in self.db.execute("SELECT kind, reached_ts, coalesce(n, 1) AS n, max((SELECT count(DISTINCT site) FROM phenomena_sites ps WHERE ps.system = phenomena.system AND ps.kind = phenomena.kind), reached_ts IS NOT NULL) AS visited FROM phenomena WHERE system=?", (id64,))]
         s["rare_stars"] = rare_stars(records, base["name"])   # from Spansh's records too: seen before you go
+        s["sites"] = surface_sites(records, base["name"])     # Guardian, Thargoid, anomalies: your own scans
         raws = {short_name(base["name"], r_["name"]): json.loads(r_["raw"]) for r_ in self.db.execute(
             "SELECT name, raw FROM own_bodies WHERE system=? AND raw IS NOT NULL", (id64,))}
         cur = system_curiosities(base["name"], records, raws)

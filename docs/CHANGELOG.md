@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Surface sites: Guardian, Thargoid, planetary anomalies
+- Body signals other than biology, geology and mining were dropped: Guardian and Thargoid sites (the journal names them
+  only once the DSS has mapped the body), the new planetary anomaly (the FSS names it; nobody has documented what it is
+  yet) and "other" signals are kept now (`own_signals.sites`; PARSER_VERSION 47: the next start re-reads the journals).
+- A new alert under Discoveries, "Surface sites": "Guardian and Thargoid sites on 10 b", "an unknown planetary anomaly
+  on C 2", once per body and kind, with its own `surface_site` lines in every personality, all delighted (50 a list).
+  "Other" is shown, never said.
+- Here tags the body (🏛 Guardian, 👾 Thargoid, ❔ anomaly, 📡 other; the legend explains them), Nearby marks the system,
+  and Now has a line.
+
 ## 2026-10-11 · Notable stellar phenomena: which ones you have visited
 - The journal says only "a ring phenomenon" when you drop at one, not which of the system's three, and two sites can
   share a ring (the author found two in one ring with different things), so each drop counts as a site visited
