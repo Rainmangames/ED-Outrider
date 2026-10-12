@@ -11,6 +11,82 @@ Outrider behaves. When a new release is out, a small **⬆ Update** pill appears
 
 ---
 
+## 2026.10.22 · 12 October 2026
+
+**Boxel by boxel, rare finds called out, Inara uploads, and a voice lab in the page.**
+
+### 📦 Boxel exploration
+
+Nearby (and the Overview's Nearby pane) has a **Standard / Boxel** switch. In Boxel mode it lists the boxel you are in
+by number: the systems you visited with your scans, the ones Spansh knows with how much of each anyone reported
+("known · 3 of 14 bodies", "known · honked only"), and the rest "to try". **Next** is the lowest number you have not
+visited, with 🎯 to target it on the game PC (even a system nobody has visited: Outrider works out its address).
+
+<p align="center">
+  <img src="../images/boxel.png" alt="Nearby in Boxel mode: the boxel you are in by number, visited ones with your scans, one Spansh knows, the rest to try, Next with its target button" width="900">
+</p>
+
+- Outrider cannot know how many systems a boxel holds: explore until a name the galaxy map cannot find ("probably the
+  end", with a retry). **✓ complete** shows by itself; **✓ Done with this boxel** is your call.
+- **📌 Keep this boxel** stays on it when you jump out; **auto-target the next on arrival** and **skip systems already
+  fully scanned** are opt-in.
+- **Boxels nearby** recommends the nearest boxels of each kind, with what each tends to hold and your own figures for
+  it; the **Sector map** draws your sector's boxels one layer at a time. A tap explores one.
+- Now and the overlay's Now panel say where the next jump goes: the route's next stop and a kept boxel's Next.
+
+### 🌟 Rare finds, called out
+
+- **Rare stars** (black holes, Wolf-Rayets, carbon stars, Herbig Ae/Be, supergiants, the rarer white dwarfs…),
+  **notable stellar phenomena** (how many, and which you have visited), **surface sites** (Guardian, Thargoid, the new
+  planetary anomaly) and **signals worth a detour** (Titans, Guardian beacons, generation ships, listening posts):
+  marked on Nearby and Here, a line on Now, and each announced once, with its own switch under Discoveries.
+- **Potential green gas giants**, from the community's seven-layer ladder model: a green planet with "?" on the body,
+  a Now line and an alert. A guess about where to look; the system map tells.
+- **✦ on star and planet types new to your codex** in this region (✪: new anywhere), on Here's bodies and Nearby's
+  rows, Spansh's bodies included: a regional codex first before you scan it. Types you have scanned count as logged,
+  even when your codex is older than your journals.
+- Rarer planet classes (water giants, helium giants, class V) join the 🔭 curiosities, with one "you might be
+  interested" line per system.
+
+### 📡 Inara uploads
+
+With your Inara API key in Settings → Uploads, Outrider sends what EDMC's Inara plugin sends: travel, ranks, credits,
+statistics, the ship you fly and your fleet, stored modules, reputation, inventory, community goals, missions,
+combat, friends and suits. Off until you switch it on; never your carrier. More in the [Uploads](uploads.md) page.
+
+### 🎙 The voice lab, in the page
+
+⚙ Settings → Voice → **🎙 Voice lab** replaces the separate voice_lab.py window: try any installed voice and speed,
+**several-person voices** with a speaker picker (‹ › 🎲), random lines by alert and personality, an audition of key
+alerts, ✂ to cut a line, your own words with **Save WAV**. **More voices** lists every Piper voice by language, sorted
+by name, quality or size, with Piper's own **▶ sample** before you download.
+
+- **How is it said**: the exobiology names are now said the usual way ("fon-TIK-yoo-loo-uh"), from a shipped table of
+  120 genus and species words. A first pass: change any word your way in the box (kept in `data/pronounce.json`).
+- Piper spells four star letters too ("ABCD 3").
+
+### 🛠 Also
+
+- 🎯 beside your carrier's system in the Carrier tile (game PC) targets it in the galaxy map.
+- Here: a finished species is one line, its codex entry with what it paid, the colour's word in its colour (Settings
+  → Display turns the colour off); Rings sit before ⛏; bodies not DSS'd list their possible genera more tidily.
+- The Overview's surface map brings the body you are on into view; the Here heading steps aside for it.
+- The Exo-Biology checklist's "aboard" counts what you carry.
+- The overlay stays hidden while the game loads.
+- A carrier's market that the game writes late still goes to EDDN.
+- The carrier's tritium jumps no longer count a buy order's reserved space as cargo.
+- The **Babylon 5 - Vorlon** theme, for the desktop page and the tablet.
+- Many fixes from code reviews (auto honk waits at the menu, the launchers' paths, uploads, routes, the overlay).
+- The guide is up to date, with new screenshots in the Elite theme.
+
+### Before you update
+
+- **The first start re-reads your journals once** (the start-up log says why): a few seconds, or a few minutes for
+  years of journals. Your bookmarks, sample points, routes and settings are kept.
+- Nothing else to do, Docker included. Inara stays off until you add a key.
+
+---
+
 ## 2026.10.21 · 11 October 2026
 
 **Panels over the game, your biology samples on EDDN, and a ✓ for every genus you finish.**

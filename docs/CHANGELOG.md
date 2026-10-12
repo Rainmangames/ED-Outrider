@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-12 · Version 2026.10.22
+- Boxel exploration (the list, Next with 🎯, complete/done, keep, auto-target, skip fully scanned, known counts, boxels
+  nearby, the sector map), rare finds (rare stars, phenomena, surface sites, signals worth a detour, potential green
+  gas giants, ✦ body types new to your codex, rarer curiosities), Inara uploads, the voice lab in the page with
+  speakers, More voices and the pronunciation table, the Vorlon theme, Now's next-stop line, the carrier 🎯, and the
+  review fixes. What's new has its section. PARSER_VERSION 49: the first start re-reads the journals once.
+
 ## 2026-10-12 · Docs sweep, screenshots in the Elite theme
 - Every guide page, the README and the developer notes checked against the code and the work since 2026.10.21: Inara,
   the carrier's 🎯, boxel mode and its sector map, the rare finds, the ✦ body-type marks, the voice lab's speakers and
