@@ -175,6 +175,28 @@ function valueTitle(s) {
   const part = (c, b) => [c ? `${credits(c)} cartographics` : "", b ? `${credits(b)} exobiology` : ""].filter(Boolean).join(" + ") || "nothing";
   return `On board from here: ${part(v.carto_now, v.bio_now)}\nStill available: ${part(v.carto_left, v.bio_left)}\n\nExobiology counts ×5 on bodies nobody had set foot on when you scanned them, ×1 on bodies you have not scanned.`;
 }
+// star and planet types new to your codex (the review's suggestion, 2026-10-12): a body's type logs a codex entry the
+// first time you scan one in a region. "galaxy" (✪): in your codex nowhere; "region" (✦): not in this region; null:
+// logged, or not known (data.codex_types: your codex's types per region, always current)
+function codexTypeState(t, region) {
+  if (!t || !t.id) return null;
+  const logged = (data && data.codex_types) || {};
+  if (!Object.keys(logged).length) return null;   // no body type in your journals' codex at all: nothing to compare with
+  if (!Object.values(logged).some(ids => ids.includes(t.id))) return "galaxy";
+  return region && !(logged[region] || []).includes(t.id) ? "region" : null;
+}
+function codexTypeMark(t, region) {
+  const st = codexTypeState(t, region);
+  return !st ? "" : ` <span class="cxnew cxtype${st === "galaxy" ? " cxgal" : ""}" title="${esc(t.name)}: new to your codex ${st === "galaxy" ? "anywhere" : "in this region"} (logged when you scan it)">${st === "galaxy" ? "✪" : "✦"}</span>`;
+}
+// Nearby: the types here new to your codex, one tag ("✦2"), each named in its title
+function codexTypesTag(s) {
+  const fresh = (s.codex_types || []).map(t => ({t, st: codexTypeState(t, s.region)})).filter(x => x.st);
+  if (!fresh.length) return "";
+  const kinds = [...new Map(fresh.map(x => [x.t.id, x])).values()], gal = kinds.some(x => x.st === "galaxy");
+  return `<span class="nb cxtype${gal ? " cxgal" : ""}" title="new to your codex${s.region ? ` in ${esc(s.region)}` : ""}: ${kinds.map(x =>
+    esc(`${x.t.name} (${fresh.filter(y => y.t.id === x.t.id).map(y => y.t.body).join(", ")})${x.st === "galaxy" ? ", anywhere" : ""}`)).join("; ")}">${gal ? "✪" : "✦"}${kinds.length > 1 ? kinds.length : ""}</span>`;
+}
 function notable(s) {
   const n = s.notable || {};
   const names = {ELW: "Earth-like", WW: "water world", AW: "ammonia world", T: "terraformable"};
@@ -184,7 +206,7 @@ function notable(s) {
     (s.bio_potential ? `<span class="nb bio" title="exobiology: up to this much across ${s.bio_bodies_guessed} bod${s.bio_bodies_guessed === 1 ? "y" : "ies"}, from spawn rules">🧬≤${credits(s.bio_potential)}</span>` : "") +
     (gg.length ? gggIcon(false, `potential green gas giant${gg.length > 1 ? "s" : ""} (the community's ladder model, from your scans or Spansh's): ` +
       gg.map(x => `${x.body} (${x.chance})`).join(", "), gg.length) : "") + (s.ggg_green ? gggIcon(true, "a green gas giant your codex confirms", s.ggg_green) : "") +
-    phenomenaTag(s.phenomena) + rareStarTag(s.rare_stars) + sitesTag(s.sites) + poiTag(s.pois) + oldDataTag(s.stale_bio) + bioUnknownTag(s.bio_unknown) +
+    codexTypesTag(s) + phenomenaTag(s.phenomena) + rareStarTag(s.rare_stars) + sitesTag(s.sites) + poiTag(s.pois) + oldDataTag(s.stale_bio) + bioUnknownTag(s.bio_unknown) +
     (s.curiosities ? `<span class="nb cur" title="${(s.curiosity_list || []).map(c => esc(`${c.body}: ${c.tag} (${c.why})`)).join("&#10;")}">🔭${s.curiosities > 1 ? "×" + s.curiosities : ""}</span>` : "");
 }
 // pre-Odyssey Spansh data (stale_bio {bodies, genera_top, up_to, reported}): thin-atmosphere worlds marked not
@@ -3226,7 +3248,7 @@ function renderHere() {
     const firsts = [b.first_discovered && `<span class="fl" title="first discovered">🏁</span>`, b.first_mapped && `<span class="fl" title="first mapped">🗺</span>`,
                     !b.first_mapped && b.mapped && `<span class="fl unk" title="mapped (not first)">🗺</span>`,
                     b.first_footfall && `<span class="fl" title="first footfall">👣</span>`, !b.scanned && `<span class="unk" title="known to Spansh, not scanned by you">—</span>`].filter(Boolean).join("");
-    return `<tr class="${b.main ? "main" : ""}${selectedBody === b.name ? " sel" : ""}${destBody === b ? " dest" : ""}${hotClasses(b)}" data-body="${esc(b.name)}" data-bodypop="${esc(b.name)}"><td class="name" data-name="${esc(b.name)}">${ind}${esc(b.name)}${b.ggg ? " " + gggIcon(!!b.ggg.confirmed, gggTitle(b.ggg)) : ""}${(b.curiosities || []).length ? ` <span class="cur" title="${b.curiosities.map(c => esc(c.tag + ": " + c.why)).join("&#10;")}">🔭</span>` : ""}${b.notable ? ` <span class="nb ${b.notable}">${b.notable}</span>` : ""}${b.terraformable ? ` <span class="nb T">T</span>` : ""}${firsts ? `<div class="sf2 sub2">${firsts}</div>` : ""}</td>
+    return `<tr class="${b.main ? "main" : ""}${selectedBody === b.name ? " sel" : ""}${destBody === b ? " dest" : ""}${hotClasses(b)}" data-body="${esc(b.name)}" data-bodypop="${esc(b.name)}"><td class="name" data-name="${esc(b.name)}">${ind}${esc(b.name)}${codexTypeMark(b.codex_type, h.region)}${b.ggg ? " " + gggIcon(!!b.ggg.confirmed, gggTitle(b.ggg)) : ""}${(b.curiosities || []).length ? ` <span class="cur" title="${b.curiosities.map(c => esc(c.tag + ": " + c.why)).join("&#10;")}">🔭</span>` : ""}${b.notable ? ` <span class="nb ${b.notable}">${b.notable}</span>` : ""}${b.terraformable ? ` <span class="nb T">T</span>` : ""}${firsts ? `<div class="sf2 sub2">${firsts}</div>` : ""}</td>
       <td>${sfText(b.type === "Star" ? "star" : "planet", b.subtype || "")}${b.type === "Star" ? (b.scoopable ? ` <span class="scoop">⛽</span>` : "") : ""}${b.rings ? `<span class="sf2"> ${icon("ring", "i-ring", b.rings, ringsText(b))}</span>` : ""}${b.dist_ls != null ? `<div class="sf2 sub2 unk">${Math.round(b.dist_ls).toLocaleString()} ls</div>` : ""}</td>
       <td class="num c2hide">${b.dist_ls != null ? Math.round(b.dist_ls).toLocaleString() : ""}</td>
       <td class="num${b.gravity >= highGravity() ? " noscoop" : ""}">${b.gravity != null && b.type === "Planet" ? b.gravity.toFixed(2) : ""}${atm ? `<div class="sf2 atm2" title="${esc(atm)}">${esc(shortForm("atmosphere", atm))}</div>` : ""}</td>
@@ -3294,9 +3316,10 @@ const HERE_LEGEND = [
   [q => q(".sp.lost"), "✗", "samples lost with the ship: sample again"],
   [q => q('span.unk[title^="likeliest by value"]'), "?", "the likeliest species, not yet known"],
   [(q, s, has) => has("td.bio .sp", "≤"), "≤", "the most the likely species could pay"],
-  [q => q(".cxgal"), `<span class="cxnew cxgal">✪</span>`, "new to your codex anywhere"],
-  [(q, s, has) => q(".cxnew:not(.cxgal)") || has('.sp[title^="codex:"]', "✦"),
+  [q => q(".cxgal:not(.cxtype)"), `<span class="cxnew cxgal">✪</span>`, "new to your codex anywhere"],
+  [(q, s, has) => q(".cxnew:not(.cxgal):not(.cxtype)") || has('.sp[title^="codex:"]', "✦"),
    `<span class="cxnew">✦</span>`, "new to your codex in this region"],
+  [q => q(".cxtype"), `<span class="cxnew cxtype">✦</span>`, "a star or planet type new to your codex (✪: anywhere)"],
   [q => q('.sp[title^="codex:"]'), "📖", "a codex entry you logged here"],
   [(q, s, has) => has('.sp[title^="codex:"]', "💰"), "💰", "the codex paid for it"],
   [(q, s) => q(".sp.geo") || s("🪨"), "🪨", "geological signals"],

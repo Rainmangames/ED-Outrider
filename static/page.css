@@ -619,6 +619,7 @@ table .sub2 { margin-top: 2px; font-weight: 400; font-size: 12px; }
 
 .cxnew { color: var(--accent); font-weight: 700; cursor: help; }
 .cxnew.cxgal { color: var(--good); }   /* ✪: new to your codex anywhere */
+.nb.cxtype { color: var(--accent); cursor: help; } .nb.cxtype.cxgal { color: var(--good); }   /* a body type new to your codex */
 .cxnew .cxcol { font-weight: 600; }   /* the new colour after the mark: ✪ Cobalt */
 /* Now is read at a glance, often on a tablet with no hover: spell the ✦ out there */
 body.nowmode .cxnew::after { content: " new codex"; font-weight: 600; }

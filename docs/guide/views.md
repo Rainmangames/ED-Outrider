@@ -177,6 +177,21 @@ journal's own figures for: your scans, and Spansh's records of other people's.
 - "likely" is a confirmed rule of the model, "possible" a derived one. It is a guess about where to look: some kinds
   (Class II, V, helium giants) and some temperatures cannot be predicted at all, and nothing is said for them.
 
+## ✦ Star and planet types new to your codex
+
+The codex logs every star and planet type once per region, the first time you scan one there (a K-type giant, a
+terraformable water world, a rocky body with an atmosphere...). Outrider knows which entry each body would log and which
+your codex has:
+
+- **✦** beside a body in Here: its type is not in your codex for this region; **✪**: in your codex nowhere. The
+  tooltip names the type ("K-type giant: new to your codex in this region").
+- **On a Nearby row**, one tag for the system ("✦2"), each type and its bodies in the tooltip: Spansh's bodies count
+  too, so a system can be picked for it before you go.
+
+Shown only, never spoken. A type the journals give no codex entry for (a class II giant star, a helium gas giant) gets
+no mark, nor does a body Spansh lists without its luminosity or atmosphere. Without a single body type in your
+journals' codex there is nothing to compare with, and nothing is marked.
+
 ## 📦 Boxel exploration
 
 A procedural system name says which cube of space (a **boxel**) it is in and what kind of stars that cube makes:

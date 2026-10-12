@@ -5018,6 +5018,35 @@ const settle = async maxMs => {
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| green gas giants |", good ? "the guess with ?, the confirmed one, Now's line, Nearby's tag, the legend, the alert switch" : JSON.stringify({g, want}), errors.slice(before));
   }
+  // star and planet types new to your codex (2026-10-12): ✦ not in this region's codex, ✪ in none; Here's name cell,
+  // Nearby's tag naming each, the legend; nothing at all without a single body type logged
+  {
+    const w = dom.window, before = errors.length;
+    const got = w.eval(`(() => {
+      const o = {}, hd0 = hereData, v0 = view, ct0 = data.codex_types;
+      const body = (name, t, id) => ({name, body_id: id, type: "Planet", subtype: "Water world", genera: [], bio: 0, geo: 0, organics: [],
+        codex: [], curiosities: [], bio_guess: [], value_parts: {bio_factor: 1}, mining: 0, codex_type: t});
+      const ww = {id: 1300301, name: "water world"}, k = {id: 1100601, name: "K-type star"}, elw = {id: 1300100, name: "Earth-like world"};
+      data.codex_types = {"Inner Orion Spur": [1300301], "Norma Expanse": [1100601]};
+      view = "here";
+      hereData = {id64: posId(), name: "Cx", region: "Inner Orion Spur", leaving: null, phenomena: [], tree: null,
+                  bodies: [body("A", k, 0), body("B 1", ww, 4), body("B 2", elw, 5), body("C 1", null, 7)]};
+      renderHere();
+      o.here = [...document.querySelectorAll("#hereRows tr[data-body]")].map(r => { const m = r.querySelector(".cxtype"); return m ? m.textContent : "-"; });
+      o.title = (document.querySelector('#hereRows tr[data-body="A"] .cxtype') || {}).title;
+      o.legend = [...document.querySelectorAll("#hereLegend .lgi")].some(e => e.querySelector(".cxtype"));
+      const row = {region: "Inner Orion Spur", codex_types: [Object.assign({body: "A"}, k), Object.assign({body: "B 1"}, ww), Object.assign({body: "B 2"}, elw), Object.assign({body: "B 3"}, elw)]};
+      const tag = notable(row);
+      o.nearby = tag.includes('class="nb cxtype cxgal"') && tag.includes(">✪2<") && tag.includes("Earth-like world (B 2, B 3), anywhere") && tag.includes("K-type star (A)");
+      data.codex_types = {}; o.none = notable(row).includes("cxtype");
+      data.codex_types = ct0; hereData = hd0; view = v0; render();
+      return JSON.stringify(o); })()`);
+    const g = JSON.parse(got);
+    const want = {here: ["✦", "-", "✪", "-"], title: "K-type star: new to your codex in this region (logged when you scan it)", legend: true, nearby: true, none: false};
+    const good = JSON.stringify(g) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| codex body types |", good ? "✦ / ✪ in Here's name cell, Nearby's tag, the legend, nothing without a codex" : JSON.stringify({g, want}), errors.slice(before));
+  }
   // another site's POST is refused before any handler runs (radius: harmless even if it got through with {})
   const post = origin => fetch(base + "api/radius", {method: "POST", body: "{}",
     headers: Object.assign({"Content-Type": "application/json"}, origin ? {Origin: origin} : {})}).then(r => r.status);

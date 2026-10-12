@@ -206,6 +206,7 @@ import outrider.overlay    # the in-game overlay's panels as draw lists (the win
 import outrider.overlay_runner  # Outrider runs that window itself on the game PC while the overlay is wanted
 import outrider.ggg        # potential green gas giants: the community's seven-layer ladder model (pure)
 import outrider.boxel      # boxel exploration: the cube a procedural name places a system in, its systems, its id64s (pure)
+import outrider.codex_bodies  # star and planet types as codex entries: what a body would log (pure)
 from outrider.core import iso_ts, ts_seconds   # journal timestamps
 from outrider.fsd import (   # the frame shift drive's maths: range, fuel per jump, the fuel model, fleet figures
     FSD_RANGE_MODS, GUARDIAN_BOOST, conservative_optimal_mass, conservative_range, fleet_figures, fleet_range, fsd_range,
@@ -4704,6 +4705,20 @@ SUPERGIANT_WORDS = {"Blue-White": "a blue-white supergiant", "White": "a white s
                     "White-Yellow": "a yellow-white supergiant", "Red": "a red supergiant"}
 
 
+def codex_type(r):
+    """The codex entry a body's type logs ({id, name}: "K-type giant"), or None (outrider.codex_bodies)."""
+    i = outrider.codex_bodies.entry_for(r)
+    return {"id": i, "name": outrider.codex_bodies.NAMES.get(i, "")} if i else None
+
+
+def codex_types_logged(db):
+    """Your codex's star and planet types per region: {region: [entry id]} (the page's ✦ / ✪ on bodies)."""
+    out = {}
+    for region, i in db.execute("SELECT DISTINCT region, entry_id FROM codex WHERE entry_id BETWEEN 1100000 AND 1399999"):
+        out.setdefault(region or "", []).append(i)
+    return {k: sorted(v) for k, v in out.items()}
+
+
 def boxel_fully_scanned(sp):
     """Whether Spansh has every body of a boxel's system (its reported bodies reach the honk's count)."""
     k, c = sp.get("bodies_known"), sp.get("body_count")
@@ -6010,6 +6025,7 @@ class State:
             "autotarget": self.autotarget_info(), "rail": self.rail_info(),   # the tablet's game buttons
             # boxel exploration: the page fetches api/boxel when this changes (a jump, a scan, Spansh's answer, a pick)
             "boxel": self.boxel_payload(),
+            "codex_types": codex_types_logged(self.db),   # your codex's body types per region (✦ / ✪ on bodies)
             "hush": self.hush_info(),
             "firsts_watch": self.firsts_watch_info(),
             "copilot": dict(self.copilot, button=self.button.status if self.button else None),
@@ -8551,6 +8567,8 @@ class State:
                 "organics": organics.get(bid, []), "codex": codex.get(bid, []) if bid is not None else [],
                 # a potential green gas giant (the ladder model on its full-precision temperature) or a confirmed one
                 "ggg": ggg_state(r, [c["name"] for c in (codex.get(bid, []) if bid is not None else [])]),
+                # the codex entry its type logs (the page marks one not in your codex for the region: ✦ / ✪)
+                "codex_type": codex_type(r),
                 "sites": r.get("sites") or None,
                 "scanned": bid is not None, "first_discovered": first_disc, "mapped": is_mapped,
                 "first_mapped": first_map, "map_state": map_state, "footfall": bool(f and f["foot_ts"]),
@@ -9599,6 +9617,10 @@ class State:
         s["phenomena"] = [dict(r) for r in self.db.execute("SELECT kind, reached_ts, coalesce(n, 1) AS n, max((SELECT count(DISTINCT site) FROM phenomena_sites ps WHERE ps.system = phenomena.system AND ps.kind = phenomena.kind), reached_ts IS NOT NULL) AS visited FROM phenomena WHERE system=?", (id64,))]
         s["rare_stars"] = rare_stars(records, base["name"])   # from Spansh's records too: seen before you go
         s["ggg"], s["ggg_green"] = ggg_bodies(self.db, id64, base["name"], records)   # Spansh's too: a system to go to
+        # the star and planet types here as codex entries, Spansh's too (the page marks the ones new to your codex)
+        s["codex_types"] = [dict(t, body=r["name"]) for r in records for t in [codex_type(r)] if t]
+        s["region"] = outrider.bio.region_name(base["x"], base["y"], base["z"]) \
+            if outrider.bio and all(isinstance(base.get(k), (int, float)) for k in "xyz") else None
         s["sites"] = surface_sites(records, base["name"])     # Guardian, Thargoid, anomalies: your own scans
         s["pois"] = [dict(r) for r in self.db.execute("SELECT kind, name FROM poi WHERE system=? ORDER BY ts", (id64,))]
         raws = {short_name(base["name"], r_["name"]): json.loads(r_["raw"]) for r_ in self.db.execute(

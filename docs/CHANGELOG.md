@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-12 · ✦ on star and planet types new to your codex
+- ✦ / ✪ marked only species new to your codex, though the codex logs every star and planet type once per region too (a
+  Fable suggestion the author picked; shown only, not spoken). `outrider/codex_bodies.py` says which codex entry a
+  body's type logs, by EntryID: the localised names are ambiguous for planets ("Terraformable", "Standard gas giant").
+  The table is from the author's journals and EDDN's codex traffic (giants by luminosity class III, supergiants by I,
+  a solid planet's "Ter" entries the ones with an atmosphere). Here marks the body (✦ not in this region's codex, ✪ in
+  none), Nearby's row gets one tag naming each type, Spansh's bodies included; the payload carries your codex's types
+  per region so the marks are always current.
+
 ## 2026-10-12 · Now says where the next jump goes
 - Now (and the overlay's Now panel) never said where the next jump goes: the route's next stop showed only in the
   strip on Overview, Nearby and Here, a kept boxel's Next only in Boxel mode (a Fable suggestion the author picked).
