@@ -7717,6 +7717,7 @@ function drawTts() {
   sw.hidden = !(t && t.voice && t.speakers > 1);
   if (!sw.hidden) fillSpeakers(document.getElementById("ttsSpk"), t.voice, t.speaker);
   if (mvVoices) { for (const v of mvVoices) v.installed = opts.includes(v.name); if (document.getElementById("moreVoices").open) drawMoreVoices(); }
+  labWatch();   // the voice lab: a voice just downloaded joins its list, picked
   const sf = data && data.sound_files, own = sf ? Object.keys(sf.own || {}) : [];   // [speech] sound_dir (S16)
   document.getElementById("soundFiles").textContent = !sf ? "" : (own.length ? `Your own sounds: ${own.join(", ")}.` : "No sound files of your own found.")
     + ((sf.problems || []).length ? ` Not used: ${sf.problems.join("; ")}.` : "");
@@ -7779,14 +7780,19 @@ function mvSorted(list) {
     : k === "-size" ? (a, b) => (b.size_mb ?? -1) - (a.size_mb ?? -1) || byName(a, b) : byName);
 }
 function drawMoreVoices() {
-  const lang = document.getElementById("mvLang").value, cur = data && data.tts && data.tts.voice;
+  const lang = document.getElementById("mvLang").value, t = data && data.tts, cur = t && t.voice;
+  const fetching = (t && t.fetching) || [], failed = (t && t.fetch_failed) || {};
   document.getElementById("mvSort").value = mvSortKey();
   document.getElementById("mvList").innerHTML = mvSorted((mvVoices || []).filter(v => v.language === lang)).map(v =>
     `<div class="mvrow"><span class="mvname">${esc(v.name.split("-")[1].replace(/_/g, " "))}</span>` +
     `<span class="unk">${esc(v.quality)}${v.speakers > 1 ? ` · ${v.speakers} speakers` : ""}${v.size_mb ? ` · ${v.size_mb} MB` : ""}</span>` +
     // Piper's own recording of the voice (its website), before downloading anything
     (v.sample ? `<button type="button" class="try" data-mvsample="${esc(v.sample)}" title="Piper's own recording of this voice, from its website${v.speakers > 1 ? " (its first speaker)" : ""}">▶ sample</button>` : "") +
-    (v.name === cur ? `<span class="ok">in use</span>` : `<button type="button" data-mv="${esc(v.name)}">${v.installed ? "Use" : "Download and use"}</button>`) +
+    // in the lab: Download fetches it without switching (then it is picked above, to hear and use); one already here is
+    // Select (picked above); the voice in use says so
+    (v.name === cur ? `<span class="ok">in use</span>`
+      : fetching.includes(v.name) ? `<button type="button" disabled>downloading…</button>`
+      : `<button type="button" data-mv="${esc(v.name)}"${failed[v.name] ? ` title="the last download failed: try again"` : ""}>${v.installed ? "Select" : failed[v.name] ? "Download again" : "Download"}</button>`) +
     `</div>`).join("") || `<div class="hint">no voices in this language</div>`;
 }
 document.getElementById("moreVoices").addEventListener("toggle", e => { if (e.target.open && !mvVoices) loadMoreVoices(); });
@@ -7797,13 +7803,15 @@ document.getElementById("mvList").addEventListener("click", async e => {
   const smp = e.target.closest("[data-mvsample]");
   if (smp) { labPlayUrl(smp.dataset.mvsample, "Piper's sample could not be played (offline, or the browser held it back: click the page first)"); return; }
   const b = e.target.closest("[data-mv]"); if (!b) return;
-  const v = (mvVoices || []).find(x => x.name === b.dataset.mv);
+  const name = b.dataset.mv, v = (mvVoices || []).find(x => x.name === name);
+  if (v && v.installed) { labSelectVoice(name); return; }   // already here: picked above, to hear and use
   let r;
-  try { r = await apiJson("api/voice", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({voice: b.dataset.mv})}); }
+  try { r = await apiJson("api/voices/download", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({voice: name})}); }
   catch { r = {error: "Outrider not reachable"}; }
-  if (r.error) { toast(`Not switched: ${r.error}`); return; }
-  b.disabled = true;
-  toast(v && v.installed ? `Switching to ${b.dataset.mv}` : `Downloading ${b.dataset.mv}${v && v.size_mb ? ` (${v.size_mb} MB)` : ""}, then switching to it`);
+  if (r.error) { labMsg(`Not downloaded: ${r.error}`, true); return; }
+  b.disabled = true; b.textContent = "downloading…";
+  labWant = name;   // picked above once it is here (drawTts)
+  labMsg(`Downloading ${name}${v && v.size_mb ? ` (${v.size_mb} MB)` : ""}: it is picked above when it is ready`);
 });
 // ---- the voice lab (Settings > Voice > 🎙 Voice lab…, 2026-10-11; it was voice_lab.py, a separate Tk window): try a
 // voice and its speakers without switching, any alert's lines in any personality (the eight-alert audition too), cut a
@@ -7812,7 +7820,7 @@ document.getElementById("mvList").addEventListener("click", async e => {
 // PC".
 const AUDITION_KEYS = ["game_start", "arrival_brief", "find_body", "leaving", "fuel_low", "sold", "bio_done_last", "session_recap"];   // outrider.speech.AUDITION
 const labEl = id => document.getElementById(id);
-let labToken = 0, labNow = null, labLast = null;   // labLast: {key, template} of the line just played (✂ cuts it)
+let labToken = 0, labNow = null, labLast = null, labWant = null;   // labWant: a voice downloading, picked once here   // labLast: {key, template} of the line just played (✂ cuts it)
 // play a WAV from its URL: {done (resolves when it ends or stops), stop}. Swapped in the page test (jsdom plays nothing)
 let labSound = url => {
   const a = new Audio(url);
@@ -7901,10 +7909,39 @@ function labDrawInUse() {
   labEl("labInUse").textContent = same ? "✓ the voice in use" : "";
   labEl("labUse").disabled = !p.voice || (same && Math.abs(p.speed - speechSpeed()) < 0.001);
 }
+function labFillVoices() {
+  const t = data && data.tts, voices = (t && t.voices) || [], sel = labEl("labVoice"), keep = sel.value;
+  if (sel.dataset.opts === voices.join(",")) return;
+  sel.innerHTML = voices.map(v => `<option>${esc(v)}</option>`).join("") || `<option value="">(no Piper voice installed: More voices below)</option>`;
+  sel.dataset.opts = voices.join(",");
+  sel.value = voices.includes(keep) ? keep : (t && t.voice) || voices[0] || "";
+}
+// a voice picked in the voice part (More voices' Select, or a download just done), ready for ▶ Hear it and Use
+function labSelectVoice(name) {
+  labFillVoices();
+  labEl("labVoice").value = name;
+  labStop();
+  labDrawSpeakers();
+  labEl("labVoice").scrollIntoView && labEl("labVoice").scrollIntoView({block: "nearest"});
+}
+// each payload, with the lab open: a new voice installed joins the list, and the one downloading is picked when here
+function labWatch() {
+  const d = labEl("labDlg"), t = data && data.tts;
+  if (!d.open || !t) return;
+  labFillVoices();
+  if (labWant && (t.voices || []).includes(labWant)) {
+    const name = labWant; labWant = null;
+    labSelectVoice(name);
+    labMsg(`${name} downloaded: ▶ Hear it, then Use this voice if you like it`);
+  } else if (labWant && (t.fetch_failed || {})[labWant] && !(t.fetching || []).includes(labWant)) {
+    labMsg(`Could not download ${labWant}: ${t.fetch_failed[labWant]}`, true); labWant = null;
+  }
+}
 async function labOpen() {
   if (!Object.keys(speechLib.lines || {}).length) await loadSpeechLib();   // the lines, if the page has none yet
-  const t = data && data.tts, voices = (t && t.voices) || [];
-  labEl("labVoice").innerHTML = voices.map(v => `<option>${esc(v)}</option>`).join("") || `<option value="">(no Piper voice installed: More voices below)</option>`;
+  const t = data && data.tts;
+  labEl("labVoice").dataset.opts = "";
+  labFillVoices();
   if (t && t.voice) labEl("labVoice").value = t.voice;
   labEl("labSpeed").value = String(speechSpeed());
   labEl("labSpeedOut").textContent = speechSpeed().toFixed(2) + "×";

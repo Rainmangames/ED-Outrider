@@ -369,6 +369,8 @@ class Speaker:
         self._extra_lock = threading.Lock()
         self._extra_bad = set()     # voices that failed to load (not tried again this run)
         self._extra_slots = EXTRA_VOICES
+        self.fetching = set()       # voices downloading for the voice lab (fetch: not switched to)
+        self.fetch_failed = {}      # voice -> why its last fetch failed (the lab says so)
         self.status = "Piper not installed" if not self.PiperVoice else "starting"
 
     @property
@@ -393,6 +395,7 @@ class Speaker:
         people = self.voice_speakers(self.voice_name) if self.voice_name else []
         return {"engine": "piper" if self.ready else None, "voice": self.voice_name, "status": self.status,
                 "voices": self.installed() if self.available else [], "available": self.available,
+                "fetching": sorted(self.fetching), "fetch_failed": dict(self.fetch_failed),
                 # the voice's speaker when it has several (the list itself: GET /api/voices/speakers)
                 "speaker": sid, "speakers": len(people),
                 "speaker_name": next((p["name"] for p in people if p["id"] == sid), None) if sid is not None else None}
@@ -465,6 +468,35 @@ class Speaker:
             self._switching = True
         threading.Thread(target=self._switch_loop, daemon=True, name="piper").start()
         return True
+
+    def fetch(self, name):
+        """Download a voice without switching to it (the voice lab's More voices: download, try, then use). True once
+        asked (or already there); False without Piper or for a name that is not a Piper voice."""
+        if not (self.available and VOICE_NAME.fullmatch(name or "")):
+            return False
+        if name in self.installed():
+            return True
+        with self._switch_lock:
+            if name in self.fetching:
+                return True
+            self.fetching.add(name)
+        self.fetch_failed.pop(name, None)
+        threading.Thread(target=self._fetch_only, args=(name,), daemon=True, name="piper-download").start()
+        return True
+
+    def _fetch_only(self, name):
+        before = self.status
+        try:
+            ok = self._download(name, f"downloading {name} for the voice lab (about 63 MB)")
+        except Exception as e:  # noqa: BLE001 -- the lab says it failed, nothing else changes
+            ok = False
+            print(f"spoken alerts: could not download {name}: {type(e).__name__}: {e}", file=sys.stderr)
+        with self._switch_lock:
+            self.fetching.discard(name)
+        if not ok:
+            self.fetch_failed[name] = "the download failed"
+        # the status goes back to what it said (the voice in use did not change); the page sees the new voice installed
+        self._set_status(before if before.startswith(("ready", "using")) else ("ready" if self.ready else before))
 
     def _switch_loop(self):
         while True:

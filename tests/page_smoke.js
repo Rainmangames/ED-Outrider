@@ -4410,8 +4410,9 @@ const settle = async maxMs => {
       {name: "en_GB-vctk-medium", language: "en_GB", language_name: "English (Great Britain)", quality: "medium", speakers: 109, size_mb: 77, installed: false}]};
     const json = body => Promise.resolve({ok: true, status: 200, headers: {get: () => "application/json"}, json: async () => body});
     w.fetch = (u, o) => /api\/voices\/catalogue/.test(String(u)) ? json(cat)
-      : /api\/voice$/.test(String(u)) && o && o.method === "POST" ? (posted.push(JSON.parse(o.body).voice), json({ok: true})) : real(u, o);
-    w.eval("mvVoices = null; data.tts = Object.assign({}, data.tts, {voice: 'en_GB-cori-medium'}); store.set('mvSort', null); __played = []; __sound0 = labSound; labSound = url => (__played.push(url), {done: Promise.resolve(), stop() {}})");
+      : /api\/voices\/download$/.test(String(u)) && o && o.method === "POST" ? (posted.push(JSON.parse(o.body).voice), json({ok: true}))
+      : /api\/voices\/speakers/.test(String(u)) ? json({speakers: [], speaker: null}) : real(u, o);
+    w.eval("mvVoices = null; __tts0 = data.tts; data.tts = Object.assign({}, data.tts, {voice: 'en_GB-cori-medium', voices: ['en_GB-cori-medium'], fetching: [], fetch_failed: {}}); store.set('mvSort', null); __played = []; __sound0 = labSound; labSound = url => (__played.push(url), {done: Promise.resolve(), stop() {}}); tabShow(document.getElementById('labDlg'))");
     const d = w.document, mv = d.getElementById("moreVoices");
     mv.open = true; mv.dispatchEvent(new w.Event("toggle"));
     await sleep(150);
@@ -4423,20 +4424,25 @@ const settle = async maxMs => {
     const order = k => { d.getElementById("mvSort").value = k; d.getElementById("mvSort").dispatchEvent(new w.Event("change"));
       return [...d.querySelectorAll("#mvList .mvname")].map(x => x.textContent).join(","); };
     got.sorted = [order("quality"), order("-size"), order("size"), order("name")];
-    d.querySelector('#mvList [data-mv="en_GB-alan-low"]').click();
+    d.querySelector('#mvList [data-mv="en_GB-alan-low"]').click();   // Download: fetched, not switched to
     await sleep(100);
     got.posted = posted;
+    got.downloading = d.querySelector('#mvList .mvrow button[disabled]') ? d.querySelector('#mvList .mvrow button[disabled]').textContent : null;
+    // the download lands: the voice joins the lab's list, picked there, ready to hear and use
+    w.eval("data.tts = Object.assign({}, data.tts, {voices: ['en_GB-alan-low', 'en_GB-cori-medium']}); drawTts()");
+    await sleep(50);
+    got.picked = [d.getElementById("labVoice").value, /alan-low downloaded/.test(d.getElementById("labMsg").textContent)];
     d.getElementById("mvLang").value = "de_DE"; d.getElementById("mvLang").dispatchEvent(new w.Event("change"));
     got.de = rows();
-    w.fetch = real; mv.open = false; w.eval("mvVoices = null; labSound = __sound0; store.set('mvSort', null)");
-    const want = {langs: ["en_GB", "de_DE"], lang: "en_GB", rows: ["alanlow · 63 MB▶ sampleDownload and use", "corimedium · 63 MBin use",
-                                                                   "vctkmedium · 109 speakers · 77 MBDownload and use"],   // (the spans' text run together)
+    w.fetch = real; mv.open = false; w.eval("mvVoices = null; labSound = __sound0; store.set('mvSort', null); tabClose(document.getElementById('labDlg')); data.tts = __tts0; drawTts()");
+    const want = {langs: ["en_GB", "de_DE"], lang: "en_GB", rows: ["alanlow · 63 MB▶ sampleDownload", "corimedium · 63 MBin use",
+                                                                   "vctkmedium · 109 speakers · 77 MBDownload"],   // (the spans' text run together)
                   played: ["https://rhasspy.github.io/piper-samples/samples/en/en_GB/alan/low/speaker_0.mp3"],
                   sorted: ["cori,vctk,alan", "vctk,alan,cori", "alan,cori,vctk", "alan,cori,vctk"],
-                  posted: ["en_GB-alan-low"], de: ["thorstenhigh · 114 MBDownload and use"]};
+                  posted: ["en_GB-alan-low"], downloading: "downloading…", picked: ["en_GB-alan-low", true], de: ["thorstenhigh · 114 MBDownload"]};
     const goodV = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodV;
-    console.log(goodV ? "OK" : "FAIL", "| more voices |", goodV ? "Piper's catalogue by language, sorted by name, quality or size; ▶ sample plays Piper's recording; Download and use asks the server for it" : JSON.stringify(got), errors.slice(before));
+    console.log(goodV ? "OK" : "FAIL", "| more voices |", goodV ? "Piper's catalogue by language, sorted by name, quality or size; ▶ sample plays Piper's recording; Download fetches it without switching, then it is picked in the lab" : JSON.stringify(got), errors.slice(before));
   }
   // the desktop theme (Settings > Display): Default - Outrider and the tablet's nine; a choice is set on <html>, changes
   // the colours, is remembered for this browser; the Default again removes it

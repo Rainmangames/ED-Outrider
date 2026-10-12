@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · More voices: download first, then try
+- More voices' "Download and use" switched Outrider to a voice before you had heard it, and a downloaded voice only
+  showed in the lab's list after reopening it (the author agreed to change both). Now **Download** fetches it without
+  switching (POST `/api/voices/download`, `Speaker.fetch`; the payload's `tts.fetching` / `tts.fetch_failed`), and when it
+  is here the lab picks it in its voice list, ready for ▶ Hear it and Use this voice. A voice already installed is
+  **Select** (picked in the list). The lab's voice list follows new voices while it is open.
+
 ## 2026-10-11 · More voices: sorted, and Piper's samples
 - More voices (in the voice lab) sorts by name, quality (best first) or size either way (the author; per browser), and
   each voice has **▶ sample**: Piper's own recording of it from the project's samples site (rhasspy.github.io/

@@ -14210,6 +14210,19 @@ def make_app(state, hosts=None):
             state.bump()
         return web.json_response({"ok": True})
 
+    async def voice_download_view(request):
+        """POST /api/voices/download {voice}: download a Piper voice without switching to it (the voice lab's More
+        voices); the payload's tts.fetching lists it meanwhile, then tts.voices has it (or tts.fetch_failed says why)."""
+        body = await json_object(request)
+        if body is None or not isinstance(body.get("voice"), str):
+            return web.json_response({"error": "expected {voice}"}, status=400)
+        if not state.speaker or not state.speaker.available:
+            return web.json_response({"error": "Piper is not installed"}, status=503)
+        if not state.speaker.fetch(body["voice"][:100]):
+            return web.json_response({"error": "not a Piper voice name"}, status=400)
+        state.bump()
+        return web.json_response({"ok": True})
+
     async def voice_speakers_view(request):
         """GET /api/voices/speakers?voice=: an installed voice's people, {voice, speakers: [{id, name}] ([] for a
         one-person voice), speaker (the one picked for it, or null)}. 404 for a voice that is not installed."""
@@ -14373,6 +14386,7 @@ def make_app(state, hosts=None):
     app.router.add_post("/api/voice", voice_view)
     app.router.add_get("/api/voices/catalogue", voice_catalogue_view)
     app.router.add_get("/api/voices/speakers", voice_speakers_view)
+    app.router.add_post("/api/voices/download", voice_download_view)
     app.router.add_post("/api/speaker/audio", speaker_audio_view)
     app.router.add_post("/api/autohonk", pc_only(autohonk_view))
     app.router.add_post("/api/uploads", uploads_view)

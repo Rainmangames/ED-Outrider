@@ -1572,3 +1572,53 @@ class LabInThePage(unittest.TestCase):
             m = re.search(r"const AUDITION_KEYS = \[([^\]]*)\]", f.read())
         self.assertEqual(tuple(re.findall(r'"(\w+)"', m.group(1))), outrider.speech.AUDITION)
         self.assertFalse(os.path.exists(os.path.join(os.path.dirname(ed_outrider.STATIC_DIR), "voice_lab.py")))   # retired
+
+
+class LabDownload(unittest.TestCase):
+    def test_download_without_switching(self):
+        """The voice lab's More voices downloads a voice without switching to it (the author, 2026-10-11): fetching is
+        listed meanwhile, the voice in use stays, a failure is said."""
+        import asyncio
+        import tempfile
+        import types
+        import outrider.tts
+        from aiohttp.test_utils import TestClient, TestServer
+        with tempfile.TemporaryDirectory() as d:
+            sp = outrider.tts.Speaker("en_GB-cori-medium", None, voices_dir=d)
+            sp.PiperVoice = types.SimpleNamespace(load=lambda p: object())
+            sp._voice, sp.voice_name, sp.status = object(), "en_GB-cori-medium", "ready"
+            got = []
+
+            def fake_download(name, status=None):
+                got.append((name, sp.info()["fetching"]))
+                if name == "en_GB-bad-low":
+                    return False
+                for ext in (".onnx", ".onnx.json"):
+                    with open(os.path.join(d, name + ext), "w") as f:
+                        f.write("{}")
+                return True
+            sp._download = fake_download
+            self.assertFalse(sp.fetch("../etc-x-low"))
+            self.assertTrue(sp.fetch("en_GB-alan-low"))
+            for _ in range(100):
+                if not sp.fetching:
+                    break
+                time.sleep(0.01)
+            self.assertEqual(got, [("en_GB-alan-low", ["en_GB-alan-low"])])
+            self.assertIn("en_GB-alan-low", sp.info()["voices"])
+            self.assertEqual((sp.voice_name, sp.status), ("en_GB-cori-medium", "ready"))   # not switched
+            sp.fetch("en_GB-bad-low")
+            for _ in range(100):
+                if not sp.fetching:
+                    break
+                time.sleep(0.01)
+            self.assertEqual(sp.info()["fetch_failed"], {"en_GB-bad-low": "the download failed"})
+            db = ed_outrider.open_db(":memory:")
+            self.addCleanup(db.close)
+            state = ed_outrider.State(db, ed_outrider.Journals(db), types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+            state.speaker = sp
+
+            async def go():
+                async with TestClient(TestServer(ed_outrider.make_app(state))) as c:
+                    return [(await c.post("/api/voices/download", json=b)).status for b in ({"voice": "en_GB-alan-low"}, {"voice": "x"}, {})]
+            self.assertEqual(asyncio.run(go()), [200, 400, 400])

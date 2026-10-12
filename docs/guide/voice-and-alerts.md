@@ -79,8 +79,9 @@ Outrider runs (a Docker server too):
   about 900). The lab shows a speaker list for those: **‹ ›** step through them and **🎲** picks one at random, each
   played as you go. The speaker you use is kept for that voice, and Settings → Voice shows it beside the voice.
 - **More voices** lists every Piper voice by language, sorted by name, quality or size. **▶ sample** plays Piper's own
-  recording of a voice (from its website) before you download anything; pick one and Outrider downloads it and
-  switches to it.
+  recording of a voice (from its website) before you download anything. **Download** fetches it without switching:
+  when it is ready it is picked above, so you can ▶ Hear it (and its speakers) and press Use this voice if you like it.
+  **Select** picks one you already have.
 - **Lines**: pick an alert and a personality for **▶ Random line** (filled with made-up values), or **▶ Audition** for
   eight key alerts in a row. A personality with a voice of its own (speech.json) speaks in it. **✂ Cut this line**
   bans the line just played, like 👎.
