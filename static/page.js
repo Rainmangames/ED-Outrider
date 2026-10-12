@@ -2848,7 +2848,9 @@ function drawBoxel() {
     const b = d.boxel, nxt = d.next != null ? d.rows.find(r => r.n === d.next) : null;
     const spansh = d.spansh_asking ? "asking Spansh…" : d.spansh_error ? `<span class="warnc">${esc(d.spansh_error)}</span>`
       : d.spansh_ts ? `Spansh knows ${d.spansh}${d.spansh ? ` (up to -${Math.max(...d.rows.filter(r => r.spansh).map(r => r.n))})` : ""}` : "";
-    html += `<div class="bxhead"><span class="bxname copy" data-name="${esc(b.label)}" title="click to copy">${esc(b.label)}</span>` +
+    const fin = d.complete ? `<span class="ok bxfin" title="the end is known and you have visited every system below it">✓ complete: ${d.end} of ${d.end} systems</span> `
+      : d.done ? `<span class="ok bxfin" title="marked done with: it is left out of the recommendations">✓ done</span> ` : "";
+    html += `<div class="bxhead">${fin}<span class="bxname copy" data-name="${esc(b.label)}" title="click to copy">${esc(b.label)}</span>` +
       `${b.here ? " · you are here" : b.distance != null ? ` · ${b.distance.toFixed(0)} ly away` : ""} · <span class="bxkind">${boxelCodeLine(b.mc, {size: b.size, kind: b.kind, yours: boxelNear && boxelNear.codes && boxelNear.codes[b.mc] && boxelNear.codes[b.mc].yours})}</span>` +
       `<div class="hint">you have visited ${d.visited}${spansh ? ` · ${spansh}` : ""}${d.top >= 0 ? ` · highest known <b>-${d.top}</b>` : ""}${d.end != null ? ` · -${d.end} not found: probably the end` : ""}` +
       ` <span class="bxwarn">⚠ ${BOXEL_WARNING}</span></div></div>` +
@@ -2857,6 +2859,8 @@ function drawBoxel() {
       (!b.picked ? `<button type="button" class="try" data-bxkeep="${esc(b.prefix)}" title="keep exploring this boxel when you jump out of it (auto-target works on a kept boxel)">📌 Keep this boxel</button>`
         : `<button type="button" class="try" data-bxback="1" title="follow the boxel you are in again">${b.here ? "📌 kept · let go" : "↩ the boxel I am in"}</button>`) +
       (pc ? `<label title="arriving in a system of the kept boxel, auto-target its next one (after the Highway's delay)"><input type="checkbox" id="bxAuto"${d.auto ? " checked" : ""}> auto-target the next on arrival${d.auto && !b.picked ? ` <span class="warnc">(keep a boxel first)</span>` : ""}</label>` : "") +
+      (d.done ? `<button type="button" class="try" data-bxdone="0" title="take the done mark back">undo done</button>`
+        : !d.complete ? `<button type="button" class="try" data-bxdone="1" title="finished with this boxel, complete or not: it leaves the recommendations (a kept boxel is let go)">✓ Done with this boxel</button>` : "") +
       (d.end != null ? `<button type="button" class="try" data-bxretry="1" title="a failed search is not always a missing name: offer the numbers above it again">retry above -${d.end}</button>` : "") +
       (!b.standard ? `<span class="unk">a hand-made sector: 🎯 cannot check its systems</span>` : "") + `</div>`;
     const rowHtml = r => { const s = r.summary;
@@ -2878,12 +2882,16 @@ function drawBoxel() {
         `<div>${esc(x.label)} · ${x.distance.toFixed(0)} ly${x.visited ? ` · you visited ${x.visited}` : ""}` +
         `${x.top != null ? ` · highest known <b>-${x.top}</b>` : x.spansh_asked ? " · none known yet" : ""} ` +
         `<button type="button" class="try" data-bxpick="${esc(x.prefix)}" data-bxsec="${esc(JSON.stringify(x.sector_index))}">Explore this boxel</button></div>`).join("") + `</div>`).join("") +
+      ((nb.finished || []).length ? `<div class="hint bxdone">done or complete nearby (left out above): ` + nb.finished.map(x =>
+        `${esc(x.label)} ${x.state === "complete" ? "✓ complete" : "✓ done"}`).join(" · ") + `</div>` : "") +
       `</details>`;
   }
   if (el.innerHTML !== html) el.innerHTML = html;
 }
 document.getElementById("boxelPane").addEventListener("click", e => {
   const k = e.target.closest("[data-bxkeep]"), back = e.target.closest("[data-bxback]"), pick = e.target.closest("[data-bxpick]"), retry = e.target.closest("[data-bxretry]");
+  const done = e.target.closest("[data-bxdone]");
+  if (done) { boxelPost({done: done.dataset.bxdone === "1"}).then(() => loadBoxelNear()); return; }
   if (k) boxelPost({prefix: k.dataset.bxkeep, sector_index: boxelData && boxelData.boxel && boxelData.boxel.sector_index});
   else if (back) boxelPost({prefix: null});
   else if (pick) boxelPost({prefix: pick.dataset.bxpick, sector_index: JSON.parse(pick.dataset.bxsec || "null")});

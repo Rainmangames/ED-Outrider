@@ -4916,6 +4916,7 @@ const settle = async maxMs => {
                          {n: 2, name: "Drojau TF-H c13-2", visited: false, spansh: false, distance: null, summary: null}],
                   next: 1, end: null, top: 1, visited: 1, spansh: 2, spansh_ts: "2026-10-11T20:00:00Z", auto: false};
     const near = {boxels: [{mc: "d", label: "Drojau AB-U d4", prefix: "Drojau AB-U d4-", sector_index: [35, 31, 54], distance: 120, visited: 2, top: 37}],
+                  finished: [{prefix: "Drojau QQ-A d4-", label: "Drojau QQ-A d4", mc: "d", distance: 90, state: "complete"}],
                   codes: {c: {kind: "K and M stars", size: 40, yours: {systems: 10, bio: 4, elw: 0, ww: 1, aw: 0, terraformable: 2}},
                           d: {kind: "F, G and K stars", size: 80, yours: {systems: 20, bio: 9, elw: 1, ww: 2, aw: 0, terraformable: 3}}}};
     const json = o => Promise.resolve(new Response(JSON.stringify(o), {status: 200, headers: {"Content-Type": "application/json"}}));
@@ -4945,15 +4946,18 @@ const settle = async maxMs => {
       o.next = !!pane.querySelector('.bxacts button[data-aim="next"][data-route="boxel"]:not([data-index])');
       o.aims = [...pane.querySelectorAll('#boxelTable button[data-route="boxel"]')].map(b => b.dataset.index).join();
       o.near = [pane.textContent.includes("from your 20 d systems: 45% with biology"), !!pane.querySelector("[data-bxpick]"),
-                pane.textContent.includes("Drojau AB-U d4 · 120 ly · you visited 2 · highest known -37"), pane.textContent.includes("highest known -1")];
+                pane.textContent.includes("Drojau AB-U d4 · 120 ly · you visited 2 · highest known -37"), pane.textContent.includes("highest known -1"),
+                pane.textContent.includes("done or complete nearby (left out above): Drojau QQ-A d4 ✓ complete")];
+      o.doneBtn = !!pane.querySelector('[data-bxdone="1"]');
+      pane.querySelector('[data-bxdone="1"]').click(); await tick();
       pane.querySelector("[data-bxkeep]").click(); await tick();
       pane.querySelector("[data-bxpick]").click(); await tick();
       store.set("nearMode", m0 === null ? null : m0); data.game_pc = pc0; render();
       o.back = !document.getElementById("nearPane").hidden;
       return o; })()`);
     w.fetch = realFetch;
-    const want = {shown: [true, true, true], warning: true, place: [true, true, true], rows: ["visited", "next", "try"], next: true, aims: "1,2", near: [true, true, true, true],
-                  back: true, posted: [{prefix: "Drojau TF-H c13-", sector_index: [35, 31, 54]}, {prefix: "Drojau AB-U d4-", sector_index: [35, 31, 54]}]};
+    const want = {shown: [true, true, true], warning: true, place: [true, true, true], rows: ["visited", "next", "try"], next: true, aims: "1,2", near: [true, true, true, true, true], doneBtn: true,
+                  back: true, posted: [{done: true}, {prefix: "Drojau TF-H c13-", sector_index: [35, 31, 54]}, {prefix: "Drojau AB-U d4-", sector_index: [35, 31, 54]}]};
     got.posted = posted;
     const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && good;

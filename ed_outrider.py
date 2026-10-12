@@ -299,6 +299,8 @@ HIGHWAY_DONE = 20           # ...and done rows above them (the most recent)
 BOXEL_SPANSH_CHUNK = 300   # names per Spansh request (an exact list of a boxel's names)
 BOXEL_SPANSH_MAX = 3000    # names asked about at most for one boxel
 BOXEL_SPANSH_MAX_AGE = 86400   # s: Spansh's list of a boxel is asked again after a day
+BOXEL_NEAR_SHOW = 3        # recommended boxels per mass code
+BOXEL_NEAR_LOOK = 12       # ...looked through for them (done and complete ones are passed over)
 BOXEL_SPANSH_KEEP = 60     # boxels whose Spansh list is kept (meta boxel_spansh: the one explored and those recommended)
 HIGHWAY_LIVE_S = 120        # s: an arrival or a supercharge older than this is catch-up (no clipboard, no auto-target)
 HIGHWAY_SUGGEST_CACHE = 200  # system-name suggestions kept (per typed prefix)
@@ -5965,7 +5967,7 @@ class State:
                                                         (self.journals.pos or {}).get("id64"), self.journals.last_event_ts,
                                                         len(self._boxel_fetching), json.dumps(meta_get(self.db, "boxel_ends")),
                                                         json.dumps({k: (v or {}).get("ts") for k, v in (meta_get(self.db, "boxel_spansh") or {}).items()}),
-                                                        meta_get(self.db, "boxel_auto"))),
+                                                        meta_get(self.db, "boxel_auto"), json.dumps(meta_get(self.db, "boxel_done")))),
                       "auto": bool(meta_get(self.db, "boxel_auto"))},
             "hush": self.hush_info(),
             "firsts_watch": self.firsts_watch_info(),
@@ -11105,8 +11107,12 @@ class State:
                 except (KeyError, TypeError, ValueError) as e:   # a row that cannot be made: the list still shows
                     print(f"boxel: no summary for {name} ({type(e).__name__}: {e})", file=sys.stderr)
             rows.append(r)
-        nxt = next((r["n"] for r in rows if not r["visited"]), None)
-        return {"boxel": {"prefix": prefix, "label": b["label"], "mc": b["mc"], "size": outrider.boxel.size(b["mc"]),
+        # ✓ complete: the end is known and every number below it visited (no button needed); done: you said so (meta
+        # boxel_done). Either way Next offers nothing more (the rows' own 🎯 still work)
+        complete = end is not None and end > 0 and all(n in visited for n in range(end))
+        done = prefix in (meta_get(self.db, "boxel_done") or {})
+        nxt = None if complete or done else next((r["n"] for r in rows if not r["visited"]), None)
+        return {"complete": complete, "done": done, "boxel": {"prefix": prefix, "label": b["label"], "mc": b["mc"], "size": outrider.boxel.size(b["mc"]),
                           "kind": outrider.boxel.KINDS[b["mc"]], "standard": bool(b.get("standard")), "here": b["here"],
                           "picked": b["picked"], "center": b.get("center"), "sector_index": b.get("sector_index"),
                           "distance": round(dist(pos, b["center"]), 1) if pos and b.get("center") else None},
@@ -11189,8 +11195,15 @@ class State:
         systems you have been to; and per mass code what it tends to hold and your own figures."""
         pos = self.journals.pos
         if not pos or pos.get("x") is None:
-            return {"boxels": [], "codes": {}}
-        boxels = outrider.boxel.nearby(pos, self.boxel_sectors())
+            return {"boxels": [], "finished": [], "codes": {}}
+        boxels, finished, per = [], [], {}
+        for b in outrider.boxel.nearby(pos, self.boxel_sectors(), per_code=BOXEL_NEAR_LOOK):
+            f = self.boxel_finished(b["prefix"])
+            if f:   # done or complete: listed apart, the next nearest of its kind takes its place
+                finished.append({"prefix": b["prefix"], "label": b["label"], "mc": b["mc"], "distance": b["distance"], "state": f})
+            elif per.get(b["mc"], 0) < BOXEL_NEAR_SHOW:
+                per[b["mc"]] = per.get(b["mc"], 0) + 1
+                boxels.append(b)
         cache = meta_get(self.db, "boxel_spansh") or {}
         for b in boxels:
             v = self.boxel_visited(b["prefix"])
@@ -11199,7 +11212,7 @@ class State:
             b.update(visited=len(v), top=max(set(v) | sp, default=None), spansh_asked=b["prefix"] in cache,
                      kind=outrider.boxel.KINDS[b["mc"]], size=outrider.boxel.size(b["mc"]))
         stats = self.boxel_code_stats()
-        return {"boxels": boxels, "codes": {c: {"kind": outrider.boxel.KINDS[c], "size": outrider.boxel.size(c), "yours": stats[c]}
+        return {"boxels": boxels, "finished": finished, "codes": {c: {"kind": outrider.boxel.KINDS[c], "size": outrider.boxel.size(c), "yours": stats[c]}
                                             for c in outrider.boxel.CODES}}
 
     def boxel_target(self, n=None):
@@ -11214,9 +11227,11 @@ class State:
         if not pos or pos.get("id64") is None:
             return None, "your position is not known yet"
         if n is None:
-            n = self.boxel_view().get("next")
+            v = self.boxel_view()
+            n = v.get("next")
             if n is None:
-                return None, f"every system of {b['label']} you know of is visited"
+                return None, (f"{b['label']} is complete" if v.get("complete") else f"{b['label']} is marked done" if v.get("done")
+                              else f"every system of {b['label']} you know of is visited")
         if isinstance(n, bool) or not isinstance(n, int) or n < 0:
             return None, "the number must be a whole number"
         id64 = outrider.boxel.id64(b["sector_index"], b["boxel"], b["mc"], n)
@@ -11243,6 +11258,34 @@ class State:
         meta_set(self.db, "boxel_ends", ends)
         self.db.commit()
         return True
+
+    def boxel_mark_done(self, done=True):
+        """Mark the boxel being explored done with (or not): kept in meta boxel_done {prefix: {ts, visited}}; a kept boxel
+        marked done is let go (the boxel you are in is followed again). False when no boxel is being explored."""
+        b = self.boxel_active()
+        if not b:
+            return False
+        marks = meta_get(self.db, "boxel_done") or {}
+        if done:
+            marks[b["prefix"]] = {"ts": iso_ts(time.time()), "visited": len(self.boxel_visited(b["prefix"]))}
+            if b["picked"]:
+                meta_set(self.db, "boxel_active", None)
+        else:
+            marks.pop(b["prefix"], None)
+        meta_set(self.db, "boxel_done", marks)
+        self.db.commit()
+        self.bump()
+        return True
+
+    def boxel_finished(self, prefix):
+        """"done" (marked so), "complete" (its end known and every number below it visited) or None."""
+        if prefix in (meta_get(self.db, "boxel_done") or {}):
+            return "done"
+        ends = meta_get(self.db, "boxel_ends") or {}
+        end = ends.get(prefix)
+        if isinstance(end, int) and end > 0 and set(range(end)) <= set(self.boxel_visited(prefix)):
+            return "complete"
+        return None
 
     def boxel_clear_end(self):
         """The active boxel's end mark taken back (Retry: a failed run is not always a missing name)."""
@@ -14537,10 +14580,16 @@ def make_app(state, hosts=None):
 
     async def boxel_set_view(request):
         """POST /api/boxel {prefix: str | null, sector_index?: [sx, sy, sz]} picks the boxel to explore (null: the one
-        you are in); {auto: bool} the opt-in auto-target on arrival; {clear_end: true} takes back the active boxel's end."""
+        you are in); {auto: bool} the opt-in auto-target on arrival; {clear_end: true} takes back the active boxel's end;
+        {done: bool} marks the active boxel done with (a kept one is let go) or not."""
         body = await json_object(request)
-        if body is None or not ({"prefix", "auto", "clear_end"} & set(body)):
-            return web.json_response({"error": "expected {prefix}, {auto} or {clear_end}"}, status=400)
+        if body is None or not ({"prefix", "auto", "clear_end", "done"} & set(body)):
+            return web.json_response({"error": "expected {prefix}, {auto}, {clear_end} or {done}"}, status=400)
+        if "done" in body:   # the boxel being explored, done with (or not)
+            if not isinstance(body["done"], bool):
+                return web.json_response({"error": "done must be true or false"}, status=400)
+            if not state.boxel_mark_done(body["done"]):
+                return web.json_response({"error": "no boxel is being explored"}, status=400)
         if "auto" in body:
             if not isinstance(body["auto"], bool):
                 return web.json_response({"error": "auto must be true or false"}, status=400)

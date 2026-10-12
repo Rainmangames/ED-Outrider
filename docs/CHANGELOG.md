@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Boxels: complete and done
+- A boxel is **✓ complete** by itself once its end is known (a name the galaxy map could not find) and you have visited
+  every system below it; **✓ Done with this boxel** marks one finished, complete or not (the author agreed; meta
+  `boxel_done`, undo any time). Either way Next (and the auto-target on arrival) offers nothing more, a kept boxel is
+  let go, and it leaves the recommendations: the next nearest of its kind takes its place (12 looked through per kind,
+  3 shown), and "done or complete nearby" lists the ones left out.
+
 ## 2026-10-11 · Boxel mode: the switch beside This system, the highest known number
 - The Standard / Boxel switch sits on the Overview's own bar, left of "This system" (back in Nearby's options on the
   Nearby tab); the warning that Outrider cannot know a boxel's size sits on the "you have visited · Spansh knows" line

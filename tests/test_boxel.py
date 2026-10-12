@@ -108,6 +108,24 @@ class Server(unittest.TestCase):
         self.assertEqual((v["end"], v["rows"][-1]["n"]), (9, 8))
         self.state.boxel_clear_end()
         self.assertIsNone(self.state.boxel_view()["end"])
+        # ✓ complete by itself: the end known (-6 not found) and every number below it visited
+        for s, n in ((10, 1), (11, 2), (12, 3), (13, 4)):
+            self.jump(s, (n, f"Drojau TF-H c13-{n}", -4180.0, -60.0, 3339.0))
+        self.assertTrue(self.state.boxel_not_found(self.state.boxel_target(6)[0], {"ok": False, "code": "wrong"}))
+        v = self.state.boxel_view()
+        self.assertEqual((v["complete"], v["done"], v["next"]), (True, False, None))
+        self.assertEqual(self.state.boxel_target()[1], "Drojau TF-H c13 is complete")
+        self.assertEqual(self.state.boxel_finished("Drojau TF-H c13-"), "complete")
+        self.state.boxel_clear_end()
+        # done, your call: Next stops, a kept boxel is let go, undone again
+        self.state.boxel_set("Drojau TF-H c13-", self.state.boxel_active()["sector_index"])
+        self.assertTrue(self.state.boxel_mark_done(True))
+        self.assertIsNone(ed_outrider.meta_get(self.db, "boxel_active"))        # let go
+        v = self.state.boxel_view()
+        self.assertEqual((v["done"], v["next"]), (True, None))
+        self.assertEqual(self.state.boxel_finished("Drojau TF-H c13-"), "done")
+        self.state.boxel_mark_done(False)
+        self.assertFalse(self.state.boxel_view()["done"])
         # Spansh knows -12: the list runs past it (and an end below a known number is no end)
         ed_outrider.meta_set(self.db, "boxel_spansh", {"Drojau TF-H c13-": {"ts": ed_outrider.iso_ts(self.now), "systems": {"12": {"id64": 1, "x": -4180.0, "y": -60.0, "z": 3340.0}}}})
         v = self.state.boxel_view()
@@ -128,6 +146,12 @@ class Server(unittest.TestCase):
         ed_outrider.meta_set(self.db, "boxel_spansh", {"Smojooe XF-G b24-": {"ts": ed_outrider.iso_ts(self.now), "systems": {"41": {}}}})
         mine = next(b for b in self.state.boxel_nearby()["boxels"] if b["prefix"] == "Smojooe XF-G b24-")
         self.assertEqual((mine["top"], mine["spansh_asked"]), (41, True))   # the highest known, yours or Spansh's
+        self.state.boxel_mark_done(True)   # the one you are in, done: out of the recommendations, listed apart
+        near = self.state.boxel_nearby()
+        self.assertNotIn("Smojooe XF-G b24-", [b["prefix"] for b in near["boxels"]])
+        self.assertEqual([(f["prefix"], f["state"]) for f in near["finished"]], [("Smojooe XF-G b24-", "done")])
+        self.assertEqual(len([b for b in near["boxels"] if b["mc"] == "b"]), ed_outrider.BOXEL_NEAR_SHOW)   # the next nearest fills in
+        self.state.boxel_mark_done(False)
         d = next(b for b in near["boxels"] if b["mc"] == "d")
         self.assertTrue(self.state.boxel_set(d["prefix"], d["sector_index"]))
         v = self.state.boxel_view()

@@ -174,6 +174,10 @@ has visited (Outrider works out its address from the boxel).
 - **⚠ Outrider cannot know how many systems a boxel holds.** It offers a few numbers above the highest known; explore
   until a name the galaxy map cannot find. When auto-target cannot find one above every known number, the list says
   "probably the end" (**retry** if it was only a hiccup).
+- **✓ complete** shows by itself once the end is known and you have visited every system below it. **✓ Done with this
+  boxel** is your call, complete or not (undo any time). Either way Next offers nothing more, the boxel leaves the
+  recommendations (the next nearest of its kind takes its place; "done or complete nearby" lists them), and a kept
+  boxel is let go.
 - **📌 Keep this boxel** stays on it when you jump out. **Auto-target the next on arrival** (opt-in) targets the kept
   boxel's next system each time you arrive in one of its systems.
 - **Boxels nearby** lists the nearest boxels of each mass code in sectors you have been to, what each kind tends to
