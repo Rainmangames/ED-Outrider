@@ -7787,7 +7787,7 @@ function drawMoreVoices() {
     `<div class="mvrow"><span class="mvname">${esc(v.name.split("-")[1].replace(/_/g, " "))}</span>` +
     `<span class="unk">${esc(v.quality)}${v.speakers > 1 ? ` · ${v.speakers} speakers` : ""}${v.size_mb ? ` · ${v.size_mb} MB` : ""}</span>` +
     // Piper's own recording of the voice (its website), before downloading anything
-    (v.sample ? `<button type="button" class="try" data-mvsample="${esc(v.sample)}" title="Piper's own recording of this voice, from its website${v.speakers > 1 ? " (its first speaker)" : ""}">▶ sample</button>` : "") +
+    (v.sample ? `<button type="button" class="try" data-mvsample="${esc(v.sample)}" title="Piper's own recording of this voice, from its website${v.speakers > 1 ? " (its first speaker)" : ""}">▶ sample</button>` : "<span></span>") +   // a cell either way: the columns line up
     // in the lab: Download fetches it without switching (then it is picked above, to hear and use); one already here is
     // Select (picked above); the voice in use says so
     (v.name === cur ? `<span class="ok">in use</span>`

@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · More voices in columns
+- More voices' rows did not line up: ▶ sample sat wherever the text before it ended (the author's screenshot). Each row
+  is a grid of four columns now (name, quality/speakers/size, ▶ sample, the action), with an empty cell where a voice
+  has no sample.
+
 ## 2026-10-11 · More voices: download first, then try
 - More voices' "Download and use" switched Outrider to a voice before you had heard it, and a downloaded voice only
   showed in the lab's list after reopening it (the author agreed to change both). Now **Download** fetches it without

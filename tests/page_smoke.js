@@ -4417,7 +4417,10 @@ const settle = async maxMs => {
     mv.open = true; mv.dispatchEvent(new w.Event("toggle"));
     await sleep(150);
     const rows = () => [...d.querySelectorAll("#mvList .mvrow")].map(r => r.textContent.replace(/\s+/g, " ").trim());
-    const got = {langs: [...d.querySelectorAll("#mvLang option")].map(o => o.value), lang: d.getElementById("mvLang").value, rows: rows()};
+    const got = {langs: [...d.querySelectorAll("#mvLang option")].map(o => o.value), lang: d.getElementById("mvLang").value, rows: rows(),
+                 // four cells in every row, sample or not, so the grid's columns line up (the author's screenshot, 2026-10-11)
+                 cells: [...d.querySelectorAll("#mvList .mvrow")].map(r => r.children.length).join(),
+                 grid: w.getComputedStyle(d.querySelector("#mvList .mvrow")).display};
     d.querySelector('#mvList [data-mvsample]').click();             // Piper's own sample, before downloading
     await sleep(50);
     got.played = w.eval("__played.slice()");
@@ -4437,6 +4440,7 @@ const settle = async maxMs => {
     w.fetch = real; mv.open = false; w.eval("mvVoices = null; labSound = __sound0; store.set('mvSort', null); tabClose(document.getElementById('labDlg')); data.tts = __tts0; drawTts()");
     const want = {langs: ["en_GB", "de_DE"], lang: "en_GB", rows: ["alanlow · 63 MB▶ sampleDownload", "corimedium · 63 MBin use",
                                                                    "vctkmedium · 109 speakers · 77 MBDownload"],   // (the spans' text run together)
+                  cells: "4,4,4", grid: "grid",
                   played: ["https://rhasspy.github.io/piper-samples/samples/en/en_GB/alan/low/speaker_0.mp3"],
                   sorted: ["cori,vctk,alan", "vctk,alan,cori", "alan,cori,vctk", "alan,cori,vctk"],
                   posted: ["en_GB-alan-low"], downloading: "downloading…", picked: ["en_GB-alan-low", true], de: ["thorstenhigh · 114 MBDownload"]};
