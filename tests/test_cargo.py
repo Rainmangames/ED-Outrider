@@ -279,6 +279,19 @@ class CarrierFuel(unittest.TestCase):
                                         (348.35, 89, 22399, 875), (497.2, 118, 20112, 385)):
             self.assertEqual(cargo.carrier_burn(ly, used, depot), burned, (ly, used, depot))
 
+    def test_reserved_space_weighs_nothing(self):
+        """Space a buy order reserves is not cargo: the game's own JumpRangeCurr (the jump the depot pays for in full)
+        matches the formula only without it. The author's CarrierStats (in-game data), 4,500 t and 2,065 t reserved:
+        counted as cargo, the first read 54 t for a 50 t jump of 198.6 ly (the review, 2026-10-12)."""
+        for fuel, reach, space in ((50, 198.627258, {"TotalCapacity": 25000, "Crew": 6150, "Cargo": 13399, "CargoSpaceReserved": 4500,
+                                                     "ShipPacks": 0, "ModulePacks": 712, "FreeSpace": 239}),
+                                   (11, 27.241772, {"TotalCapacity": 25000, "Crew": 4270, "Cargo": 14769, "CargoSpaceReserved": 2065,
+                                                    "ShipPacks": 0, "ModulePacks": 0, "FreeSpace": 3896})):
+            st = cargo.carrier_fold(CARRIER, [("2026-01-01T00:00:00Z", {"event": "CarrierStats", "CarrierID": CARRIER,
+                                                                        "FuelLevel": fuel, "JumpRangeCurr": reach, "SpaceUsage": space})])
+            self.assertEqual(st["stats"]["used"], space["TotalCapacity"] - space["FreeSpace"] - space["CargoSpaceReserved"])
+            self.assertEqual(cargo.carrier_burn(reach, st["stats"]["used"], fuel), fuel, (fuel, reach))
+
     def test_jumps(self):
         # the author's carrier on 2026-10-07: depot 668 t, 13,531 t in the hold, 17,355 t of capacity used
         self.assertEqual(cargo.carrier_jumps(668, 13531, 17355), 151)

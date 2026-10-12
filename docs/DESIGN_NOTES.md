@@ -464,7 +464,8 @@ upstream project's choices, not rules of the game.
 - **The carrier's tritium shows only while tritium is on a sell order** (the author): only then is the hold's count
   confirmed; otherwise the tile is as before. The jumps use the fuel per jump `round(5 + ly × (25000 + used + depot)
   / 200000)`, fitted to the author's 27 recorded carrier jumps (exact on 26; without the depot's own weight it reads
-  1 to 2 t low), jump by jump at 500 ly with the hold topping the depot up.
+  1 to 2 t low; `used` leaves out a buy order's reserved space, which weighs nothing), jump by jump at 500 ly with
+  the hold topping the depot up.
 - **The Sell / Buy lookup asks Spansh's station search, never its own market data:** best price (the same price
   nearer first) or closest, within a distance (best price needs one), fleet carriers out unless ticked (their orders
   are often years old and top every list), the pad from the ship's type (`SHIP_PAD`; an unknown ship gets no pad

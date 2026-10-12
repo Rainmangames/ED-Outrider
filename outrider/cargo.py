@@ -275,7 +275,9 @@ def _carrier_event(st, carrier_id, ev, ts):
         if ev.get("CarrierID") != carrier_id:
             return
         su = ev.get("SpaceUsage") or {}
-        used = (su.get("TotalCapacity") or 0) - (su.get("FreeSpace") or 0) if su.get("TotalCapacity") else None
+        # space a buy order reserves is held, not filled: it weighs nothing (the game's JumpRangeCurr agrees)
+        used = (su.get("TotalCapacity") or 0) - (su.get("FreeSpace") or 0) - (su.get("CargoSpaceReserved") or 0) \
+            if su.get("TotalCapacity") else None
         st["stats"] = {"cargo": su.get("Cargo"), "used": used, "depot": ev.get("FuelLevel"), "ts": ts}
         st["after_stats"] = 0
     elif name == "CarrierTradeOrder":
@@ -405,8 +407,9 @@ def move_text(move):
 
 def carrier_burn(ly, used, depot):
     """Tritium one carrier jump burns. Checked against the author's 27 recorded jumps (2026-10-07): exact on 26, 1 t
-    off on the other. used: the carrier's capacity in use (TotalCapacity - FreeSpace, its cargo included); depot: the
-    tritium in its tank, which weighs too (without it the formula reads 1 to 2 t low)."""
+    off on the other. used: the carrier's capacity in use (TotalCapacity - FreeSpace - CargoSpaceReserved: its cargo
+    included, a buy order's reserved space not, as the game's own JumpRangeCurr shows); depot: the tritium in its tank,
+    which weighs too (without it the formula reads 1 to 2 t low)."""
     return round(5 + ly * (25000 + used + depot) / 200000)
 
 

@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-12 · Carrier tritium: reserved space weighs nothing
+- The carrier's tritium jumps counted the space a buy order reserves as cargo, so with a buy order open each jump read
+  heavier than it is (found by the Fable review of the suggestion plan, checked on the author's journals). The game's
+  own JumpRangeCurr in CarrierStats matches the fitted formula on every line under 500 ly only with the reserved space
+  left out: 4,500 t reserved, 198.6 ly, where counting it gave 180.7. `used` is now TotalCapacity − FreeSpace −
+  CargoSpaceReserved. No re-read needed (the fold is worked out from the stored events).
+
 ## 2026-10-12 · How the voice says the exobiology names
 - Piper's English voices read the Latin of the exobiology names by espeak's English rules and mangled most of them
   ("Fonticulua", "Osseus", "Clypeus Lacrimam"; a Fable suggestion the author picked). `resources/pronounce.json` now
