@@ -82,8 +82,8 @@ counts as the FSS finds them, where the frame shift drive is taking you (said in
 over the game's countdown call) and whether that star is scoopable, brief you on arrival, after the FSS, on approach and on leaving a body, welcome you back
 after a break, debrief a ship loss and recap the session on quit, and it names the galactic region you cross into. Lines you tire of can be
 banned from the Spoken lines list (data/speech_banned.json). Lines go through a priority queue in
-one browser window (danger first; the queue clears when the FSD charges). voice_lab.py is a separate
-window for trying voices and lines. Optionally the server plays the speech and the alert sounds itself
+one browser window (danger first; the queue clears when the FSD charges). The voice lab (Settings > Voice) tries
+voices, their speakers and lines in the page. Optionally the server plays the speech and the alert sounds itself
 (POST /api/say/play, /api/sound/play; static/sounds.json, or your own <name>.wav files from [speech] sound_dir,
 served to the page by GET /api/sound/file/{name}), so no click on the page is needed; the next line is
 synthesised while one plays (POST /api/say/prefetch), and Volume is set per device. When Outrider stops
@@ -10966,6 +10966,11 @@ class State:
             return None
         return dict(ns, id=str(ns["id64"]), distance=round(dist(pos, ns), 1) if pos else None)
 
+    def remember_speakers(self, chosen):
+        """Each voice's speaker picked on the page ({voice: id}, meta voice_speakers): kept over restarts."""
+        meta_set(self.db, "voice_speakers", chosen)
+        self.db.commit()
+
     def remember_voice(self, name):
         """The voice picked in the alerts dialog, once it has loaded: preferred at the next start (a choice that
         never loaded is not saved, so a broken voice does not replace the working one after a restart)."""
@@ -13858,9 +13863,18 @@ def make_app(state, hosts=None):
         except (ClientError, asyncio.TimeoutError, ValueError) as e:
             return web.json_response({"error": f"Spansh cannot be reached ({type(e).__name__})"}, status=502)
 
-    async def synth(sp, text, speed, voice):
+    def speaker_arg(v):
+        """A speaker number as the page sent it ("37" in a query, 37 in a body), or None."""
+        try:
+            n = int(v) if v not in (None, "") and not isinstance(v, bool) else None
+        except (TypeError, ValueError):
+            return None
+        return n if n is not None and n >= 0 else None
+
+    async def synth(sp, text, speed, voice, speaker=None):
         """A line as WAV from Piper, or None (the page then uses browser speech for it). `speed` and `voice` as
-        the page sent them: a personality's own voice only if installed, so a name from the page never downloads."""
+        the page sent them: a personality's own voice only if installed, so a name from the page never downloads.
+        `speaker`: one of that voice's people (the voice lab's try); None: the one picked for the voice."""
         try:
             speed = float(speed or SPEECH_SPEED)
         except (TypeError, ValueError):
@@ -13871,7 +13885,9 @@ def make_app(state, hosts=None):
         if voice and state.speech:   # room for every personality voice, so none is reloaded before each line
             sp.size_extra(outrider.speech.style_voices(state.speech.lines()["styles"]))
         try:
-            return await asyncio.get_running_loop().run_in_executor(None, sp.say, text, speed, voice)
+            speaker = speaker_arg(speaker)
+            return await asyncio.get_running_loop().run_in_executor(
+                None, lambda: sp.say(text, speed, voice) if speaker is None else sp.say(text, speed, voice, speaker))
         except Exception as e:  # noqa: BLE001 -- a line Piper cannot speak: the page uses browser speech for it
             print(f"spoken alerts: could not speak {text[:60]!r}: {type(e).__name__}: {e}", file=sys.stderr)
             return None
@@ -13882,7 +13898,7 @@ def make_app(state, hosts=None):
         sp = state.speaker
         if not sp or not sp.ready or not text.strip():
             return web.json_response({"error": "no Piper voice ready" if text.strip() else "no text"}, status=503)
-        audio = await synth(sp, text, request.query.get("speed"), request.query.get("voice"))
+        audio = await synth(sp, text, request.query.get("speed"), request.query.get("voice"), request.query.get("speaker"))
         if not audio:
             return web.json_response({"error": "no Piper voice ready"}, status=503)
         return web.Response(body=audio, content_type="audio/wav", headers={"Cache-Control": "no-store"})
@@ -13895,7 +13911,8 @@ def make_app(state, hosts=None):
         voice's lock first would make the line being said wait for it. Fire and forget: a failure costs nothing."""
         if not isinstance(d, dict) or not isinstance(d.get("text"), str) or not d["text"].strip() or not sp or not sp.ready:
             return None
-        t = asyncio.get_running_loop().create_task(synth(sp, outrider.tts.clip_text(d["text"]), d.get("speed"), d.get("voice")))
+        t = asyncio.get_running_loop().create_task(synth(sp, outrider.tts.clip_text(d["text"]), d.get("speed"), d.get("voice"),
+                                                         d.get("speaker")))
         prefetching.add(t)
         t.add_done_callback(lambda x: (prefetching.discard(x), x.cancelled() or x.exception()))
         return t
@@ -13955,7 +13972,7 @@ def make_app(state, hosts=None):
         if line is None:
             return web.json_response({"error": "another line is playing"}, status=409)
         try:
-            audio = await synth(sp, text, body.get("speed"), body.get("voice"))
+            audio = await synth(sp, text, body.get("speed"), body.get("voice"), body.get("speaker"))
             if not audio:
                 return web.json_response({"error": "no Piper voice ready"}, status=503)
             prefetch(sp, body.get("next"))   # the page's next line, made while this one plays
@@ -14159,12 +14176,23 @@ def make_app(state, hosts=None):
         return web.json_response(state.autohonk_info())
 
     async def voice_view(request):
-        try:
-            name = str((await request.json())["voice"])[:100]
-        except (ValueError, KeyError, TypeError):
+        """POST /api/voice {voice, speaker?}: speak in that voice (downloaded first when it is not installed). speaker:
+        which of an installed several-person voice's people (a number from /api/voices/speakers; null: its first),
+        kept for that voice; {speaker} alone changes the voice in use's."""
+        body = await json_object(request)
+        if body is None or not (isinstance(body.get("voice"), str) or "speaker" in body):
             return web.json_response({"error": "bad request"}, status=400)
         if not state.speaker or not state.speaker.available:
             return web.json_response({"error": "Piper is not installed"}, status=503)
+        name = str(body.get("voice") or getattr(state.speaker, "voice_name", None) or "")[:100]
+        if "speaker" in body:
+            sid = body["speaker"]
+            if sid is not None and (isinstance(sid, bool) or not isinstance(sid, int)):
+                return web.json_response({"error": "speaker must be a number or null"}, status=400)
+            if not state.speaker.set_speaker(name, sid):
+                return web.json_response({"error": f"{name} has no speaker {sid} (or is not installed yet)"}, status=400)
+        if name == getattr(state.speaker, "voice_name", None):
+            return web.json_response({"ok": True})
         if not state.speaker.use(name):
             return web.json_response({"error": "not a Piper voice name"}, status=400)
         # remembered (over restarts, like the radius and auto honk) once it loads: see remember_voice
@@ -14181,6 +14209,16 @@ def make_app(state, hosts=None):
             state.speaker_audio_blocked = body["blocked"]
             state.bump()
         return web.json_response({"ok": True})
+
+    async def voice_speakers_view(request):
+        """GET /api/voices/speakers?voice=: an installed voice's people, {voice, speakers: [{id, name}] ([] for a
+        one-person voice), speaker (the one picked for it, or null)}. 404 for a voice that is not installed."""
+        sp, name = state.speaker, str(request.query.get("voice") or "")[:100]
+        if not sp or not sp.available:
+            return web.json_response({"error": "Piper is not installed"}, status=503)
+        if name not in sp.installed():
+            return web.json_response({"error": f"{name or 'no voice'} is not installed"}, status=404)
+        return web.json_response({"voice": name, "speakers": sp.voice_speakers(name), "speaker": sp.speaker_for(name)})
 
     async def voice_catalogue_view(request):
         """GET /api/voices/catalogue[?refresh=1]: Piper's voices for Settings > Voice > More voices, {voices: [{name,
@@ -14334,6 +14372,7 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/status.txt", status_txt_view)
     app.router.add_post("/api/voice", voice_view)
     app.router.add_get("/api/voices/catalogue", voice_catalogue_view)
+    app.router.add_get("/api/voices/speakers", voice_speakers_view)
     app.router.add_post("/api/speaker/audio", speaker_audio_view)
     app.router.add_post("/api/autohonk", pc_only(autohonk_view))
     app.router.add_post("/api/uploads", uploads_view)
@@ -14698,8 +14737,11 @@ async def run(args, st):
                                         or voice in outrider.tts.installed_voices(outrider.tts.VOICES_DIR))):
         voice = VOICE
     # the voice picked in the dialog is remembered once it loads, on the loop thread (not Piper's)
+    spk = meta_get(db, "voice_speakers")   # each voice's speaker picked on the page
     state.speaker = outrider.tts.Speaker(voice, VOICE_FALLBACK, on_change=lambda: loop.call_soon_threadsafe(state.bump),
-                                   on_switched=lambda name: loop.call_soon_threadsafe(state.remember_voice, name))
+                                   on_switched=lambda name: loop.call_soon_threadsafe(state.remember_voice, name),
+                                   speakers=spk if isinstance(spk, dict) else None,
+                                   on_speaker=lambda chosen: loop.call_soon_threadsafe(state.remember_speakers, chosen))
     print("spoken alerts: " + ("Piper found, preparing a voice" if state.speaker.available else
                                "Piper not installed, the page uses browser speech (see outrider/tts.py)"))
     state.speaker.start()

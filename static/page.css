@@ -1019,6 +1019,11 @@ body.notgamepc .pcOnly, body.notgamepc [data-aim] { display: none !important; }
 .morevoices { margin: 6px 0; }
 .morevoices > summary { cursor: pointer; }
 .mvlist { max-height: 16em; overflow-y: auto; margin-top: 4px; }
+/* the voice lab (Settings > Voice): a dialog over Settings */
+.labdlg { width: min(720px, 94vw); }
+.labdlg .labwords { min-height: 2.6em; margin: 6px 0; color: var(--text); font-style: italic; }
+.labdlg #labSpk { max-width: 12em; } .labdlg #labSpkWrap button { padding: 2px 8px; }
+.labdlg h4:first-of-type { margin-top: 6px; }
 .mvrow { display: flex; align-items: center; gap: 0.7em; padding: 2px 0; }
 .mvrow .mvname { min-width: 9em; text-transform: capitalize; }
 .mvrow button { margin-left: auto; }

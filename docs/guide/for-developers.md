@@ -23,7 +23,6 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/tts.py` | Spoken alerts with Piper (optional), and playing lines and sounds on the PC |
 | `resources/speech.json` | The spoken lines, yours to edit (bans go in `data/speech_banned.json`) |
 | `outrider/speech.py` | Loads and checks `speech.json` |
-| `voice_lab.py` | A window for trying voices and lines, and downloading Piper voices |
 | `outrider/button.py` | The co-pilot button (Linux, optional); `--listen` |
 | `outrider/auth.py` | Sign-in for other devices: `[server] password`, session tokens, the sign-in rate limit |
 | `outrider/rail.py` | The tablet's control rail: the contexts (ship, SRV, Nomad, fighter, on foot), the default buttons, their states |

@@ -7434,7 +7434,7 @@ function drawSpeechLog() {
   document.getElementById("speechTally").innerHTML = speechTallyHtml();
   // 👎 on a line picked from the lines file: never that wording again (not on plain wording, which has no versions)
   const ban = e => !e.template || !e.key ? "" : e.banned ? ` <span class="unk">· banned</span>`
-    : ` <button type="button" class="try ban" data-ban="${e.id}" title="never say this line again (every browser, and the voice lab)">👎</button>`;
+    : ` <button type="button" class="try ban" data-ban="${e.id}" title="never say this line again (every browser)">👎</button>`;
   document.getElementById("speechLog").innerHTML = speechLog.length ? [...speechLog].reverse().map(e =>
     `<div class="slog ${fateGroup(e.fate)}"><span class="unk">${hms(e.t)}</span> <b>${esc(e.fate || "waiting")}</b> <span class="unk">· ${esc(speechLogFacts(e).join(" · "))}</span>${ban(e)}<br>“${esc(e.words)}”</div>`).join("")
     : `<div class="unk">Nothing yet in this window since it opened.</div>`;
@@ -7713,6 +7713,9 @@ function drawTts() {
   }
   if (t && t.voice && document.activeElement !== sel) sel.value = t.voice;
   sel.disabled = !opts.length;
+  const sw = document.getElementById("ttsSpkWrap");   // a voice of several people: which one speaks
+  sw.hidden = !(t && t.voice && t.speakers > 1);
+  if (!sw.hidden) fillSpeakers(document.getElementById("ttsSpk"), t.voice, t.speaker);
   if (mvVoices) { for (const v of mvVoices) v.installed = opts.includes(v.name); if (document.getElementById("moreVoices").open) drawMoreVoices(); }
   const sf = data && data.sound_files, own = sf ? Object.keys(sf.own || {}) : [];   // [speech] sound_dir (S16)
   document.getElementById("soundFiles").textContent = !sf ? "" : (own.length ? `Your own sounds: ${own.join(", ")}.` : "No sound files of your own found.")
@@ -7723,9 +7726,35 @@ function drawTts() {
 }
 drawSpeechBtn();
 document.getElementById("ttsVoice").onchange = e => apiJson("api/voice", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({voice: e.target.value})});
+// ---- speakers: a Piper voice trained on several people speaks as one of them (2026-10-11). Each voice keeps the
+// one picked for it (the server remembers it); the lists are fetched once per voice (some have hundreds).
+const speakerLists = {};   // voice -> [{id, name}]
+async function speakersOf(voice) {
+  if (!voice) return [];
+  if (speakerLists[voice]) return speakerLists[voice];
+  try {
+    const r = await fetch("api/voices/speakers?voice=" + encodeURIComponent(voice));
+    if (!r.ok) return [];
+    const j = await r.json();
+    return (speakerLists[voice] = Array.isArray(j.speakers) ? j.speakers : []);
+  } catch { return []; }
+}
+const speakerLabel = p => p.name === String(p.id) ? `#${p.id}` : `${p.name} (#${p.id})`;
+// fill a speaker <select> for `voice`, picking `current` (null: its first); resolves to the list
+async function fillSpeakers(sel, voice, current) {
+  const list = await speakersOf(voice);
+  if (sel.dataset.voice !== voice) {
+    sel.innerHTML = list.map(p => `<option value="${p.id}">${esc(speakerLabel(p))}</option>`).join("");
+    sel.dataset.voice = voice;
+  }
+  if (document.activeElement !== sel) sel.value = String(current ?? 0);
+  return list;
+}
+document.getElementById("ttsSpk").onchange = e => apiJson("api/voice", {method: "POST", headers: {"Content-Type": "application/json"},
+  body: JSON.stringify({speaker: Number(e.target.value)})});
 // ---- More voices (Settings > Voice): Piper's catalogue, from the server (GET api/voices/catalogue). Picking one
-// downloads it where Outrider runs and switches to it (POST api/voice, as the voice list above does): no voice lab
-// needed, so a Docker install has every voice too. The download's progress shows in the status beside Voice.
+// downloads it where Outrider runs and switches to it (POST api/voice, as the voice list does), so a Docker install has
+// every voice too. It sits in the voice lab's dialog. The download's progress shows in the status beside Voice.
 async function loadMoreVoices(refresh = false) {
   const msg = document.getElementById("mvMsg");
   msg.textContent = "reading Piper's voice list…";
@@ -7761,6 +7790,176 @@ document.getElementById("mvList").addEventListener("click", async e => {
   b.disabled = true;
   toast(v && v.installed ? `Switching to ${b.dataset.mv}` : `Downloading ${b.dataset.mv}${v && v.size_mb ? ` (${v.size_mb} MB)` : ""}, then switching to it`);
 });
+// ---- the voice lab (Settings > Voice > 🎙 Voice lab…, 2026-10-11; it was voice_lab.py, a separate Tk window): try a
+// voice and its speakers without switching, any alert's lines in any personality (the eight-alert audition too), cut a
+// line, speak your own words or save them as WAV. Everything comes from the server's Piper (api/say), so what you
+// hear is what Outrider says, and it plays here in this browser: never through the alert queue, hush or "play on this
+// PC".
+const AUDITION_KEYS = ["game_start", "arrival_brief", "find_body", "leaving", "fuel_low", "sold", "bio_done_last", "session_recap"];   // outrider.speech.AUDITION
+const labEl = id => document.getElementById(id);
+let labToken = 0, labNow = null, labLast = null;   // labLast: {key, template} of the line just played (✂ cuts it)
+// play a WAV from its URL: {done (resolves when it ends or stops), stop}. Swapped in the page test (jsdom plays nothing)
+let labSound = url => {
+  const a = new Audio(url);
+  a.volume = outVolume();
+  const done = a.play().then(() => new Promise(res => { a.onended = res; a.onpause = res; }));
+  return {done, stop: () => a.pause()};
+};
+const labMsg = (t, bad = false) => { const m = labEl("labMsg"); m.textContent = t || ""; m.className = bad ? "warnc" : "hint"; };
+function labStop() {
+  labToken++;
+  if (labNow) { const n = labNow; labNow = null; n.stop(); }
+}
+// what the voice part picks: {voice, speaker (null for a one-person voice), speed}
+function labPick() {
+  const spk = labEl("labSpkWrap").hidden ? null : Number(labEl("labSpk").value);
+  return {voice: labEl("labVoice").value, speaker: Number.isInteger(spk) ? spk : null, speed: Number(labEl("labSpeed").value) || 1};
+}
+async function labFetch(text, {voice, speaker, speed}) {
+  const q = new URLSearchParams({text: spokenText(text), speed: String(Math.round(speed * 100) / 100)});
+  if (voice) q.set("voice", voice);
+  if (speaker != null) q.set("speaker", String(speaker));
+  try {
+    const r = await fetch("api/say?" + q);
+    if (r.ok) return await r.blob();
+    labMsg(r.status === 503 ? "No Piper voice is ready yet (see the status beside Voice)" : `Outrider could not say it (${r.status})`, true);
+  } catch { labMsg("Could not reach Outrider", true); }
+  return null;
+}
+// say `text`; resolves true once it played to the end, false when stopped or failed
+async function labSay(text, how) {
+  labStop();
+  const token = labToken;
+  labMsg("…");
+  const blob = await labFetch(text, how);
+  if (!blob || token !== labToken) return false;
+  const url = URL.createObjectURL(blob);
+  labNow = labSound(url);
+  labMsg("");
+  try { await labNow.done; }
+  catch { labMsg("The browser held the sound back: click anywhere on the page, then try again", true); return false; }
+  finally { URL.revokeObjectURL(url); if (token === labToken) labNow = null; }
+  return token === labToken;
+}
+const labStyleName = st => { const base = st.replace(/_profane$/, ""), v = (speechLib.styles || {})[base];
+  return (typeof v === "string" ? v : (v && v.label) || base) + (st.endsWith("_profane") ? ", swearing" : ""); };
+// a random line of alert `key` in personality `style` (null: any, clean lines only), filled with sample values
+function labLine(key, style) {
+  const e = speechLib.lines && speechLib.lines[key];
+  if (!e || typeof e !== "object") return null;
+  const styles = style ? [style] : Object.keys(speechLib.styles || {});
+  const pool = styles.flatMap(st => (Array.isArray(e[st]) ? e[st] : []).filter(x => typeof x === "string" && x.trim()).map(x => [st, x]));
+  if (!pool.length) return null;
+  const [st, template] = pool[Math.floor(Math.random() * pool.length)];
+  return {key, style: st, template, text: fillLine(template, lineVars(LINE_SAMPLES[key] || {}))};
+}
+// play a line: in its personality's own voice and pace when speech.json gives it one (and it is installed), else
+// the voice part's voice and speaker
+async function labPlayLine(ln) {
+  const pick = labPick(), sv = styleVoice(ln.style.replace(/_profane$/, ""));
+  const own = sv.voice && ((data && data.tts && data.tts.voices) || []).includes(sv.voice) ? sv.voice : null;
+  labLast = {key: ln.key, template: ln.template};
+  labEl("labCut").disabled = false;
+  labEl("labWords").textContent = `${ln.key} · ${labStyleName(ln.style)}${own ? ` · in ${own}` : ""}: “${spokenText(ln.text)}”`;
+  return labSay(ln.text, own ? {voice: own, speaker: null, speed: pick.speed * sv.pace} : {...pick, speed: pick.speed * sv.pace});
+}
+async function labDrawSpeakers() {
+  const voice = labEl("labVoice").value, t = data && data.tts;
+  const cur = voice === (t && t.voice) ? t.speaker : null;
+  const list = await fillSpeakers(labEl("labSpk"), voice, cur);
+  labEl("labSpkWrap").hidden = list.length < 2;
+  labEl("labSpkCount").textContent = list.length > 1 ? `${list.length} people` : "";
+  labDrawInUse();
+}
+function labDrawInUse() {
+  const t = data && data.tts, p = labPick();
+  const same = t && p.voice === t.voice && (p.speaker == null || p.speaker === (t.speaker ?? 0));
+  labEl("labInUse").textContent = same ? "✓ the voice in use" : "";
+  labEl("labUse").disabled = !p.voice || (same && Math.abs(p.speed - speechSpeed()) < 0.001);
+}
+async function labOpen() {
+  if (!Object.keys(speechLib.lines || {}).length) await loadSpeechLib();   // the lines, if the page has none yet
+  const t = data && data.tts, voices = (t && t.voices) || [];
+  labEl("labVoice").innerHTML = voices.map(v => `<option>${esc(v)}</option>`).join("") || `<option value="">(no Piper voice installed: More voices below)</option>`;
+  if (t && t.voice) labEl("labVoice").value = t.voice;
+  labEl("labSpeed").value = String(speechSpeed());
+  labEl("labSpeedOut").textContent = speechSpeed().toFixed(2) + "×";
+  const keys = Object.keys(speechLib.lines || {}).sort();
+  labEl("labAlert").innerHTML = keys.map(k => { const w = (speechLib.lines[k] || {}).when;
+    return `<option value="${esc(k)}">${esc(k)}${typeof w === "string" ? ` · ${esc(w.length > 60 ? w.slice(0, 57) + "…" : w)}` : ""}</option>`; }).join("");
+  const lines = Object.values(speechLib.lines || {}), styles = Object.keys(speechLib.styles || {});
+  const swear = styles.filter(k => lines.some(e => e && Array.isArray(e[k + "_profane"]) && e[k + "_profane"].length));
+  labEl("labStyle").innerHTML = `<option value="">any personality</option>` +
+    [...styles, ...swear.map(k => k + "_profane")].map(k => `<option value="${esc(k)}">${esc(labStyleName(k))}</option>`).join("");
+  labEl("labWords").textContent = ""; labEl("labCut").disabled = true; labLast = null; labMsg("");
+  labDrawSpeakers();
+  tabShow(labEl("labDlg"));
+}
+labEl("labOpen").onclick = labOpen;
+labEl("labVoice").onchange = () => { labStop(); labDrawSpeakers(); };
+labEl("labSpk").onchange = () => { labDrawInUse(); labHear(); };
+labEl("labSpeed").oninput = () => { labEl("labSpeedOut").textContent = Number(labEl("labSpeed").value).toFixed(2) + "×"; labDrawInUse(); };
+const labStep = d => { const sel = labEl("labSpk"), n = sel.options.length; if (!n) return;
+  sel.selectedIndex = d === "rand" ? Math.floor(Math.random() * n) : (sel.selectedIndex + d + n) % n; labDrawInUse(); labHear(); };
+labEl("labSpkPrev").onclick = () => labStep(-1);
+labEl("labSpkNext").onclick = () => labStep(1);
+labEl("labSpkRand").onclick = () => labStep("rand");
+function labHear() {
+  const p = labPick(), names = speechNames(), name = names[Math.floor(Math.random() * names.length)] || "Commander";
+  const who = p.speaker != null ? ` I am speaker ${speakerLabel((speakerLists[p.voice] || []).find(x => x.id === p.speaker) || {id: p.speaker, name: String(p.speaker)})}.` : "";
+  return labSay(`Hello, ${name}.${who} Three biological signals on A 2, worth up to 19 million.`, p);
+}
+labEl("labHear").onclick = labHear;
+labEl("labUse").onclick = async () => {
+  const p = labPick(), body = {voice: p.voice};
+  if (p.speaker != null) body.speaker = p.speaker;
+  let r;
+  try { r = await apiJson("api/voice", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)}); }
+  catch { r = {error: "Outrider not reachable"}; }
+  if (r.error) { labMsg(`Not switched: ${r.error}`, true); return; }
+  if (Math.abs(p.speed - speechSpeed()) >= 0.001) { store.set("speechSpeed", p.speed); speedBox.value = String(p.speed); speedOut.textContent = p.speed.toFixed(2) + "×"; drawSpeechStyles(); }
+  labMsg(`Outrider speaks in ${p.voice}${p.speaker != null ? `, speaker #${p.speaker}` : ""} at ${p.speed.toFixed(2)}× from now on`);
+  labEl("labUse").disabled = true;
+};
+labEl("labLine").onclick = () => {
+  const ln = labLine(labEl("labAlert").value, labEl("labStyle").value || null);
+  if (!ln) { labMsg("No lines for that alert in that personality", true); return; }
+  labPlayLine(ln);
+};
+labEl("labCut").onclick = async () => {
+  if (!labLast) return;
+  if (await banLine(labLast.key, labLast.template, true)) { labEl("labCut").disabled = true; labEl("labWords").textContent += " (cut)"; labLast = null; }
+};
+labEl("labAudition").onclick = async () => {
+  const chosen = labEl("labStyle").value || null;
+  const styles = chosen ? [chosen] : Object.keys(speechLib.styles || {});
+  const steps = styles.flatMap(st => AUDITION_KEYS.map(k => [st, k]));
+  labStop();
+  for (const [st, k] of steps) {
+    const ln = labLine(k, st);
+    if (!ln) continue;   // that personality has nothing for this alert
+    if (!(await labPlayLine(ln))) return;   // stopped (or failed): the audition ends
+    const token = labToken;
+    await new Promise(res => setTimeout(res, 2000));
+    if (token !== labToken) return;
+  }
+  labMsg("Audition done");
+};
+const labOwnText = () => fillLine(labEl("labText").value, lineVars({}));
+labEl("labSpeak").onclick = () => { if (labEl("labText").value.trim()) labSay(labOwnText(), labPick()); else labMsg("Type something first", true); };
+labEl("labSave").onclick = async () => {
+  if (!labEl("labText").value.trim()) { labMsg("Type something first", true); return; }
+  const p = labPick(), blob = await labFetch(labOwnText(), p);
+  if (!blob) return;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `outrider-${p.voice || "voice"}${p.speaker != null ? `-${p.speaker}` : ""}.wav`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  labMsg(`Saved as ${a.download}`);
+};
+labEl("labStop").onclick = () => { labStop(); labMsg("Stopped"); };
+labEl("labDlg").addEventListener("close", labStop);   // closing the lab stops what it plays
 alertDialog.querySelectorAll("[data-alert]").forEach(cb => {
   cb.checked = !!alertCfg[cb.dataset.alert];
   cb.onchange = async () => {

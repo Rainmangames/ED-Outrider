@@ -1193,54 +1193,6 @@ class Batch4Review(unittest.TestCase):
             self.assertIsNone(sp.say("…"))
             self.assertEqual(calls, ["…"])                               # remembered, not synthesised again
 
-    # ---- voice lab ----
-    def _lab(self):
-        try:
-            import voice_lab
-        except (ImportError, SystemExit):
-            self.skipTest("no tkinter")
-        return voice_lab
-
-    def test_voice_lab_reads_the_configured_speech_file(self):   # F59
-        voice_lab = self._lab()
-        with unittest.mock.patch.object(voice_lab, "_config", lambda: {"server": {"speech_file": "~/my_lines.json"}}):
-            self.assertEqual(voice_lab.configured_speech_file(), os.path.expanduser("~/my_lines.json"))
-        with unittest.mock.patch.object(voice_lab, "_config", lambda: {"server": {"speech_file": "mine.json"}}):
-            self.assertEqual(voice_lab.configured_speech_file(), os.path.join(voice_lab.outrider.ROOT, "mine.json"))
-        with unittest.mock.patch.object(voice_lab, "_config", lambda: {}):
-            self.assertEqual(voice_lab.configured_speech_file(), voice_lab.SPEECH_FILE)
-
-    def test_voice_lab_removes_each_spoken_wav(self):   # F60
-        import tempfile
-        voice_lab = self._lab()
-        with tempfile.TemporaryDirectory() as d:
-            p = voice_lab.Player()
-            p.cmd = None                                                  # nothing is played in a test
-            a, b = os.path.join(d, "a.wav"), os.path.join(d, "b.wav")
-            for path in (a, b):
-                open(path, "wb").close()
-            p.play(a)
-            p.play(b)
-            self.assertEqual(os.listdir(d), ["b.wav"])
-            p.stop()
-            self.assertEqual(os.listdir(d), [])
-
-    def test_voice_lab_refetches_a_truncated_catalogue(self):   # F61
-        import io, tempfile
-        voice_lab = self._lab()
-        with tempfile.TemporaryDirectory() as d:
-            cache = os.path.join(d, "voices.json")
-            with open(cache, "w") as f:
-                f.write('{"en_GB-a-low": {"lang')
-            with unittest.mock.patch.object(voice_lab, "VOICES_DIR", d), \
-                    unittest.mock.patch.object(voice_lab, "CATALOGUE_CACHE", cache), \
-                    unittest.mock.patch.object(voice_lab.outrider.tts.urllib.request, "urlopen",
-                                               lambda url, timeout: io.BytesIO(b'{"en_GB-a-low": {}}')):
-                self.assertEqual(voice_lab.fetch_catalogue(), {"en_GB-a-low": {}})
-            with open(cache) as f:
-                self.assertEqual(json.load(f), {"en_GB-a-low": {}})
-            self.assertEqual(os.listdir(d), ["voices.json"])              # no .part left behind
-
     def test_numpad_operator_labels(self):   # F57
         import outrider.honk
         self.assertEqual([outrider.honk.key_label(k) for k in ("KEY_KPPLUS", "KEY_KPENTER", "KEY_KPDOT", "KEY_SYSRQ",

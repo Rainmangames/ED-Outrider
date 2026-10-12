@@ -581,13 +581,12 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <div class="hint">Alerts only fire for something out of the ordinary. The tab title also carries the current state, so a background tab still tells you something.</div>
     </details>
     <details class="setsec" data-sec-key="voice" data-chip="Voice"><summary>Voice <span id="ttsEngine" class="unk"></span> <span class="sum-note">the voice, its personality, pace and volume, which screen speaks</span></summary>
-      <label class="mod">Voice <select id="ttsVoice"></select> <span id="ttsStatus" class="hint"></span></label>
+      <label class="mod">Voice <select id="ttsVoice"></select>
+        <span id="ttsSpkWrap" hidden>speaker <select id="ttsSpk" aria-label="speaker"></select></span>
+        <span id="ttsStatus" class="hint"></span></label>
       <div class="hint" id="ttsHint"></div>
-      <details id="moreVoices" class="morevoices"><summary>More voices <span class="sum-note">any of Piper's, downloaded where Outrider runs when you pick one</span></summary>
-        <div class="mod inlineopts">Language <select id="mvLang" aria-label="language"></select>
-          <button type="button" id="mvRefresh" title="fetch Piper's voice list again (it is kept for a week)">refresh list</button> <span id="mvMsg" class="hint"></span></div>
-        <div id="mvList" class="mvlist"></div>
-      </details>
+      <div class="mod"><button type="button" class="try" id="labOpen">🎙 Voice lab…</button>
+        <span class="hint">hear voices, their speakers and every alert's lines before you choose; download more voices</span></div>
       <div class="mod inlineopts">Personality: <span id="speechStyles" class="sstyles"></span>
         <span class="profrow"><label><input type="checkbox" id="speechProfanity"> with profanity <span id="speechProfanityWho" class="unk"></span></label>
         <label title="how often a line comes from the swearing versions instead of the clean ones"><input type="number" id="speechProfanityPct" min="0" max="100" step="5" style="width:4.5em">% of the time</label></span></div>
@@ -757,7 +756,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
     <details id="speechLogBox" class="speechlog setsec" data-sec-key="log" data-chip="Spoken lines"><summary>Spoken lines <span class="sum-note">the last 100 alerts in this window and what became of each</span></summary>
       <div class="hint">Newest first: said, cut short, dropped (waited too long, you left the system, replaced by newer news, a cooldown, hushed) or
         silent (speech off, not ticked, another window speaks, hushed). Only this window's, and a reload starts afresh.
-        👎 on a line from the lines file means never say that one again (for every browser and the voice lab; the last line of a list stays).
+        👎 on a line from the lines file means never say that one again (for every browser; the last line of a list stays).
         <button type="button" class="try" id="speechLogCopy">copy</button></div>
       <div id="speechTally" class="hint"></div>
       <div id="speechBans" class="hint"></div>
@@ -779,6 +778,36 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
       <th class="num">Pads</th><th>Docking</th><th class="src">Data</th><th></th></tr></thead><tbody id="nearRows"></tbody></table></div>
     <div id="nearFoot" class="hint"></div>
     <div class="btns"><span class="grow"></span><button type="button" data-close>Close</button></div>
+  </form>
+</dialog>
+<dialog id="labDlg" class="labdlg" aria-labelledby="labTitle">
+  <form method="dialog">
+    <h3 id="labTitle">🎙 Voice lab</h3>
+    <p class="hint">Try voices and lines before you choose. It plays here in this browser, whatever the speech settings.</p>
+    <h4>Voice</h4>
+    <div class="mod inlineopts"><select id="labVoice" aria-label="voice"></select>
+      <span id="labSpkWrap" hidden>speaker <button type="button" id="labSpkPrev" title="the previous speaker, played">‹</button><select id="labSpk" aria-label="speaker"></select><button type="button" id="labSpkNext" title="the next speaker, played">›</button>
+        <button type="button" id="labSpkRand" title="a random speaker, played">🎲</button> <span id="labSpkCount" class="unk"></span></span></div>
+    <div class="mod inlineopts">speed <input type="range" id="labSpeed" min="0.5" max="2" step="0.05" style="width:10em;vertical-align:middle"> <span id="labSpeedOut"></span>
+      <button type="button" id="labHear">▶ Hear it</button>
+      <button type="button" id="labUse" class="primary" title="Outrider speaks in this voice (and speaker, and speed) from now on">Use this voice</button>
+      <span id="labInUse" class="hint"></span></div>
+      <details id="moreVoices" class="morevoices"><summary>More voices <span class="sum-note">any of Piper's, downloaded where Outrider runs when you pick one</span></summary>
+        <div class="mod inlineopts">Language <select id="mvLang" aria-label="language"></select>
+          <button type="button" id="mvRefresh" title="fetch Piper's voice list again (it is kept for a week)">refresh list</button> <span id="mvMsg" class="hint"></span></div>
+        <div id="mvList" class="mvlist"></div>
+      </details>
+    <h4>Lines</h4>
+    <div class="mod inlineopts"><select id="labAlert" aria-label="alert"></select> <select id="labStyle" aria-label="personality"></select></div>
+    <div class="mod inlineopts"><button type="button" id="labLine">▶ Random line</button>
+      <button type="button" id="labAudition" title="eight key alerts in a row, in each personality (or the one picked)">▶ Audition</button>
+      <button type="button" id="labCut" disabled title="never say the line just played again (every browser)">✂ Cut this line</button></div>
+    <div id="labWords" class="labwords hint"></div>
+    <h4>Your own words</h4>
+    <textarea id="labText" rows="2" placeholder="Type anything, then ▶ Speak"></textarea>
+    <div class="mod inlineopts"><button type="button" id="labSpeak">▶ Speak</button> <button type="button" id="labSave">⬇ Save WAV</button></div>
+    <div class="btns"><span id="labMsg" class="hint"></span><span class="grow"></span>
+      <button type="button" id="labStop">■ Stop</button><button type="button" data-close>Close</button></div>
   </form>
 </dialog>
 <dialog id="recountDlg" class="recountdlg" aria-labelledby="recountTitle">

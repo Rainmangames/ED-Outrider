@@ -46,9 +46,9 @@ fi
 
 step "pyflakes (any warning fails)"
 if "$PY" -m pyflakes --version >/dev/null 2>&1; then
-  if "$PY" -m pyflakes ed_outrider.py outrider/*.py voice_lab.py tests/*.py; then echo "no warnings"; else FAIL=1; fi
+  if "$PY" -m pyflakes ed_outrider.py outrider/*.py tests/*.py; then echo "no warnings"; else FAIL=1; fi
 elif command -v pyflakes >/dev/null 2>&1; then
-  if pyflakes ed_outrider.py outrider/*.py voice_lab.py tests/*.py; then echo "no warnings"; else FAIL=1; fi
+  if pyflakes ed_outrider.py outrider/*.py tests/*.py; then echo "no warnings"; else FAIL=1; fi
 else
   echo "pyflakes not installed: skipped (pip install -r requirements-dev.txt)"
 fi

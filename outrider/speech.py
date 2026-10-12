@@ -12,8 +12,8 @@ plain wording.
 The file is re-read whenever it changes, so an edit takes effect without restarting Outrider.
 
 Lines you never want to hear again go in data/speech_banned.json, or next to a speech file of your own
-({alert: [line, ...]}, written by the 👎 in the page's "Spoken lines" list and the voice lab's "Cut this line").
-They are left out here, so the page and the voice lab both get the trimmed lists; a ban never empties a list (the last line of one cannot be banned, and a
+({alert: [line, ...]}, written by the 👎 in the page's "Spoken lines" list and the voice lab's "✂ Cut this line").
+They are left out here, so the page (and its voice lab) gets the trimmed lists; a ban never empties a list (the last line of one cannot be banned, and a
 list whose every line is banned by hand is used whole).
 """
 import json
@@ -119,7 +119,7 @@ VOICE_NAME = re.compile(r"^[a-z]{2,3}_[A-Z]{2}-[A-Za-z0-9_]+-(x_low|low|medium|h
 def resolve_speech_file(name, root, default, resources=RESOURCES_DIR, warn=None):
     """[server] speech_file, resolved: relative to `root`, ~ expanded; `default` when unset. A relative name missing
     there but present in resources/ (a config written before the layout move, speech_file = "speech.json") is taken
-    from resources/, and warn(text) says so (review F22). The server and the voice lab both resolve it here, so they
+    from resources/, and warn(text) says so (review F22). The server resolves it here, so it and the tests
     always speak from the same file."""
     if not name:
         return default
@@ -317,7 +317,7 @@ class SpeechLines:
 
     def version(self):
         self.refresh()
-        # the bans are part of it: a 👎 (or the voice lab's cut) makes every page fetch the trimmed lines
+        # the bans are part of it: a 👎 (or the voice lab's ✂) makes every page fetch the trimmed lines
         return f"{self._mtime}-{self._bans_mtime}-{self._bans_gen}" if self.doc else None
 
     def info(self):
@@ -387,11 +387,11 @@ class SpeechLines:
 
 
 def ban_line(speech_path, alert, template, ban=True):
-    """set_ban on the speech file at `speech_path` (the voice lab's "Cut this line")."""
+    """set_ban on the speech file at `speech_path` (a script's or a test's way to cut a line)."""
     return SpeechLines(speech_path).set_ban(alert, template, ban)
 
 
-# ---- filling and tidying lines outside the page (the voice lab; the page has its own copies in page.js) ----
+# ---- filling and tidying lines outside the page (a Python mirror of page.js's, kept in step by the tests) ----
 
 # made-up values for trying lines out, already phrased the way the page phrases them
 SAMPLES = {
@@ -434,7 +434,7 @@ SAMPLES = {
     "sale_left": {"text": "Sold 50 systems for 14.8M. 43 systems are still unsold, 2.0M, 270 first discoveries: "
                           "sell the next page."},
 }
-# the voice lab's Audition: one personality across the alerts that matter, in the order a session hears them
+# the voice lab's Audition (page.js AUDITION_KEYS): one personality across the alerts that matter, in a session's order
 AUDITION = ("game_start", "arrival_brief", "find_body", "leaving", "fuel_low", "sold", "bio_done_last", "session_recap")
 DEFAULT_NAMES = "Boss, Hefay, Sir"
 

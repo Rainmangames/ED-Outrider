@@ -4823,6 +4823,66 @@ const settle = async maxMs => {
     allOk = allOk && goodO;
     console.log(goodO ? "OK" : "FAIL", "| answers out of order |", goodO ? "on-body strip, a pin's loading, Find, a failed older firsts, the map: the newest answer kept; the map asks again when reopened" : JSON.stringify(got), errors.slice(before));
   }
+  // the voice lab (2026-10-11; it was voice_lab.py): Settings > Voice shows a several-person voice's speaker; the lab
+  // steps through speakers (each played, through api/say with the speaker), uses one, plays and cuts a line, saves a WAV
+  {
+    const w = dom.window, realFetch = w.fetch, before = errors.length, said = [], posted = [];
+    const people = [{id: 0, name: "p225"}, {id: 1, name: "p226"}, {id: 2, name: "p227"}];
+    const json = (o, status = 200) => Promise.resolve(new Response(JSON.stringify(o), {status, headers: {"Content-Type": "application/json"}}));
+    w.fetch = (u, o) => {
+      const s = String(u);
+      if (s.startsWith("api/voices/speakers")) return json({voice: "en_GB-vctk-medium", speakers: s.includes("vctk") ? people : [], speaker: 1});
+      if (s.startsWith("api/say?")) { said.push(Object.fromEntries(new URLSearchParams(s.slice(8)))); return Promise.resolve(new Response(new w.Blob(["RIFF"]), {status: 200, headers: {"Content-Type": "audio/wav"}})); }
+      if (s === "api/voice" || s.startsWith("api/speech/ban")) { posted.push([s, JSON.parse(o.body)]); return json({ok: true}); }
+      return realFetch(u, o);
+    };
+    const got = await w.eval(`(async () => {
+      const o = {}, t0 = data.tts, sound0 = labSound, cu = URL.createObjectURL, ru = URL.revokeObjectURL, sp0 = store.get("speechSpeed", null);
+      const tick = () => new Promise(r => setTimeout(r, 30));
+      URL.createObjectURL = () => "blob:lab"; URL.revokeObjectURL = () => {};
+      labSound = () => ({done: Promise.resolve(), stop() {}});
+      data.tts = {engine: "piper", available: true, status: "ready", voices: ["en_GB-cori-medium", "en_GB-vctk-medium"],
+                  voice: "en_GB-vctk-medium", speaker: 1, speakers: 3, speaker_name: "p226"};
+      for (const k of Object.keys(speakerLists)) delete speakerLists[k];
+      drawTts(); await tick();
+      o.settings = [!document.getElementById("ttsSpkWrap").hidden, document.getElementById("ttsSpk").value, document.getElementById("ttsSpk").options.length];
+      const lib0 = speechLib;
+      speechLib = {version: "lab", banned: {}, styles: {business: "Down to business", sarcastic: {label: "Sarcastic", voice: "en_GB-nope-low"}},
+                   lines: {leaving: {when: "leaving a system", business: ["Leaving with {text}.", "Off we go, {name}."], sarcastic: ["Bye then."]}}};
+      await labOpen(); await tick();
+      o.open = [document.getElementById("labDlg").open, !labEl("labSpkWrap").hidden, labEl("labSpk").value, labEl("labInUse").textContent, labEl("labSpkCount").textContent];
+      labEl("labSpkNext").click(); await tick();          // the next person, played at once
+      labEl("labUse").click(); await tick();
+      labEl("labVoice").value = "en_GB-cori-medium"; labEl("labVoice").dispatchEvent(new Event("change")); await tick();
+      o.onePerson = labEl("labSpkWrap").hidden;
+      const key = "leaving";
+      labEl("labAlert").value = key; labEl("labStyle").value = "business";
+      labEl("labLine").click(); await tick();
+      o.line = [labEl("labWords").textContent.startsWith(key + " · "), labEl("labCut").disabled];
+      labEl("labCut").click(); await tick();
+      labEl("labText").value = "Hello {name}"; labEl("labSave").click(); await tick();
+      o.saved = labEl("labMsg").textContent;
+      tabClose(document.getElementById("labDlg"));
+      speechLib = lib0;
+      labSound = sound0; URL.createObjectURL = cu; URL.revokeObjectURL = ru; data.tts = t0;
+      if (sp0 === null) store.set("speechSpeed", null); else store.set("speechSpeed", sp0);
+      drawTts();
+      return o; })()`);
+    w.fetch = realFetch;
+    const ban = posted.find(p => p[0] === "api/speech/ban");
+    const want = {
+      settings: JSON.stringify(got.settings) === JSON.stringify([true, "1", 3]),
+      open: JSON.stringify(got.open) === JSON.stringify([true, true, "1", "✓ the voice in use", "3 people"]),
+      stepped: said.length >= 1 && said[0].voice === "en_GB-vctk-medium" && said[0].speaker === "2" && /speaker p227/.test(said[0].text),
+      used: posted.some(p => p[0] === "api/voice" && p[1].voice === "en_GB-vctk-medium" && p[1].speaker === 2),
+      onePerson: got.onePerson === true,
+      line: got.line[0] && got.line[1] === false && said.some(x => x.voice === "en_GB-cori-medium" && !("speaker" in x)),
+      cut: !!ban && typeof ban[1].alert === "string" && typeof ban[1].template === "string",
+      saved: got.saved === "Saved as outrider-en_GB-cori-medium.wav" && said.some(x => /^Hello \S/.test(x.text))};
+    const good = Object.values(want).every(Boolean) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| voice lab |", good ? "speaker in Settings; the lab steps speakers, uses one, plays and cuts a line, saves a WAV" : JSON.stringify({want, got, said, posted}), errors.slice(before));
+  }
   // another site's POST is refused before any handler runs (radius: harmless even if it got through with {})
   const post = origin => fetch(base + "api/radius", {method: "POST", body: "{}",
     headers: Object.assign({"Content-Type": "application/json"}, origin ? {Origin: origin} : {})}).then(r => r.status);

@@ -491,7 +491,7 @@ class Batch0Security(unittest.TestCase):
 
 
 class Batch5ConfigCli(unittest.TestCase):
-    """Second review, batch 5: config edge cases, the auto honk binding, Piper downloads and the voice lab."""
+    """Second review, batch 5: config edge cases, the auto honk binding, Piper downloads."""
 
     ARGS = dict(journals=None, legacy=None, host=None, port=None, radius=None, db=None)
 
@@ -768,46 +768,6 @@ class Batch5ConfigCli(unittest.TestCase):
                 [files[0], (files[1][0], {"md5_digest": hashlib.md5(b"model").hexdigest()})])
             self.assertEqual(sorted(os.listdir(d)), ["en_GB-x-low.onnx", "en_GB-x-low.onnx.json"])
             self.assertEqual(outrider.tts.installed_voices(d), ["en_GB-x-low"])
-
-    def test_voice_lab_reads_a_speech_file_that_is_not_an_object(self):
-        """A speech file whose top level is a list crashed the voice lab at start (AttributeError, not caught): a
-        ValueError, which the lab shows and opens anyway (review 2026-10-11)."""
-        import tempfile
-        try:
-            import voice_lab
-        except (ImportError, SystemExit):
-            self.skipTest("no tkinter")
-        with tempfile.TemporaryDirectory() as d:
-            path = os.path.join(d, "speech.json")
-            with open(path, "w", encoding="utf-8") as f:
-                f.write("[1, 2]")
-            with self.assertRaises(ValueError):
-                voice_lab.load_lines(path)
-
-    def test_voice_lab_download_and_pump(self):   # F88, F44
-        import tempfile, types, queue
-        try:
-            import voice_lab
-        except (ImportError, SystemExit):
-            self.skipTest("no tkinter")
-        with tempfile.TemporaryDirectory() as d, unittest.mock.patch.object(voice_lab, "VOICES_DIR", d):
-            entry = {"files": {"en/en_GB/x/low/en_GB-x-low.onnx": {"size_bytes": 10},
-                               "en/en_GB/x/low/en_GB-x-low.onnx.json": {"size_bytes": 2},
-                               "en/en_GB/x/low/MODEL_CARD": {}}}
-            it = iter([_FakeResponse(b"{}"), _FakeResponse(b"abc", OSError("Wi-Fi dropped"))])
-            with unittest.mock.patch.object(voice_lab.outrider.tts.urllib.request, "urlopen", lambda url, timeout: next(it)):
-                with self.assertRaises(OSError):
-                    voice_lab.download(entry, lambda done, total: None)
-            self.assertEqual(os.listdir(d), [])
-        # a failing callback neither stops the queue nor the pump's re-arming
-        ran, status, rearmed = [], [], []
-        lab = types.SimpleNamespace(q=queue.Queue(), root=types.SimpleNamespace(after=lambda ms, f: rearmed.append(ms)),
-                                    set_status=lambda text, error=False: status.append((text, error)), pump=None)
-        lab.q.put(lambda: open("/nonexistent-dir/x.wav", "wb"))
-        lab.q.put(lambda: ran.append(1))
-        voice_lab.Lab.pump(lab)
-        self.assertEqual((ran, rearmed, status[0][1]), ([1], [80], True))
-        self.assertIn("FileNotFoundError", status[0][0])
 
     def test_spoken_numbers_stay_fixed_point(self):   # F82
         self.assertEqual(outrider.speech.spoken_text("Carried 1234567.89 cr"), "Carried 1234567.9 credits")

@@ -4,7 +4,7 @@ Read `docs/AGENT_GUIDE.md` first: code map, data flow, testing, the rules and re
 The other notes are in `docs/`: `JOURNAL_REFERENCE.md` (game data and its traps), `DESIGN_NOTES.md`
 (deliberate decisions, known limits) and `CHANGELOG.md`.
 
-Layout: `ed_outrider.py` and `voice_lab.py` at the root, the modules in `outrider/` (CLIs: `python3 -m
+Layout: `ed_outrider.py` at the root, the modules in `outrider/` (CLIs: `python3 -m
 outrider.<name>`), shipped data in `resources/`, the player's own files in `data/` (git-ignored).
 
 The rules that matter most:

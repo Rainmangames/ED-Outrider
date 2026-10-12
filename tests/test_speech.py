@@ -1,4 +1,4 @@
-"""Unit tests: Spoken lines, voices, the voice lab and audio played on the PC.
+"""Unit tests: Spoken lines, voices, speakers and audio played on the PC.
 
 Run all: python3 -m unittest discover tests (or scripts/verify.sh).
 """
@@ -769,13 +769,6 @@ class BatchAAudio(unittest.TestCase):
         self.assertIsNone(outrider.tts.LinePlayer("off", have("pw-play")).name)
         self.assertEqual(outrider.tts.LinePlayer("nonsense", have("aplay")).choice, "auto")
         self.assertEqual(outrider.tts.LinePlayer("auto", have("aplay")).name, "aplay")
-        try:   # the voice lab uses the same detection
-            import voice_lab
-        except (ImportError, SystemExit):
-            return
-        with unittest.mock.patch.object(outrider.tts.shutil, "which", have("aplay")), \
-                unittest.mock.patch.object(voice_lab.platform, "system", lambda: "Linux"):
-            self.assertEqual(voice_lab.Player().cmd, ["aplay", "-q"])
 
     def test_config_server_player(self):
         import tomllib
@@ -1172,88 +1165,6 @@ class PlausibleFixes(unittest.TestCase):
             self.assertEqual(status, 400, (path, body))
         self.assertEqual(called, [])
 
-    def voice_lab(self):
-        try:
-            import voice_lab
-        except (ImportError, SystemExit):
-            self.skipTest("no tkinter")
-        return voice_lab
-
-    def test_voice_lab_keeps_two_voices_loaded(self):   # F73
-        import threading, types
-        vl = self.voice_lab()
-        loads = []
-        v = vl.Voices.__new__(vl.Voices)
-        v.PiperVoice = types.SimpleNamespace(load=lambda path: loads.append(os.path.basename(path)) or object())
-        v.loaded, v.current, v.lock = vl.OrderedDict(), None, threading.Lock()
-        for name in ("a", "b", "c", "d"):
-            v.current = name
-            v.load(name)
-        self.assertEqual(list(v.loaded), ["c", "d"])
-        v.current = "d"
-        v.load("e")                      # a personality's own voice: the selected one stays loaded
-        v.load("f")
-        self.assertEqual(sorted(v.loaded), ["d", "f"])
-        self.assertEqual(len(loads), 6)
-
-    def test_voice_lab_uses_the_personality_pace(self):   # F70
-        import types
-        vl = self.voice_lab()
-        text = "Carto data aboard, Commander."
-        lab = types.SimpleNamespace(voice=types.SimpleNamespace(get=lambda: "en_GB-x-low"), speaker_ids=[],
-                                    speed=types.SimpleNamespace(get=lambda: 1.2), current_text=lambda: text,
-                                    line_pace=(text, 1.5), line_voice=None)
-        self.assertEqual(vl.Lab.synth_args(lab), ("en_GB-x-low", None, 1.8, 1.5, None))
-        lab.speed = types.SimpleNamespace(get=lambda: 1.6)
-        self.assertEqual(vl.Lab.synth_args(lab)[2], 2.0)            # clamped to Piper's range
-        lab.current_text = lambda: "My own words."                    # typed over the line: the slider alone
-        self.assertEqual(vl.Lab.synth_args(lab)[2:], (1.6, None, None))
-
-    def test_voice_lab_uses_the_personality_voice(self):   # P19: "any personality" plays a line in its own voice
-        import types
-        vl = self.voice_lab()
-        text = "Oh look, a rock."
-        installed = ["en_GB-x-low", "en_US-ryan-high"]
-        lab = types.SimpleNamespace(voice=types.SimpleNamespace(get=lambda: "en_GB-x-low"), speaker_ids=[3],
-                                    speaker=types.SimpleNamespace(current=lambda: 0),
-                                    speed=types.SimpleNamespace(get=lambda: 1.0), current_text=lambda: text,
-                                    line_pace=None, line_voice=(text, "en_US-ryan-high", "sarcastic"),
-                                    voices=types.SimpleNamespace(installed=lambda: installed))
-        self.assertEqual(vl.Lab.synth_args(lab), ("en_US-ryan-high", None, 1.0, None, "sarcastic"))   # its first speaker
-        installed.remove("en_US-ryan-high")                                  # not installed: the lab's voice
-        self.assertEqual(vl.Lab.synth_args(lab), ("en_GB-x-low", 3, 1.0, None, None))
-        installed.append("en_US-ryan-high")
-        lab.current_text = lambda: "My own words."                           # typed over the line: the lab's voice
-        self.assertEqual(vl.Lab.synth_args(lab)[0], "en_GB-x-low")
-
-    def test_voice_lab_stop_drops_a_pending_synthesis(self):   # Codex F6
-        import tempfile, types
-        vl = self.voice_lab()
-        events, pending = [], []
-        lab = types.SimpleNamespace(current_text=lambda: "Hello.", synth_args=lambda: ("v", None, 1.0, None, None),
-                                    voices=types.SimpleNamespace(PiperVoice=object, synth=lambda *a: b""),
-                                    player=types.SimpleNamespace(play=lambda p: events.append("play"), stop=lambda: events.append("stop")),
-                                    run=lambda work, done, status=None: pending.append(done), set_status=lambda *a, **k: None,
-                                    tmp=tempfile.mkdtemp(), say_gen=0, audition_run=None)
-        vl.Lab.speak(lab)
-        vl.Lab.stop(lab)
-        pending.pop()(b"")                 # the synthesis finishes after Stop
-        self.assertEqual(events, ["stop"])
-        vl.Lab.speak(lab)                   # a newer Speak replaces an older one still synthesising
-        vl.Lab.speak(lab)
-        pending[1](b"")
-        pending[0](b"")
-        self.assertEqual(events, ["stop", "play"])
-
-    def test_voice_lab_calls_you_what_outrider_does(self):   # F38
-        vl = self.voice_lab()
-        with unittest.mock.patch.object(vl, "_config", lambda: {"defaults": {"speech_names": ["Captain", "Skipper"]}}):
-            self.assertEqual(vl.configured_names(), "Captain, Skipper")
-        with unittest.mock.patch.object(vl, "_config", lambda: {"defaults": {"speech_names": "Boss"}}):
-            self.assertEqual(vl.configured_names(), "Boss")
-        with unittest.mock.patch.object(vl, "_config", lambda: {}):
-            self.assertEqual(vl.configured_names(), outrider.speech.DEFAULT_NAMES)
-
     def test_two_downloads_of_one_voice_do_not_collide(self):   # F69
         import hashlib, io, tempfile, threading
         import outrider.tts
@@ -1469,7 +1380,7 @@ class VoiceCatalogue(unittest.TestCase):
                 outrider.tts.fetch_catalogue(force=True, cache=os.path.join(d, "voices.json"))
 
     def test_fetch_catalogue_shared(self):
-        """The voice lab and the server read the same cached catalogue (tts.fetch_catalogue), refetched after a week."""
+        """The server reads Piper's catalogue from its cache (tts.fetch_catalogue), refetched after a week."""
         import io
         import tempfile
         import outrider.tts
@@ -1515,11 +1426,10 @@ class AudioBlocked(unittest.TestCase):
 
 
 class SweepVoiceFixes(unittest.TestCase):
-    """The full sweep of 2026-10-09 (the voice lab and Piper)."""
+    """The full sweep of 2026-10-09 (Piper)."""
 
     def test_one_rule_for_the_lines_file(self):
-        """An old speech_file = "speech.json" resolves to resources/ for the voice lab as for the server (the lab showed
-        no lines)."""
+        """An old speech_file = "speech.json" resolves to resources/ (the voice lab, since retired, showed no lines)."""
         import tempfile, shutil
         root, res = tempfile.mkdtemp(), tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, root)
@@ -1531,11 +1441,6 @@ class SweepVoiceFixes(unittest.TestCase):
         self.assertEqual(got, os.path.join(res, "speech.json"))
         self.assertTrue(said)
         self.assertEqual(outrider.speech.resolve_speech_file("", root, "DEFAULT", res), "DEFAULT")
-        here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        with open(os.path.join(here, "voice_lab.py"), encoding="utf-8") as f:
-            lab = f.read()
-        self.assertIn("outrider.speech.resolve_speech_file(name, outrider.ROOT, SPEECH_FILE)", lab)
-        self.assertNotIn("install.sh", lab)                     # not in the published repository
 
     def test_piper_in_a_windows_venv(self):
         import tempfile, shutil, sys
@@ -1565,3 +1470,103 @@ class SweepVoiceFixes(unittest.TestCase):
         os.utime(voice, (t, t))
         self.assertEqual(T.sweep_parts(d), 1)
         self.assertEqual(sorted(os.listdir(d)), ["v.onnx", "v.onnx.cd34.part"])   # a download under way is left alone
+
+
+class Speakers(unittest.TestCase):
+    """Several-person voices (the author, 2026-10-11): a Piper voice trained on many people speaks as the one picked for
+    it (its "speaker"), each voice keeping its own, remembered over restarts; the voice lab tries one without
+    switching. Outrider used to ignore them (always the first person)."""
+
+    def setUp(self):
+        import tempfile
+        import types
+        import outrider.tts
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.dir = tmp.name
+        for name, cfg in (("en_GB-vctk-medium", {"num_speakers": 3, "speaker_id_map": {"p225": 0, "p226": 1, "p227": 2}}),
+                          ("en_GB-cori-medium", {"num_speakers": 1, "speaker_id_map": {}}),
+                          ("en_US-plain-low", {"num_speakers": 2})):
+            with open(os.path.join(self.dir, name + ".onnx"), "w") as f:
+                f.write("x")
+            with open(os.path.join(self.dir, name + ".onnx.json"), "w") as f:
+                json.dump(cfg, f)
+        self.configs = []
+
+        class Voice:
+            def __init__(v, name):
+                v.name = name
+
+            def synthesize_wav(v, text, wf, syn_config=None):
+                wf.setnchannels(1); wf.setsampwidth(2); wf.setframerate(8000)
+                wf.writeframes(f"{v.name}:{syn_config}".encode())
+        self.remembered = []
+        sp = self.sp = outrider.tts.Speaker("en_GB-vctk-medium", None, voices_dir=self.dir, speakers={"en_GB-vctk-medium": 9, "x": "no"},
+                                            on_speaker=self.remembered.append)
+        sp.PiperVoice = types.SimpleNamespace(load=lambda path: Voice(os.path.basename(path)[:-5]))
+        sp.SynthesisConfig = lambda **kw: json.dumps(kw, sort_keys=True)
+        sp._voice, sp.voice_name = Voice("en_GB-vctk-medium"), "en_GB-vctk-medium"
+        self.db = ed_outrider.open_db(":memory:")
+        self.addCleanup(self.db.close)
+        self.state = ed_outrider.State(self.db, ed_outrider.Journals(self.db), types.SimpleNamespace(cached=lambda i: (None, None)), 25)
+        self.state.speaker = sp
+
+    def heard(self, *a, **kw):
+        import io
+        import wave
+        return wave.open(io.BytesIO(self.sp.say(*a, **kw))).readframes(999).decode()
+
+    def test_speakers_picked_kept_and_used(self):
+        sp = self.sp
+        self.assertEqual(sp.voice_speakers("en_GB-vctk-medium"), [{"id": 0, "name": "p225"}, {"id": 1, "name": "p226"}, {"id": 2, "name": "p227"}])
+        self.assertEqual(sp.voice_speakers("en_GB-cori-medium"), [])                           # one person
+        self.assertEqual([p["name"] for p in sp.voice_speakers("en_US-plain-low")], ["0", "1"])   # no names: numbers
+        self.assertIsNone(sp.speaker_for("en_GB-vctk-medium"))   # the remembered 9 is no speaker of it: its first
+        self.assertEqual(self.heard("Hello."), "en_GB-vctk-medium:None")
+        self.assertTrue(sp.set_speaker("en_GB-vctk-medium", 2))
+        self.assertEqual(self.remembered[-1], {"en_GB-vctk-medium": 2})
+        self.assertEqual(self.heard("Hello."), 'en_GB-vctk-medium:{"speaker_id": 2}')       # not the cached first person
+        self.assertEqual(self.heard("Hello.", 1.5), 'en_GB-vctk-medium:{"length_scale": 0.6666666666666666, "speaker_id": 2}')
+        self.assertEqual(self.heard("Hello.", speaker=1), 'en_GB-vctk-medium:{"speaker_id": 1}')   # the lab's try
+        self.assertEqual(self.heard("Hello.", speaker=7), 'en_GB-vctk-medium:{"speaker_id": 2}')   # no such: the picked one
+        self.assertEqual(self.heard("Hi.", voice="en_US-plain-low", speaker=1), 'en_US-plain-low:{"speaker_id": 1}')   # another voice
+        info = sp.info()
+        self.assertEqual((info["speaker"], info["speakers"], info["speaker_name"]), (2, 3, "p227"))
+        for bad in (("en_GB-vctk-medium", 3), ("en_GB-vctk-medium", True), ("en_GB-cori-medium", 0), ("en_GB-nope-low", 0)):
+            self.assertFalse(sp.set_speaker(*bad), bad)
+        self.assertTrue(sp.set_speaker("en_GB-vctk-medium", None))
+        self.assertEqual(self.remembered[-1], {})
+
+    def test_the_api(self):
+        import asyncio
+        from aiohttp.test_utils import TestClient, TestServer
+        self.sp.on_speaker = self.state.remember_speakers
+
+        async def go():
+            async with TestClient(TestServer(ed_outrider.make_app(self.state))) as c:
+                out = {}
+                r = await c.get("/api/voices/speakers", params={"voice": "en_GB-vctk-medium"})
+                out["list"] = (r.status, await r.json())
+                out["missing"] = (await c.get("/api/voices/speakers", params={"voice": "en_GB-nope-low"})).status
+                out["set"] = (await c.post("/api/voice", json={"speaker": 1})).status            # the voice in use's
+                out["bad"] = [(await c.post("/api/voice", json=b)).status for b in
+                              ({"speaker": 5}, {"speaker": "1"}, {"voice": "en_GB-cori-medium", "speaker": 0}, {})]
+                r = await c.get("/api/say", params={"text": "Hello.", "speaker": "2"})
+                out["say"] = await r.read()
+                return out
+        out = asyncio.run(go())
+        self.assertEqual(out["list"], (200, {"voice": "en_GB-vctk-medium", "speaker": None,
+                                             "speakers": [{"id": 0, "name": "p225"}, {"id": 1, "name": "p226"}, {"id": 2, "name": "p227"}]}))
+        self.assertEqual((out["missing"], out["set"], out["bad"]), (404, 200, [400, 400, 400, 400]))
+        self.assertEqual(ed_outrider.meta_get(self.db, "voice_speakers"), {"en_GB-vctk-medium": 1})   # kept over restarts
+        self.assertIn(b'{"speaker_id": 2}', out["say"])                                         # the lab's try of another
+
+
+class LabInThePage(unittest.TestCase):
+    def test_audition_keys_in_step(self):
+        """The voice lab's Audition (page.js AUDITION_KEYS, 2026-10-11) is outrider.speech.AUDITION."""
+        import re
+        with open(os.path.join(os.path.dirname(ed_outrider.STATIC_DIR), "static", "page.js"), encoding="utf-8") as f:
+            m = re.search(r"const AUDITION_KEYS = \[([^\]]*)\]", f.read())
+        self.assertEqual(tuple(re.findall(r'"(\w+)"', m.group(1))), outrider.speech.AUDITION)
+        self.assertFalse(os.path.exists(os.path.join(os.path.dirname(ed_outrider.STATIC_DIR), "voice_lab.py")))   # retired

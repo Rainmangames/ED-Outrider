@@ -2,6 +2,21 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · The voice lab moves into the page, with speakers
+- **🎙 Voice lab** in ⚙ Settings → Voice replaces `voice_lab.py` (a separate Tk window, now removed with its tests;
+  the author's ask). It plays in the browser you are using, from the server's Piper (`api/say`), so it works on a
+  Docker server and the tablet and needs no python3-tk: try a voice and speed without switching (**▶ Hear it**), **Use
+  this voice**; More voices (download any of Piper's) moved into it; any alert's lines in any personality (**▶ Random
+  line**, **▶ Audition**: eight key alerts, `AUDITION_KEYS` kept equal to `outrider.speech.AUDITION` by a test), **✂
+  Cut this line**; your own words (**▶ Speak**, **⬇ Save WAV**). It never goes through the alert queue, hush or "play
+  on this PC".
+- **Speakers**: a Piper voice trained on many people (`en_GB-vctk-medium` 109, `en_US-libritts_r-medium` ~900) now
+  speaks as the one picked for it; Outrider always used the first. The lab steps through them (‹ › 🎲, each played);
+  Settings → Voice shows the voice in use's speaker beside it. Each voice keeps its own (meta `voice_speakers`, over
+  restarts), personality voices too. `Speaker.voice_speakers` reads the names from the voice's `.onnx.json`; POST
+  `/api/voice` takes `{voice, speaker}` (or `{speaker}` alone); GET `/api/voices/speakers?voice=`; `/api/say` (and
+  play, prefetch) take `speaker`; the payload's `tts` gains `speaker`, `speakers` (a count) and `speaker_name`.
+
 ## 2026-10-11 · EDDN: a carrier's market written late still goes
 - Docked at the carrier and opened the market: no commodity message; the second visit's went (the author). The EDDN
   builder is right (a replay of the journal sends it); the file was not: Outrider took Market.json only when stamped

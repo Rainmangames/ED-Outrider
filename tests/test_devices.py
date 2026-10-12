@@ -1017,7 +1017,7 @@ class BatchBVoiceControl(unittest.TestCase):
         self.assertEqual(got["banned"], {"hull": ["Hull {pct}."]})
         self.assertNotEqual(sl.version(), v0)                                        # pages fetch the trimmed lines
         self.assertEqual(sl.set_ban("hull", "Hull {pct}.")[1]["banned"], 1)         # twice is once
-        # a second reader (the voice lab, another process) sees the same bans
+        # a second reader (another process) sees the same bans
         self.assertEqual(outrider.speech.SpeechLines(path).lines()["lines"]["hull"]["business"], ["Hull at {pct} percent.", "Hull damage."])
         self.assertEqual(sl.set_ban("hull", "Hull {pct}.", ban=False), (200, {"ok": True, "banned": 0}))
         self.assertEqual(len(sl.lines()["lines"]["hull"]["business"]), 3)
@@ -1080,17 +1080,6 @@ class BatchBVoiceControl(unittest.TestCase):
         self.assertEqual(out["files"], ["x.sqlite", "speech.json", "speech_banned.json"])
         with zipfile.ZipFile(out["path"]) as z:
             self.assertEqual(json.loads(z.read("speech_banned.json")), {"heat": ["Hot."]})
-
-    def test_voice_lab_sees_the_bans(self):
-        try:
-            import voice_lab
-        except (ImportError, SystemExit):
-            self.skipTest("voice_lab needs tkinter")
-        path = self.speech_file()
-        self.assertEqual(outrider.speech.ban_line(path, "hull", "Hull damage.")[0], 200)
-        styles, lines = voice_lab.load_lines(path)
-        self.assertEqual(lines["hull"]["business"], ["Hull {pct}.", "Hull at {pct} percent."])
-        self.assertIn("sarcastic", styles)
 
     def test_gitignored(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

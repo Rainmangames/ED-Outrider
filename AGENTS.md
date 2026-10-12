@@ -4,7 +4,7 @@ Before changing anything, read `docs/AGENT_GUIDE.md` (code map, data flow, rules
 `docs/JOURNAL_REFERENCE.md` (what the game writes and its traps), `docs/DESIGN_NOTES.md` (deliberate
 decisions and known limits) and `docs/CHANGELOG.md`.
 
-Layout: `ed_outrider.py` and `voice_lab.py` (entry points), `outrider/` (the modules; CLIs run as
+Layout: `ed_outrider.py` (the entry point), `outrider/` (the modules; CLIs run as
 `python3 -m outrider.<name>`), `resources/` (shipped data), `static/` (the page), `data/` (the player's own files,
 git-ignored), `docs/`, `tests/`, `scripts/`.
 

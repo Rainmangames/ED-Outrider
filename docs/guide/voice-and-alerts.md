@@ -69,9 +69,20 @@ as docked. A carrier jump booked just before you quit shows as "not yet confirme
 
 Alerts are spoken when 🗣 in the header is on. **Piper**, a neural voice running on your CPU, sounds far
 better than the browser's own voice. The voice is Cori (`en_GB-cori-medium`) unless you pick another, and it
-downloads into `data/piper-voices/` the first time. ⚙ Settings → Voice switches between installed voices, and its
-**More voices** lists every Piper voice by language: pick one and Outrider downloads it and switches to it (on a
-Docker server too).
+downloads into `data/piper-voices/` the first time. ⚙ Settings → Voice switches between installed voices.
+
+**🎙 Voice lab** (⚙ Settings → Voice) is where you try them out first. It plays in the browser you are using, wherever
+Outrider runs (a Docker server too):
+- **Voice**: pick an installed voice and a speed, then **▶ Hear it**. **Use this voice** makes it Outrider's voice
+  (with that speed).
+- **Speakers**: some Piper voices are many people in one download (`en_GB-vctk-medium` has 109, `en_US-libritts_r-medium`
+  about 900). The lab shows a speaker list for those: **‹ ›** step through them and **🎲** picks one at random, each
+  played as you go. The speaker you use is kept for that voice, and Settings → Voice shows it beside the voice.
+- **More voices** lists every Piper voice by language: pick one and Outrider downloads it and switches to it.
+- **Lines**: pick an alert and a personality for **▶ Random line** (filled with made-up values), or **▶ Audition** for
+  eight key alerts in a row. A personality with a voice of its own (speech.json) speaks in it. **✂ Cut this line**
+  bans the line just played, like 👎.
+- **Your own words**: type anything for **▶ Speak**, or **⬇ Save WAV** to keep it.
 
 Without Piper installed, the browser's own voice speaks. With Piper, the browser's voice is never used: a line Piper
 can't say is not said (what you asked for is still shown as a caption).
@@ -161,16 +172,11 @@ puts it on the clipboard.
 
 - Above the list, **This session** counts each alert's lines, noisiest first ("Arrival brief 42 · FSD charge
   40 (3 dropped)"). **🔇** beside one stops speaking that alert (its 🗣 tick), with an undo.
-- Press **👎** beside a line to never hear that wording again, in any browser or in the voice lab.
+- Press **👎** beside a line to never hear that wording again, in any browser.
 - "3 lines banned · review / undo" above the list lets you take a ban back.
 - Bans live in `data/speech_banned.json` (beside your own copy when `speech_file` names one), so editing
   `speech.json` never loses them.
 - The last line of a list can't be banned, so no alert ever goes quiet.
-
-**The voice lab.** `python3 voice_lab.py` opens a small window for trying voices before you settle on one.
-Play a random line from any alert and personality, or type your own; Save WAV keeps it. **✂ Cut this line**
-bans it, like 👎. **▶ Audition** plays eight key alerts in a row. The lower half lists every Piper voice on
-Hugging Face: double-click one to download it for Outrider too.
 
 ## 🎙️ Ask Outrider by voice
 
