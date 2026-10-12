@@ -4943,12 +4943,17 @@ const settle = async maxMs => {
                   finished: [{prefix: "Drojau QQ-A d4-", label: "Drojau QQ-A d4", mc: "d", distance: 90, state: "complete"}],
                   codes: {c: {kind: "K and M stars", size: 40, yours: {systems: 10, bio: 4, elw: 0, ww: 1, aw: 0, terraformable: 2}},
                           d: {kind: "F, G and K stars", size: 80, yours: {systems: 20, bio: 9, elw: 1, ww: 2, aw: 0, terraformable: 3}}}};
+    // the sector map (2026-10-12): the sector you are in, one mass code, one layer
+    const asked = [], grid = {mc: "c", n: 32, sector: "Drojau", sector_index: [35, 31, 54], layer: 31, you: [25, 31, 14], kept: null, codes: "bcdefgh",
+                              cells: [{x: 3, z: 2, visited: 0, spansh: 4, state: null}, {x: 4, z: 2, visited: 5, spansh: 0, state: "complete"},
+                                      {x: 25, z: 14, visited: 2, spansh: 0, state: null}], layers: {"31": 2, "30": 1}};
     const json = o => Promise.resolve(new Response(JSON.stringify(o), {status: 200, headers: {"Content-Type": "application/json"}}));
     w.fetch = (u, o) => {
       const s = String(u);
       if (s === "api/boxel" && o && o.method === "POST") { posted.push(JSON.parse(o.body)); return json(view); }
       if (s === "api/boxel") return json(view);
       if (s === "api/boxel/nearby") return json(near);
+      if (s.startsWith("api/boxel/sector")) { asked.push(s.split("?")[1]); return json(grid); }
       return realFetch(u, o);
     };
     const got = await w.eval(`(async () => {
@@ -4980,14 +4985,25 @@ const settle = async maxMs => {
       pane.querySelector('[data-bxdone="1"]').click(); await tick();
       pane.querySelector("[data-bxkeep]").click(); await tick();
       pane.querySelector("[data-bxpick]").click(); await tick();
+      const cells = [...pane.querySelectorAll(".bxg .bxc")], at = (x, z) => cells[(31 - z) * 32 + x];
+      o.grid = [cells.length, at(25, 14).className, at(25, 14).textContent, at(3, 2).className, at(4, 2).className, at(0, 0).className,
+                pane.querySelector(".bxglayer").textContent];
+      at(25, 14).dispatchEvent(new MouseEvent("mouseover", {bubbles: true})); o.gridTitle = at(25, 14).title;
+      at(25, 14).click(); await tick();                                   // explore it: its prefix from the letters
+      pane.querySelector('[data-bxglayer="30"]').click(); await tick();   // ▼
+      pane.querySelector('[data-bxgmc="d"]').click(); await tick();
+      store.set("bxGridMc", ""); bxGridLayer = null;
       store.set("nearMode", m0 === null ? null : m0); data.game_pc = pc0; render();
       o.back = !document.getElementById("nearPane").hidden;
       return o; })()`);
     w.fetch = realFetch;
     const want = {shown: [true, true, true], warning: true, place: [true, true, true], rows: ["visited", "next", "try"], next: true, aims: "1,2", near: [true, true, true, true, true], doneBtn: true,
                   known: ["known · 3 of 14 bodies", "known · all 9 bodies", "known · honked only", "known · nothing reported"],
-                  back: true, posted: [{skip_known: true}, {done: true}, {prefix: "Drojau TF-H c13-", sector_index: [35, 31, 54]}, {prefix: "Drojau AB-U d4-", sector_index: [35, 31, 54]}]};
-    got.posted = posted;
+                  grid: [1024, "bxc v you", "2", "bxc k", "bxc c", "bxc", "layer 32 of 32 (yours)"],
+                  gridTitle: "Drojau TF-H c13 · you visited 2 · tap to explore this boxel",
+                  back: true, posted: [{skip_known: true}, {done: true}, {prefix: "Drojau TF-H c13-", sector_index: [35, 31, 54]}, {prefix: "Drojau AB-U d4-", sector_index: [35, 31, 54]},
+                                       {prefix: "Drojau TF-H c13-", sector_index: [35, 31, 54]}], asked: ["layer=30", "mc=d"]};
+    got.posted = posted; got.asked = asked.filter(Boolean);
     const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| boxel mode |", good ? "the switch, the boxel's list and warning, Target next and 🎯 by number, Keep, the boxels nearby" : JSON.stringify({got, want}), errors.slice(before));

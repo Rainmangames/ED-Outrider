@@ -303,6 +303,7 @@ BOXEL_SPANSH_MAX = 3000    # names asked about at most for one boxel
 BOXEL_SPANSH_MAX_AGE = 86400   # s: Spansh's list of a boxel is asked again after a day
 BOXEL_NEAR_SHOW = 3        # recommended boxels per mass code
 BOXEL_NEAR_LOOK = 12       # ...looked through for them (done and complete ones are passed over)
+BOXEL_GRID_CODES = "bcdefgh"  # the sector grid's mass codes (a: 128 x 128 boxels a layer, too many to show)
 BOXEL_SPANSH_KEEP = 60     # boxels whose Spansh list is kept (meta boxel_spansh: the one explored and those recommended)
 HIGHWAY_LIVE_S = 120        # s: an arrival or a supercharge older than this is catch-up (no clipboard, no auto-target)
 HIGHWAY_SUGGEST_CACHE = 200  # system-name suggestions kept (per typed prefix)
@@ -11312,6 +11313,53 @@ class State:
         return {"boxels": boxels, "finished": finished, "codes": {c: {"kind": outrider.boxel.KINDS[c], "size": outrider.boxel.size(c), "yours": stats[c]}
                                             for c in outrider.boxel.CODES}}
 
+    def boxel_sector(self, mc=None, layer=None):
+        """The sector you are in as a grid of mass code `mc`'s boxels (b..h; a's 128 x 128 per layer is left out), one Y
+        layer at a time (None: the one you are in): {mc, n (boxels per side), sector, sector_index, layer, you, kept,
+        cells [{x, z, visited, spansh, state}] (only the ones with something to show), layers {y: boxels with
+        visits}}, or {why}. All local: your visits, the done and end marks, the Spansh lists asked for."""
+        pos, active = self.journals.pos, self.boxel_active()
+        if not pos or not all(isinstance(pos.get(k), (int, float)) for k in "xyz"):
+            return {"why": "your position is not known yet"}
+        mc = mc or (active["mc"] if active and active["mc"] in BOXEL_GRID_CODES else "d")
+        sector, here = outrider.boxel.locate(pos, mc)
+        name = self.boxel_sectors().get(sector)
+        if not name:
+            return {"why": "this sector has no name Outrider knows: no system of yours is in a standard sector here"}
+        n = outrider.boxel.SECTOR // outrider.boxel.size(mc)
+        layer = here[1] if layer is None else max(0, min(n - 1, layer))
+        visited, layers = {}, {}
+        like = name.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + " %"
+        for (sysname,) in self.db.execute("SELECT name FROM visits WHERE name LIKE ? ESCAPE '\\'", (like,)):
+            p = outrider.boxel.parse(sysname)
+            if p and p["sector"] == name and p["mc"] == mc:
+                visited.setdefault(p["prefix"], set()).add(p["n2"])
+        spansh = {k: {int(x) for x in (v or {}).get("systems") or {} if str(x).isdigit()}
+                  for k, v in (meta_get(self.db, "boxel_spansh") or {}).items()}
+        done = meta_get(self.db, "boxel_done") or {}
+
+        def place(prefix):
+            p = outrider.boxel.parse(outrider.boxel.name_of(prefix, 0))
+            return outrider.boxel.boxel_index(p["letters"], p["n1"]) if p and p["sector"] == name and p["mc"] == mc else None
+        cells = {}
+        for prefix in set(visited) | {k for k, v in spansh.items() if v} | set(done):
+            at = place(prefix)
+            if not at:
+                continue
+            if visited.get(prefix):
+                layers[at[1]] = layers.get(at[1], 0) + 1
+            if at[1] != layer:
+                continue
+            seen = visited.get(prefix, set())
+            end = self.boxel_end(prefix, seen | spansh.get(prefix, set()))
+            state = "done" if prefix in done else "complete" if end is not None and set(range(end)) <= seen else None
+            cells[prefix] = {"x": at[0], "z": at[2], "visited": len(seen), "spansh": len(spansh.get(prefix, ())), "state": state}
+        kept = active and active.get("picked") and active.get("standard") and active["mc"] == mc \
+            and tuple(active["sector_index"]) == tuple(sector) and active["boxel"]
+        return {"mc": mc, "n": n, "sector": name, "sector_index": list(sector), "layer": layer, "you": list(here),
+                "kept": list(kept) if kept else None, "cells": sorted(cells.values(), key=lambda c: (c["z"], c["x"])),
+                "layers": {str(k): v for k, v in sorted(layers.items())}, "codes": BOXEL_GRID_CODES}
+
     def boxel_payload(self):
         """The payload's boxel: the key the page refetches api/boxel on (a jump, a scan, Spansh's answer, a pick), the
         auto-target opt-in, and the active boxel's Next (for Now: worked out again only when the key changes)."""
@@ -14755,6 +14803,16 @@ def make_app(state, hosts=None):
             task.add_done_callback(boxel_tasks.discard)
         return web.json_response(out)
 
+    async def boxel_sector_view(request):
+        """GET /api/boxel/sector?mc=d&layer=5: the sector you are in as a grid of one mass code's boxels, one Y layer
+        (none: yours). 400 for a code outside b..h or a layer that is no whole number."""
+        mc, layer = request.query.get("mc") or None, request.query.get("layer")
+        if mc is not None and mc not in BOXEL_GRID_CODES:
+            return web.json_response({"error": f"mc must be one of {', '.join(BOXEL_GRID_CODES)}"}, status=400)
+        if layer is not None and not re.fullmatch(r"\d{1,3}", layer):
+            return web.json_response({"error": "layer must be a whole number"}, status=400)
+        return web.json_response(state.boxel_sector(mc, int(layer) if layer is not None else None))
+
     async def voice_download_view(request):
         """POST /api/voices/download {voice}: download a Piper voice without switching to it (the voice lab's More
         voices); the payload's tts.fetching lists it meanwhile, then tts.voices has it (or tts.fetch_failed says why)."""
@@ -14935,6 +14993,7 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/boxel", boxel_view)
     app.router.add_post("/api/boxel", boxel_set_view)
     app.router.add_get("/api/boxel/nearby", boxel_nearby_view)
+    app.router.add_get("/api/boxel/sector", boxel_sector_view)
     app.router.add_post("/api/speaker/audio", speaker_audio_view)
     app.router.add_post("/api/autohonk", pc_only(autohonk_view))
     app.router.add_post("/api/uploads", uploads_view)

@@ -2894,7 +2894,53 @@ function renderBoxelMode() {
   if (key !== boxelKey) { boxelKey = key; loadBoxel(); }
   const nk = `${posId()}|${key}`;   // a jump, or Spansh's answers about the boxels nearby
   if (nk !== boxelNearKey) { boxelNearKey = nk; loadBoxelNear(); }
+  const gk = `${nk}|${store.get("bxGridMc", "")}|${bxGridLayer}`;   // the sector map: the code or layer picked too
+  if (gk !== boxelGridKey) { boxelGridKey = gk; loadBoxelGrid(); }
 }
+// ---- the sector map (a review suggestion the author picked, 2026-10-12): the sector you are in as a grid of one mass
+// code's boxels, one Y layer at a time: which you have explored (visited, ✓ complete, done), which Spansh knows, you and
+// the kept boxel marked; a tap explores that boxel. api/boxel/sector; the letters are boxel.py's letters()
+let boxelGrid = null, boxelGridKey = null, bxGridLayer = null;   // bxGridLayer null: the layer you are in
+async function loadBoxelGrid() {
+  const q = new URLSearchParams(), mc = store.get("bxGridMc", "");
+  if (mc) q.set("mc", mc);
+  if (bxGridLayer != null) q.set("layer", bxGridLayer);
+  try { const r = await fetch(`api/boxel/sector?${q}`); if (r.ok) boxelGrid = await r.json(); } catch {}
+  drawBoxel();
+}
+function bxLetters(bx, by, bz) {
+  const p = bx + by * 128 + bz * 16384, L = v => String.fromCharCode(65 + v % 26);
+  return [`${L(p)}${L(Math.floor(p / 26))}-${L(Math.floor(p / 676))}`, Math.floor(p / 17576)];
+}
+const bxPrefix = (g, x, z) => { const [l, n1] = bxLetters(x, g.layer, z); return `${g.sector} ${l} ${g.mc}${n1 ? `${n1}-` : ""}`; };
+const bxLabel = p => p.endsWith("-") ? p.slice(0, -1) : p;
+function boxelGridHtml(g) {
+  const open = store.get("bxGridOpen", true) ? " open" : "";
+  const head = `<details class="bxgrid setsec"${open}><summary>Sector map <span class="sum-note">the boxels of the sector you are in, one layer at a time: a tap explores one</span></summary>`;
+  if (!g) return "";
+  if (g.why) return `${head}<div class="hint">${esc(g.why)}</div></details>`;
+  const cells = new Map(g.cells.map(c => [`${c.x},${c.z}`, c])), you = g.you, kept = g.kept, n = g.n;
+  const mine = you[1] === g.layer, keptHere = kept && kept[1] === g.layer;
+  let grid = "";
+  for (let z = n - 1; z >= 0; z--) for (let x = 0; x < n; x++) {   // +Z (toward the core) up, +X right, as the galaxy map
+    const c = cells.get(`${x},${z}`);
+    const cls = ["bxc", c && (c.state === "done" ? "d" : c.state === "complete" ? "c" : c.visited ? "v" : c.spansh ? "k" : ""),
+      mine && you[0] === x && you[2] === z && "you", keptHere && kept[0] === x && kept[2] === z && "kept"].filter(Boolean).join(" ");
+    grid += `<div class="${cls}" data-bxcell="${x},${z}">${c && c.visited && n <= 32 ? c.visited : c && c.state && n <= 32 ? "✓" : ""}</div>`;
+  }
+  const layers = Object.entries(g.layers || {}).map(([y, k]) => [Number(y), k]);
+  return head + `<div class="bxgctl">` + g.codes.split("").map(mc => `<button type="button" class="mini${mc === g.mc ? " on" : ""}" data-bxgmc="${mc}" title="${mc}: ${outriderBoxelSize(mc)} ly boxels, ${1280 / outriderBoxelSize(mc)} a side">${mc}</button>`).join("") +
+    ` <span class="bxglayer">layer <b>${g.layer + 1}</b> of ${n}${mine ? " (yours)" : ""}</span>` +
+    `<button type="button" class="mini" data-bxglayer="${g.layer + 1}"${g.layer >= n - 1 ? " disabled" : ""} title="the layer above (+Y)">▲</button>` +
+    `<button type="button" class="mini" data-bxglayer="${g.layer - 1}"${g.layer <= 0 ? " disabled" : ""} title="the layer below (−Y)">▼</button>` +
+    (!mine ? ` <button type="button" class="mini" data-bxglayer="yours">yours</button>` : "") +
+    (layers.length ? ` <span class="unk">visited in layer${layers.length > 1 ? "s" : ""} ${layers.map(([y, k]) =>
+      `<a href="#" data-bxglayer="${y}" title="${k} boxel${k === 1 ? "" : "s"} with your visits">${y + 1}</a>`).join(", ")}</span>` : "") + `</div>` +
+    `<div class="bxg" style="grid-template-columns: repeat(${n}, 1fr); width: min(100%, ${Math.min(512, n * 30)}px)">${grid}</div>` +
+    `<div class="hint bxglegend"><span class="bxc v"></span> visited <span class="bxc c"></span> ✓ complete <span class="bxc d"></span> done ` +
+    `<span class="bxc k"></span> Spansh knows <span class="bxc you"></span> you <span class="bxc kept"></span> the kept boxel · ${esc(g.sector)}, +Z up, +X right</div></details>`;
+}
+const outriderBoxelSize = mc => 10 << "abcdefgh".indexOf(mc);
 // a system Spansh knows: how much of it anyone reported ("known · 3 of 14 bodies"): one only passed through keeps its
 // first discoveries open
 function boxelKnown(r) {
@@ -2958,9 +3004,20 @@ function drawBoxel() {
         `${esc(x.label)} ${x.state === "complete" ? "✓ complete" : "✓ done"}`).join(" · ") + `</div>` : "") +
       `</details>`;
   }
+  html += boxelGridHtml(boxelGrid);
   if (el.innerHTML !== html) el.innerHTML = html;
 }
 document.getElementById("boxelPane").addEventListener("click", e => {
+  const gmc = e.target.closest("[data-bxgmc]"), gl = e.target.closest("[data-bxglayer]"), cell = e.target.closest("[data-bxcell]");
+  if (gmc || gl || cell) {
+    e.preventDefault();
+    if (gmc) { store.set("bxGridMc", gmc.dataset.bxgmc); bxGridLayer = null; }
+    else if (gl) bxGridLayer = gl.dataset.bxglayer === "yours" ? null : Number(gl.dataset.bxglayer);
+    else { const g = boxelGrid, [x, z] = cell.dataset.bxcell.split(",").map(Number);
+      if (g && g.sector) boxelPost({prefix: bxPrefix(g, x, z), sector_index: g.sector_index}); }
+    renderBoxelMode();
+    return;
+  }
   const k = e.target.closest("[data-bxkeep]"), back = e.target.closest("[data-bxback]"), pick = e.target.closest("[data-bxpick]"), retry = e.target.closest("[data-bxretry]");
   const done = e.target.closest("[data-bxdone]");
   if (done) { boxelPost({done: done.dataset.bxdone === "1"}).then(() => loadBoxelNear()); return; }
@@ -2969,6 +3026,17 @@ document.getElementById("boxelPane").addEventListener("click", e => {
   else if (pick) boxelPost({prefix: pick.dataset.bxpick, sector_index: JSON.parse(pick.dataset.bxsec || "null")});
   else if (retry) boxelPost({clear_end: true});
 });
+// a cell's title when the pointer reaches it (a sector of b has 4,096 cells: no title each up front)
+document.getElementById("boxelPane").addEventListener("mouseover", e => {
+  const cell = e.target.closest("[data-bxcell]"), g = boxelGrid;
+  if (!cell || cell.title || !g || !g.sector) return;
+  const [x, z] = cell.dataset.bxcell.split(",").map(Number), c = g.cells.find(k => k.x === x && k.z === z);
+  cell.title = [bxLabel(bxPrefix(g, x, z)), c && c.visited ? `you visited ${c.visited}` : "", c && c.spansh ? `Spansh knows ${c.spansh}` : "",
+                c && c.state ? `✓ ${c.state}` : "", "tap to explore this boxel"].filter(Boolean).join(" · ");
+});
+document.getElementById("boxelPane").addEventListener("toggle", e => {
+  if (e.target.classList && e.target.classList.contains("bxgrid")) store.set("bxGridOpen", e.target.open);
+}, true);
 document.getElementById("boxelPane").addEventListener("change", e => {
   if (e.target.id === "bxAuto") boxelPost({auto: e.target.checked});
   else if (e.target.id === "bxSkip") boxelPost({skip_known: e.target.checked});

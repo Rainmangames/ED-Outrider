@@ -182,6 +182,40 @@ class Server(unittest.TestCase):
         self.jump(30, (77, "Sol", 0.0, 0.0, 0.0))                         # a hand-made name: in no boxel
         self.assertIsNone(nx())
 
+    def test_sector_grid(self):
+        """The sector map: your visits by boxel in one Y layer of the sector you are in, the done and complete marks,
+        Spansh's lists, you and the kept boxel; the layers with visits; the API's checks (review suggestion E)."""
+        import asyncio
+        from aiohttp.test_utils import TestClient, TestServer
+        self.assertEqual(self.state.boxel_sector()["why"], "your position is not known yet")
+        self.jump(0, REAL[0])   # Drojau TF-H c13-0
+        self.jump(5, REAL[1])   # ... c13-5
+        at = B.boxel_index("TF-H", 13)
+        g = self.state.boxel_sector("c")
+        self.assertEqual((g["mc"], g["n"], g["sector"], g["layer"], g["you"]), ("c", 32, "Drojau", at[1], list(at)))
+        self.assertEqual(g["cells"], [{"x": at[0], "z": at[2], "visited": 2, "spansh": 0, "state": None}])
+        self.assertEqual(g["layers"], {str(at[1]): 1})
+        self.assertIsNone(g["kept"])
+        self.assertEqual(self.state.boxel_sector("c", (at[1] + 1) % 32)["cells"], [])                  # another layer
+        self.assertEqual(self.state.boxel_sector("c", 99)["layer"], 31)                         # held in the sector
+        self.assertEqual(self.state.boxel_sector()["mc"], "c")                                  # the active boxel's code
+        self.assertEqual(self.state.boxel_sector("d")["cells"], [])                             # no d system visited
+        # kept, Spansh's list, then done
+        self.state.boxel_set("Drojau TF-H c13-", self.state.boxel_active()["sector_index"])
+        ed_outrider.meta_set(self.db, "boxel_spansh", {"Drojau TF-H c13-": {"ts": ed_outrider.iso_ts(self.now), "systems": {"7": {}, "8": {}}}})
+        g = self.state.boxel_sector("c")
+        self.assertEqual((g["kept"], g["cells"][0]["spansh"]), (list(at), 2))
+        self.state.boxel_mark_done(True)
+        self.assertEqual(self.state.boxel_sector("c")["cells"][0]["state"], "done")
+        self.jump(30, (77, "Sol", 0.0, 0.0, 0.0))   # a sector with no standard system of yours: nothing to name it by
+        self.assertIn("no name", self.state.boxel_sector("c")["why"])
+
+        async def go():
+            async with TestClient(TestServer(ed_outrider.make_app(self.state))) as c:
+                return [(await c.get(u)).status for u in ("/api/boxel/sector?mc=a", "/api/boxel/sector?layer=-1",
+                                                          "/api/boxel/sector?mc=d&layer=5", "/api/boxel/sector")]
+        self.assertEqual(asyncio.run(go()), [400, 400, 200, 200])
+
     def test_pick_nearby_and_api(self):
         import asyncio
         from aiohttp.test_utils import TestClient, TestServer

@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-12 · Boxels: the sector map
+- Boxels nearby listed the nearest three per mass code, with no picture of progress across a sector (a Fable
+  suggestion the author picked). Boxel mode now has a **Sector map**: the sector you are in as a grid of one mass
+  code's boxels (b to h), one Y layer at a time with ▲ ▼: visited, ✓ complete, done, Spansh knows, you and the kept
+  boxel marked; a tap explores that boxel. All local (your visits, the done and end marks, the Spansh lists asked for):
+  GET `/api/boxel/sector?mc=d&layer=5`. A cell's tooltip is made on hover (a b grid has 4,096 cells).
+
 ## 2026-10-12 · ✦ on star and planet types new to your codex
 - ✦ / ✪ marked only species new to your codex, though the codex logs every star and planet type once per region too (a
   Fable suggestion the author picked; shown only, not spoken). `outrider/codex_bodies.py` says which codex entry a

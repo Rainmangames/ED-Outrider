@@ -218,6 +218,10 @@ has visited (Outrider works out its address from the boxel).
   boxel's next system each time you arrive in one of its systems.
 - **Boxels nearby** lists the nearest boxels of each mass code in sectors you have been to, what each kind tends to
   hold, and your own figures for it ("from your 852 d systems: 41% with biology…"). **Explore this boxel** keeps one.
+- **Sector map** draws the sector you are in as a grid of one mass code's boxels (b to h: a's 128 × 128 a layer is too
+  many), one Y layer at a time (yours first, ▲ ▼ for the others, and the layers you have visited in listed): visited
+  (with how many, on the coarser grids), ✓ complete, done, Spansh knows, you outlined, the kept boxel framed. +Z
+  (toward the core) is up and +X right, as on the galaxy map. A tap explores that boxel.
 - Hand-made sectors ("Col 285 Sector…") lay their boxels out differently: their list works, 🎯 cannot check them.
 
 ## 🧬 The exobiology checklist
