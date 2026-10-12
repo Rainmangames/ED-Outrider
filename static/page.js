@@ -864,6 +864,10 @@ function renderNow() {
       (t.star_class ? ` <span class="${/^[OBAFGKM](_|$)/.test(t.star_class) ? "ok" : "noscoop"}">${esc(t.star_class)}${/^[OBAFGKM](_|$)/.test(t.star_class) ? " ⛽" : " ✕"}</span>` : "") +
       (hz ? ` <span class="hazard">⚠ ${esc(hz)}</span>` : "") + `</div>`);
   }
+  // where the next jump goes: the route's next stop (as the strip says it), the kept boxel's Next
+  const nr = nowRouteHtml(), nb = nowBoxelHtml();
+  if (nr) lines.push(`<div class="now-line now-route">${nr}</div>`);
+  if (nb) lines.push(`<div class="now-line now-boxel">${nb}</div>`);
   if (f && f.live && f.pct != null)
     lines.push(`<div class="now-line ${f.pct < 15 ? "urgent" : f.pct < 30 ? "warn" : ""}">⛽ <b>${f.pct}%</b>` +
       (f.jumps_max != null ? ` · ${f.jumps_max} ${jumpsWord(f.jumps_max)}` : "") + (f.since_scoop != null ? ` · ${f.since_scoop} since scoop` : "") +
@@ -929,6 +933,23 @@ function renderNow() {
     lines.push(`<div class="now-line now-small now-hint">screen may sleep: set the tablet's screen timeout, or open over localhost/HTTPS</div>`);
   el.innerHTML = lines.join("");
   renderSurface();
+}
+// Now's route line: the route the strip shows (this device's pick with both), its next stop with 🎯 (the review's
+// suggestion, 2026-10-12: Now never said where the next jump goes)
+function nowRouteHtml() {
+  const hw = data.highway, sv = data.survey;
+  return lineKind(hw, sv) === "rich" ? surveyLineHtml(sv, {short: true}) : hw ? hwyLineHtml(hw, {short: true}) : "";
+}
+// Now's boxel line: the kept boxel's Next (or the one followed, in Boxel mode), as the boxel pane's Next
+function nowBoxelHtml() {
+  const bx = data.boxel && data.boxel.next;
+  if (!bx || !bx.label || !(bx.picked || nearMode() === "boxel")) return "";
+  const head = `<span class="hwyg" aria-hidden="true">▦</span> `;
+  if (bx.complete || bx.done) return `${head}${esc(bx.label)} <span class="ok">✓ ${bx.complete ? "complete" : "done"}</span>`;
+  if (!bx.name) return `${head}${esc(bx.label)} <span class="unk">every system known is visited</span>`;
+  return `${head}<span class="warnc">Boxel: next</span> <span class="copy" data-name="${esc(bx.name)}" title="click to copy">${esc(bx.name)}</span>` +
+    (data.game_pc !== false && bx.standard ? hwyAimBtn(bx.name, "boxel", null) : "") +
+    ` · ${bx.spansh ? boxelKnown(bx) : `<span class="unk">to try</span>`}`;
 }
 // Now's at-risk line, under fuel: what the data aboard stands to lose, shown only once it matters (your amber level
 // or rebuy multiple). Docked where it sells, what selling here pays; on a high-g approach, that approach's stakes

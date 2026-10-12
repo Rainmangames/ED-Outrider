@@ -489,6 +489,35 @@ class NowPanel(unittest.TestCase):
         self.assertEqual(texts(quiet)[-1], "Last session · 3 jumps")
         self.assertIsNone(O.now_panel({}, pal))
 
+    def test_now_route_and_boxel(self):
+        """Now's panel says where the next jump goes: the route's next stop as the page's strip words it, the kept
+        boxel's Next (review suggestion, 2026-10-12)."""
+        pal = O.palette()
+        join = lambda parts: "".join(t for t, _ in parts)
+        hw = {"index": 38, "at": 37, "total": 120, "destination": "Colonia", "refuel_in": 3,
+              "next": {"name": "Stop 38", "jumps": 1, "distance": 4.23, "neutron": True}}
+        self.assertEqual(join(O.route_parts({"kind": "highway", "summary": hw})),
+                         "🛣 Next: Stop 38 · ⚡ neutron · 4.2 ly · 38 of 120 · refuel in 3 jumps")
+        self.assertEqual(join(O.route_parts({"kind": "highway", "summary": dict(hw, index=0, at=None, refuel_in=None, refuel_here=True)})),
+                         "🛣 Start: Stop 38 · ⚡ neutron · 4.2 ly · 0 of 120 · ⛽ refuel here")
+        self.assertEqual(join(O.route_parts({"kind": "highway", "summary": dict(hw, off_route=True, nearest={"name": "Stop 12", "distance": 8.04})})),
+                         "🛣 Off Route: Detour · nearest Stop 12 8.0 ly")
+        self.assertEqual(join(O.route_parts({"kind": "highway", "summary": dict(hw, complete=True)})), "🛣 Highway complete")
+        rc = {"kind": "exo", "index": 2, "at": 1, "total": 9, "left_here": 2, "next": {"name": "Pru Aim", "jumps": 3, "distance": None}}
+        self.assertEqual(join(O.route_parts({"kind": "riches", "summary": rc})), "🧬 Next: Pru Aim · 3 jumps · 2 of 9 · 2 species to sample here")
+        self.assertEqual(O.route_parts(None), [])
+        bx = {"label": "Smojooe KL-P d5", "name": "Smojooe KL-P d5-41", "n": 41, "spansh": False}
+        self.assertEqual(join(O.boxel_parts(bx)), "▦ Boxel: next Smojooe KL-P d5-41 · to try")
+        self.assertEqual(join(O.boxel_parts(dict(bx, spansh=True, known={"bodies": 3, "count": 14}))), "▦ Boxel: next Smojooe KL-P d5-41 · known · 3 of 14 bodies")
+        self.assertEqual(join(O.boxel_parts(dict(bx, complete=True))), "▦ Smojooe KL-P d5 ✓ complete")
+        self.assertEqual([O.boxel_known_words(dict(spansh=True, scanned=True, known={"bodies": 9, "count": 9})),
+                          O.boxel_known_words(dict(known={"bodies": 0, "count": 9})), O.boxel_known_words(dict(known={"bodies": 1}))],
+                         ["known · all 9 bodies", "known · honked only", "known · 1 body, count unknown"])
+        lines = texts(O.now_panel(dict(self.INFO, route={"kind": "highway", "summary": hw}, boxel=bx), pal))
+        self.assertEqual(lines[2:5], ["🛣 Next: Stop 38 · ⚡ neutron · 4.2 ly · 38 of 120", "   refuel in 3 jumps",   # wrapped, not cut
+                                      "▦ Boxel: next Smojooe KL-P d5-41 · to try"])   # under the target, before fuel
+        self.assertTrue(lines[5].startswith("⛽ 22%"))
+
     def test_long_rows_wrap_not_cut(self):
         """A row too long for the panel goes on the next line, broken between its parts, never cut with … (the Next
         detail and the Bio signals footer were: the author's overlay screenshot, 2026-10-11)."""

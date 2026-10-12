@@ -1131,6 +1131,15 @@ const settle = async maxMs => {
       renderNow(); o.nowHead = document.getElementById("nowView").textContent;
       data.destination = {body_id: 0, name: "A", near: null};
       renderNow(); o.nowStar = document.getElementById("nowView").textContent;
+      // Now says where the next jump goes: the route's next stop, the kept boxel's Next (review suggestion 2026-10-12)
+      const keep = {highway: data.highway, survey: data.survey, boxel: data.boxel}, q = sel => (document.querySelector(sel) || {}).textContent || "";
+      data.highway = {index: 38, at: 37, total: 120, destination: "Colonia", refuel_in: 3, next: {name: "Stop 38", jumps: 1, distance: 4.23}};
+      data.survey = null;
+      data.boxel = {key: "k", next: {label: "Smojooe KL-P d5", name: "Smojooe KL-P d5-41", n: 41, picked: true, standard: true, spansh: true, known: {bodies: 3, count: 14}}};
+      renderNow(); o.nowRoute = q("#nowBody .now-route"); o.nowBoxel = q("#nowBody .now-boxel");
+      data.boxel.next.picked = false; data.highway = null; renderNow();
+      o.nowNone = !document.querySelector("#nowBody .now-route") && !document.querySelector("#nowBody .now-boxel");
+      Object.assign(data, keep);
       Object.assign(data, saved); hereData = hd; renderNow();
       o.holds = /holds: x\.sqlite, speech\.json, ed_outrider\.toml/.test(backupHtml({ts: new Date().toISOString(), kept: 3, path: "/b/x.zip",
                                                                                  files: ["x.sqlite", "speech.json", "ed_outrider.toml"]}));
@@ -1145,6 +1154,7 @@ const settle = async maxMs => {
       now: /➜ B 1 · Icy body · 0\.30 g · 1,200 ls · ~\d+ s · nothing to do here/.test(got.nowOther) && !/ls · ~\d+ s · nothing/.test(got.nowFar)
         && /Next: ➜ bio on C 2/.test(got.nowHead) && !/➜ C 2 ·/.test(got.nowHead) && /➜ A · K \(Yellow-Orange\) Star · 0 ls · ~15 s · scoopable star/.test(got.nowStar),
       holds: got.holds,
+      nowNext: /Next: Stop 38.*· 4\.2 ly · 38 of 120 · refuel in 3 jumps/.test(got.nowRoute) && /Boxel: next Smojooe KL-P d5-41.*known · 3 of 14 bodies/.test(got.nowBoxel) && got.nowNone,
     };
     const bad = Object.entries(checks).filter(([, v]) => !v).map(([k]) => k);
     const goodS1 = !bad.length && errors.length === before;

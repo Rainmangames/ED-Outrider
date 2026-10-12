@@ -641,6 +641,76 @@ def sc_text(sec):
     return f"~{max(10, _half_up(sec / 5) * 5)} s" if sec < 90 else f"~{_half_up(sec / 60)} min"
 
 
+SURVEY_WORDS = {"riches": ("💰", "Road to Riches", lambda n: f"{n} {'body' if n == 1 else 'bodies'} to do here"),
+                "exo": ("🧬", "Exomastery", lambda n: f"{n} species to sample here"),
+                "trade": ("💱", "Trade route", lambda n: f"{n} trade{'' if n == 1 else 's'} to make here")}
+
+
+def route_parts(route):
+    """The route's next stop as Now gives it (page.js hwyLineHtml / surveyLineHtml, short): {kind: "highway" |
+    "riches", summary: highway_summary() or survey_summary()} -> (text, colour key) parts, or [] with nothing to say."""
+    s = (route or {}).get("summary")
+    if not s:
+        return []
+    hw = route.get("kind") == "highway"
+    glyph, name, left = ("🛣", "Highway", None) if hw else SURVEY_WORDS.get(s.get("kind"), SURVEY_WORDS["riches"])
+    head = [(glyph + " ", "accent")]
+    if s.get("complete"):
+        return head + [(f"{name} complete", "good")]
+    if s.get("off_route"):
+        nr = s.get("nearest") if hw else None
+        return head + [("Off Route: Detour", "warn")] + ([(f" · nearest {nr['name']} {nr['distance']:.1f} ly", "muted")]
+                                                         if nr and isinstance(nr.get("distance"), (int, float)) else [])
+    n = s.get("next")
+    here = [(" · " + left(s["left_here"]), "warn")] if left and s.get("left_here") else []
+    if not n:
+        return head + [(f"To {s.get('destination') or ''}", "text")] + here
+    start = s.get("index") == 0 and s.get("at") is None
+    parts = head + [("Start: " if start else "Next: ", "warn"), ((f"{n['station']}, " if n.get("station") else "") + n["name"], "title")]
+    if hw and n.get("neutron"):
+        parts.append((" · ⚡ neutron", "good"))
+    if (n.get("jumps") or 0) > 1:
+        parts.append((f" · {n['jumps']} jumps", "muted"))
+    if isinstance(n.get("distance"), (int, float)):
+        parts.append((f" · {n['distance']:.1f} ly", "muted"))
+    parts.append((f" · {s.get('index')} of {s.get('total')}", "muted"))
+    if hw and s.get("refuel_here"):
+        parts.append((" · ⛽ refuel here", "warn"))
+    elif hw and s.get("refuel_in") is not None:
+        parts.append((f" · refuel in {s['refuel_in']} jump{'' if s['refuel_in'] == 1 else 's'}", "muted"))
+    hv = s.get("heavy") if hw else None
+    if hv and isinstance(hv.get("need_t"), (int, float)) and isinstance(hv.get("have_t"), (int, float)):
+        parts.append((f" · ⚠ too much fuel for the next jump: ≤ {math.floor(hv['need_t'])} t, you have {_half_up(hv['have_t'])} t", "bad"))
+    return parts + here
+
+
+def boxel_known_words(bx):
+    """A boxel system Spansh knows: how much of it anyone reported (page.js boxelKnown)."""
+    k = bx.get("known") or {}
+    b, c = k.get("bodies"), k.get("count")
+    if bx.get("scanned"):
+        return f"known · all {c} bodies"
+    if isinstance(c, int) and c > 0:
+        return f"known · {b} of {c} bodies" if b else "known · honked only"
+    return f"known · {b} bod{'y' if b == 1 else 'ies'}, count unknown" if b else "known · nothing reported"
+
+
+def boxel_parts(bx):
+    """The kept boxel's Next as Now gives it: {label, n, name, spansh, known, scanned, complete, done} (State.boxel_next)
+    -> (text, colour key) parts, or [] without one."""
+    if not bx or not bx.get("label"):
+        return []
+    head = [("▦ ", "accent")]
+    if bx.get("complete"):
+        return head + [(f"{bx['label']} ", "title"), ("✓ complete", "good")]
+    if bx.get("done"):
+        return head + [(f"{bx['label']} ", "title"), ("✓ done", "good")]
+    if not bx.get("name"):
+        return head + [(f"{bx['label']} ", "title"), ("every system known is visited", "muted")]
+    return head + [("Boxel: next ", "warn"), (bx["name"], "title"),
+                   (" · " + (boxel_known_words(bx) if bx.get("spansh") else "to try"), "muted")]
+
+
 def plan_items(leaving, highlight, bio_min, codex=True):
     """Now's suggested order (page.js worthLeavingFor + planItems) with the config's levels: the mapping over the
     highlight level (or special) and the bio over bio_min (or started, unpriced, or new to your codex), nearest to the
@@ -816,10 +886,10 @@ def unsold_age(days):
 
 def now_panel(info, pal, size="normal", highlight=500_000, bio_min=10_000_000, high_gravity=2.0, codex=True):
     """The Now panel: the page's Now view in a few lines (the author, 2026-10-10). The system (and, for 20 s after the
-    jump, whether it was undiscovered); the system targeted next; fuel; what the data aboard stands to lose once it
-    passes your levels; on a body its card, else Next (the first of the suggested order) and the body you have
-    targeted; this session. The levels are the config's. info: {name, now, arrival, target, fuel, boost, unsold,
-    unsold_levels, rebuy, since_sale, on_body, body, sampling, leaving, detail_ready, value_now, destination,
+    jump, whether it was undiscovered); the system targeted next; the route's next stop and the kept boxel's; fuel;
+    what the data aboard stands to lose once it passes your levels; on a body its card, else Next (the first of the
+    suggested order) and the body you have targeted; this session. The levels are the config's. info: {name, now, arrival, target, route, boxel, fuel, boost,
+    unsold, unsold_levels, rebuy, since_sale, on_body, body, sampling, leaving, detail_ready, value_now, destination,
     this_session, last_session}. None without a system."""
     if not info or not info.get("name"):
         return None
@@ -843,6 +913,9 @@ def now_panel(info, pal, size="normal", highlight=500_000, bio_min=10_000_000, h
             if sc == "N" or sc.startswith("D"):
                 row.append((" ⚠", "bad"))
         rows.append(row)
+    for parts in (route_parts(info.get("route")), boxel_parts(info.get("boxel"))):   # where the next jump goes
+        if parts:
+            rows += flow(parts, NOW_W - 2 * PAD, size, indent="   ")
     f = info.get("fuel") or {}
     if f.get("live") and f.get("pct") is not None:
         key = "bad" if f["pct"] < 15 else "warn" if f["pct"] < 30 else "text"

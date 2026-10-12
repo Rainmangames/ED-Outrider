@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-12 · Now says where the next jump goes
+- Now (and the overlay's Now panel) never said where the next jump goes: the route's next stop showed only in the
+  strip on Overview, Nearby and Here, a kept boxel's Next only in Boxel mode (a Fable suggestion the author picked).
+  Both now sit under the target: "🛣 Next: Stop 38 · 4.2 ly · 38 of 120 · refuel in 3 jumps" (or the survey route's)
+  and "▦ Boxel: next Smojooe KL-P d5-41 · to try", with 🎯 on the page. The payload carries the active boxel's Next,
+  worked out only when the boxel's key changes; the overlay shows a kept boxel's only, and the unfinished route plotted
+  last.
+
 ## 2026-10-12 · Boxels: how much of a known system was found
 - A boxel row Spansh knows said only "known", and "skip systems someone has visited" passed over all of them, though
   most were only honked or partly scanned in passing and keep their bodies' first discoveries (a Fable suggestion the

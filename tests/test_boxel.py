@@ -160,6 +160,28 @@ class Server(unittest.TestCase):
         self.assertTrue(self.state.boxel_not_found(self.state.boxel_target(15)[0], {"ok": False, "why": "no system was targeted"}))
         self.assertEqual(self.state.boxel_view()["end"], 15)
 
+    def test_next_for_now(self):
+        """The payload's boxel Next (for Now and the overlay's Now panel) is the list's, worked out without the list,
+        and only when the boxel key changes; the overlay shows it for a kept boxel only (review suggestion 2026-10-12)."""
+        self.jump(0, REAL[0])   # Drojau TF-H c13-0
+        nx = lambda: self.state.payload()["boxel"]["next"]
+        self.assertEqual((nx()["name"], nx()["n"], nx()["picked"], nx()["spansh"]), ("Drojau TF-H c13-1", 1, False, False))
+        self.assertIsNone(self.state.overlay_boxel())                   # followed, not kept: nothing on the overlay
+        ed_outrider.meta_set(self.db, "boxel_spansh", {"Drojau TF-H c13-": {"ts": ed_outrider.iso_ts(self.now), "systems": {
+            "1": {"body_count": 9, "bodies_known": 9}, "2": {"body_count": 14, "bodies_known": 3}}}})
+        self.assertEqual((nx()["n"], nx()["known"], nx()["scanned"]), (1, {"bodies": 9, "count": 9}, True))
+        ed_outrider.meta_set(self.db, "boxel_skip_known", True)
+        self.assertEqual((nx()["n"], nx()["known"]), (2, {"bodies": 3, "count": 14}))
+        self.assertEqual(nx()["n"], self.state.boxel_view()["next"])
+        self.state.boxel_set("Drojau TF-H c13-", self.state.boxel_active()["sector_index"])
+        self.assertEqual(self.state.overlay_boxel()["name"], "Drojau TF-H c13-2")   # kept: on the overlay too
+        self.assertEqual(self.state.overlay_now_info(self.j.pos, self.now)["boxel"]["n"], 2)
+        self.state.boxel_mark_done(True)                                  # done lets it go
+        self.assertEqual((nx()["done"], nx()["name"], nx()["picked"]), (True, None, False))
+        self.state.boxel_set(None)
+        self.jump(30, (77, "Sol", 0.0, 0.0, 0.0))                         # a hand-made name: in no boxel
+        self.assertIsNone(nx())
+
     def test_pick_nearby_and_api(self):
         import asyncio
         from aiohttp.test_utils import TestClient, TestServer

@@ -131,6 +131,10 @@ and the nearest unvisited system. The target says how much of it is
 known ("3/12 known", Spansh's bodies of its count) and what EDSM has ("EDSM 5/12", or "not logged"): two databases
 with different reporters.
 
+- **Where the next jump goes**, under the target: the route's next stop as the strip under the header says it ("🛣
+  Next: Stop 38 · 4.2 ly · 38 of 120 · refuel in 3 jumps", or the Road to Riches / Exomastery one), and a kept boxel's
+  Next (or the boxel followed, in Boxel mode): "▦ Boxel: next Smojooe KL-P d5-41 · to try" or "· known · 3 of 14
+  bodies", each with 🎯 on the game PC.
 - An **at-risk line** shows what is aboard against your rebuy ("🗺 380M · 🧬 412M aboard · 3.2× rebuy · 4 d
   unsold"), only once that is over your amber level or rebuy multiple; a ship bought with Arx (its hull has no credit
   value) gets no rebuy multiple. Docked where your data sells it says what

@@ -4710,6 +4710,16 @@ def boxel_fully_scanned(sp):
     return isinstance(k, int) and isinstance(c, int) and c > 0 and k >= c
 
 
+def boxel_next_number(visited, spansh, end, skip=False):
+    """A boxel's Next: the lowest number you have not been to, from 0 up to the probable end (else TRY_ABOVE above the
+    highest known), passing over a system someone has fully scanned when skip is on. visited: the numbers you have
+    been to; spansh: {number: Spansh's facts}. None when every one is visited."""
+    top = max(set(visited) | set(spansh), default=-1)
+    last = end - 1 if end is not None else top + outrider.boxel.TRY_ABOVE
+    return next((n for n in range(last + 1) if n not in visited
+                 and not (skip and n in spansh and boxel_fully_scanned(spansh[n]))), None)
+
+
 def ggg_state(record, codex_names=()):
     """A body's green gas giant state: {"confirmed": True} when its codex entry says so, else the model's prediction
     (outrider.ggg.predict_record: {chance, class, rung, border, temperature}) or None."""
@@ -5913,6 +5923,7 @@ class State:
         # boxel exploration: the arrival an automatic boxel run was decided for (one per arrival), Spansh's fetch running
         self._boxel_arrival = (journals.pos or {}).get("ts")
         self._boxel_fetching = set()
+        self._boxel_next = (None, None)   # (the payload's boxel key, boxel_next() for it)
         self._boxel_sectors = (None, {})   # (visits count when built, {(sx, sy, sz): sector name})
         self.autotarget_task = None
         self._autotarget_cancel = None   # threading.Event: the automatic run's own token (switch-off, route cleared/replaced)
@@ -5998,16 +6009,7 @@ class State:
             "autohonk": self.autohonk_info(),
             "autotarget": self.autotarget_info(), "rail": self.rail_info(),   # the tablet's game buttons
             # boxel exploration: the page fetches api/boxel when this changes (a jump, a scan, Spansh's answer, a pick)
-            "boxel": {"key": "|".join(str(x) for x in ((meta_get(self.db, "boxel_active") or {}).get("prefix"),
-                                                        (self.journals.pos or {}).get("id64"), len(self.visited),
-                                                        # your scans here (a boxel row's summary), not every journal line
-                                                        (self.db.execute("SELECT max(ts) FROM own_bodies WHERE system=?",
-                                                                         ((self.journals.pos or {}).get("id64"),)).fetchone() or [None])[0],
-                                                        len(self._boxel_fetching), json.dumps(meta_get(self.db, "boxel_ends")),
-                                                        json.dumps({k: (v or {}).get("ts") for k, v in (meta_get(self.db, "boxel_spansh") or {}).items()}),
-                                                        meta_get(self.db, "boxel_auto"), meta_get(self.db, "boxel_skip_known"),
-                                                        json.dumps(meta_get(self.db, "boxel_done")))),
-                      "auto": bool(meta_get(self.db, "boxel_auto"))},
+            "boxel": self.boxel_payload(),
             "hush": self.hush_info(),
             "firsts_watch": self.firsts_watch_info(),
             "copilot": dict(self.copilot, button=self.button.status if self.button else None),
@@ -6995,6 +6997,18 @@ class State:
                 "planets": row.get("planets") or len(bodies) or None,
                 "in_spansh": row.get("in_spansh") if "in_spansh" in row else None}
 
+    def overlay_route(self):
+        """The route Now's panel gives the next stop of: the unfinished one plotted last (route_newest: the page
+        shows this device's pick with both), {kind, summary} or None."""
+        kind = self.route_newest()
+        s = self.highway_summary() if kind == "highway" else self.survey_summary() if kind == "riches" else None
+        return {"kind": kind, "summary": s} if s else None
+
+    def overlay_boxel(self):
+        """The kept boxel's Next for Now's panel (a boxel only followed, not kept, says nothing there), or None."""
+        bx = self.boxel_payload()["next"]
+        return bx if bx and bx.get("picked") else None
+
     def overlay_now_info(self, pos, now):
         """What the Now panel says (outrider.overlay.now_panel): the inputs of the page's Now view, from the server."""
         detail = self.overlay_detail(pos["id64"])
@@ -7007,6 +7021,7 @@ class State:
         t = self.target
         return {"name": pos.get("name"), "now": now, "arrival": a,
                 "target": t and {k: t.get(k) for k in ("name", "status", "known", "count", "star_class")},
+                "route": self.overlay_route(), "boxel": self.overlay_boxel(),
                 "fuel": self.fuel_summary(), "boost": (self.journals.boost or {}).get("value"),
                 "unsold": self.unsold, "unsold_levels": (UNSOLD_WARN, UNSOLD_URGENT),
                 "rebuy": risk_rebuy(self.journals.ship), "since_sale": self.since_sale(),
@@ -11166,12 +11181,10 @@ class State:
         # boxel_done). Either way Next offers nothing more (the rows' own 🎯 still work)
         complete = end is not None and all(n in visited for n in range(end))   # end 0: an empty boxel, complete too
         done = prefix in (meta_get(self.db, "boxel_done") or {})
-        # skip_known (opt-in, meta boxel_skip_known): Next passes over the ones Spansh knows too (someone has been there:
-        # the first discovery is most likely gone), for first discoveries only
         # skip (opt-in): Next passes over the systems someone has fully scanned (every body reported); one only passed
         # through or partly scanned still has its first discoveries open (review suggestion, 2026-10-12)
         skip = bool(meta_get(self.db, "boxel_skip_known"))
-        nxt = None if complete or done else next((r["n"] for r in rows if not r["visited"] and not (skip and r["scanned"])), None)
+        nxt = None if complete or done else boxel_next_number(visited, spansh, end, skip)
         return {"complete": complete, "done": done, "boxel": {"prefix": prefix, "label": b["label"], "mc": b["mc"], "size": outrider.boxel.size(b["mc"]),
                           "kind": outrider.boxel.KINDS[b["mc"]], "standard": bool(b.get("standard")), "here": b["here"],
                           "picked": b["picked"], "center": b.get("center"), "sector_index": b.get("sector_index"),
@@ -11276,6 +11289,42 @@ class State:
         stats = self.boxel_code_stats()
         return {"boxels": boxels, "finished": finished, "codes": {c: {"kind": outrider.boxel.KINDS[c], "size": outrider.boxel.size(c), "yours": stats[c]}
                                             for c in outrider.boxel.CODES}}
+
+    def boxel_payload(self):
+        """The payload's boxel: the key the page refetches api/boxel on (a jump, a scan, Spansh's answer, a pick), the
+        auto-target opt-in, and the active boxel's Next (for Now: worked out again only when the key changes)."""
+        pos = self.journals.pos or {}
+        key = "|".join(str(x) for x in ((meta_get(self.db, "boxel_active") or {}).get("prefix"), pos.get("id64"), len(self.visited),
+                                        # your scans here (a boxel row's summary), not every journal line
+                                        (self.db.execute("SELECT max(ts) FROM own_bodies WHERE system=?",
+                                                         (pos.get("id64"),)).fetchone() or [None])[0],
+                                        len(self._boxel_fetching), json.dumps(meta_get(self.db, "boxel_ends")),
+                                        json.dumps({k: (v or {}).get("ts") for k, v in (meta_get(self.db, "boxel_spansh") or {}).items()}),
+                                        meta_get(self.db, "boxel_auto"), meta_get(self.db, "boxel_skip_known"),
+                                        json.dumps(meta_get(self.db, "boxel_done"))))
+        if self._boxel_next[0] != key:
+            self._boxel_next = (key, self.boxel_next())
+        return {"key": key, "auto": bool(meta_get(self.db, "boxel_auto")), "next": self._boxel_next[1]}
+
+    def boxel_next(self):
+        """The active boxel's Next for Now and the overlay's Now panel, without the list's per-row summaries: {prefix,
+        label, picked, standard, n, name, spansh, known, scanned, complete, done}, None with no boxel."""
+        b = self.boxel_active()
+        if not b:
+            return None
+        prefix = b["prefix"]
+        visited = self.boxel_visited(prefix)
+        spansh = {int(k): v for k, v in (((meta_get(self.db, "boxel_spansh") or {}).get(prefix) or {}).get("systems") or {}).items()
+                  if str(k).isdigit() and isinstance(v, dict)}
+        end = self.boxel_end(prefix, set(visited) | set(spansh))
+        complete = end is not None and all(n in visited for n in range(end))
+        done = prefix in (meta_get(self.db, "boxel_done") or {})
+        n = None if complete or done else boxel_next_number(visited, spansh, end, bool(meta_get(self.db, "boxel_skip_known")))
+        sp = spansh.get(n) or {}
+        return {"prefix": prefix, "label": b["label"], "picked": b["picked"], "standard": bool(b.get("standard")), "n": n,
+                "name": outrider.boxel.name_of(prefix, n) if n is not None else None, "spansh": n in spansh,
+                "known": {"bodies": sp.get("bodies_known"), "count": sp.get("body_count")} if n in spansh else None,
+                "scanned": n in spansh and boxel_fully_scanned(sp), "complete": complete, "done": done}
 
     def boxel_target(self, n=None):
         """({name, id64, here, route: None, index, boxel}, None) for 🎯 on number n of the active boxel (None: the next

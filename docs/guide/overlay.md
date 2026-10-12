@@ -36,7 +36,8 @@ before.
 - **Now (To-Do & Info)** (optional): the page's Now view in a few lines, anywhere but docked (at a station or carrier,
   or on foot inside one). The system (and for 20 s after the jump whether it was
   undiscovered), the system you have targeted next (never reported, no scan data, partly or fully scanned, or visited;
-  how many bodies are known; the star with ⛽ or ✕, and ⚠ for a neutron star or white dwarf), fuel, and what the data
+  how many bodies are known; the star with ⛽ or ✕, and ⚠ for a neutron star or white dwarf), where the next jump goes
+  (the route's next stop, of the unfinished route plotted last, and a kept boxel's Next), fuel, and what the data
   aboard stands to lose once it passes your `unsold_warn` level: 🗺 and 🧬, how many times your rebuy it is ("× rebuy";
   none for a ship bought with Arx, whose hull has no credit value) and how long since you sold ("3 days unsold"; from a
   week "2 weeks 2 days since sold", or "2wk2d since sold" when that would not fit; whole days). Then, on a body,
