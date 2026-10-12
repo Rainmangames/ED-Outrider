@@ -38,7 +38,7 @@ you plot another of its kind or **Clear route**.
   own galaxy image under it (`background_image`, an EDAstro chart say).
 - **Following.** Arriving at any route system moves you along, forwards or back; anywhere else (a respawn
   included) is **Off Route: Detour** until you are back on it, with the closest route system marked. A line under
-  the tiles shows the next stop ("🛣 Next: Hwy Stop 38 · ⚡ neutron · 4.2 ly · 38 of 399 · refuel in 3 jumps").
+  the tiles (and on Now) shows the next stop ("🛣 Next: Hwy Stop 38 · ⚡ neutron · 4.2 ly · 38 of 399 · refuel in 3 jumps").
 - **Clipboard.** On arrival the next system's name goes on the desktop clipboard for the galaxy map (Linux:
   `wl-copy` or `xclip`, see [Getting started](install.md#-getting-started); Windows: built in; on the game PC only).
 - **The voice:** "Next Neutron Highway Stop: Hwy Stop 38, with three jumps left to refuel. Boost your FSD to
@@ -51,7 +51,7 @@ shows each system with what is left to do there, the bodies by name under the on
 and ✔✔ mapped from your journal; on arrival the voice says how many bodies are worth the stop and the best of them,
 and once they are done, the next system. It is not auto-targeted on its own: a Road to Riches is for stopping, not hurrying past.
 With a Highway route as well, a switch above the heading picks which one the tab shows; only the one plotted last
-copies its next system to the clipboard. (Road to Riches is thshurka's contribution.)
+copies its next system to the clipboard (once it is finished, the other one copies again). (Road to Riches is thshurka's contribution.)
 
 **Exomastery.** The fourth plotter, Spansh's **Expressway to Exomastery**, plots systems whose bodies carry valuable
 life already reported by other commanders, with the same options as Road to Riches but for the mapping value and
@@ -67,7 +67,9 @@ same place as Road to Riches and Exomastery (one of the three at a time). See [T
 **The route line and 🎯.** The line under the tiles shows the next stop of whichever route the tab shows (🛣 the
 Highway, 💰 Road to Riches, 🧬 Exomastery, 💱 a trade route). A 🎯 beside that next system, and beside every system in the tab's lists,
 targets it in the galaxy map for you (game PC only, after a 5 s countdown to click back into the game; on the tablet,
-the row's sheet has 🎯 Target).
+the row's sheet has 🎯 Target). The same 🎯 sits beside your carrier's system on the Carrier tile while it is elsewhere,
+and beside a boxel's Next and its rows (see [Boxel exploration](views.md#-boxel-exploration), whose opt-in **auto-target
+the next on arrival** uses the same run).
 
 **Auto-target** (Linux, Windows experimental; on the game PC only, off by default; the tab's **Auto-target the next system** box). After an FSD supercharge
 in a route system it waits 5 s, then presses keys to make the next route system your target: it opens the galaxy
@@ -90,7 +92,7 @@ targeted neutron jump target Hwy Stop 38" (or "Failed to…") under its own aler
 - **The keys go to whichever window has focus**: stay in the game until it is done.
 - The log gets one line per run ("highway auto-target: targeted Hwy Stop 38"); every step is printed only when it
   fails.
-- **🎯 Target next** (in the box, and beside "Next:" in the route line on Overview, Nearby and Here) does the same
+- **🎯 Target next** (in the box, and beside "Next:" in the route line on Overview, Nearby, Here and Now) does the same
   on demand, whether or not auto-target is on: the next route system, or off the route the closest one, after a
   5-second countdown to click back into the game. A failed run puts **⟳ Retry** on its route row.
 - **Test now** in the box targets the nearest known system a plain jump away, after a 5-second countdown.

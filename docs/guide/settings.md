@@ -14,11 +14,12 @@ own (Sharing exports them or makes them the defaults for new browsers). **Server
 itself, every key of it but the upload switches (`[eddn]`, `[edsm]`, `[inara]`: Settings → Uploads): the network and the client password, the journal folders, paths, backups, Spansh, the
 Highway, the voice's AI layer and more. Saving there writes `ed_outrider.toml` (only the keys you changed; its
 comments stay, and the previous file is kept as `ed_outrider.toml.bak`), and Outrider uses them from its next start.
-The password and the AI key are never shown, only whether they are set.
+The passwords (`[server]`'s and `[mcp]`'s) and the AI key are never shown, only whether they are set.
 
 You can also edit the file by hand: copy `ed_outrider.toml.example` to `ed_outrider.toml` next to the script and
-edit the lines you need. The example explains every key. Relative paths in it (`db`, `backup_dir`, `speech_file`) are relative to the
-Outrider folder; they default to `data/ed_outrider.sqlite`, `data/backups` and `resources/speech.json`.
+edit the lines you need. The example explains every key. Relative paths in it (`db`, `backup_dir`, `speech_file`, `sound_dir`,
+`background_image`) are relative to the Outrider folder; the first three default to `data/ed_outrider.sqlite`, `data/backups`
+and `resources/speech.json`.
 `python3 ed_outrider.py --write-config` writes one with the settings in effect. Switches take a bare `true` or
 `false`; a wrong value is reported at start and the default kept.
 
@@ -28,20 +29,20 @@ Outrider folder; they default to `data/ed_outrider.sqlite`, `data/backups` and `
 > and a file that cannot be read is ignored as a whole: every setting back at its default, with one line in the
 > console saying why. Settings → Server takes paths either way and writes them correctly.
 
-| Section | What it holds |
+| Section | What it holds (default) |
 |---|---|
-| `[journals]` | `live` and `legacy` folders, when auto-detection misses them (setting `live` turns off legacy auto-detection: list `legacy` too) |
-| `[server]` | `host`, `port`, `password`, `game_pc`, `update_check`, `allowed_hosts`, `radius`, `radius_choices`, `db`, `backup_dir`, `backup_keep`, `backup_every_days`, `speech_file` |
-| `[defaults]` | What a new browser starts with (`voice` defaults to `en_GB-cori-medium`): thresholds (`unsold_warn`, `unsold_urgent`, `bio_min`, `body_highlight_level`, `biology_highlight_value`, `body_max_value_include_bonus`, `high_gravity`, `module_warn`), `sounds`, `voice`, `voice_fallback`, `speech_styles`, `speech_profanity`, `speech_profanity_pct`, `speech_danger_business`, `speak_bio_signals`, `speak_geo_signals`, `speak_mapped`, `codex_interesting`, `speech_speed`, `speech_names`; the surface map's `surface_alt`, `rig_spacing`, `surface_map_min`, `surface_map_strip`, `rig_warn` |
-| `[spansh]` | `concurrency`, `map_max_radius`, `map_max_pages`, `watch_firsts` |
-| `[autohonk]` | `enabled`, `key`, `delay`, `hold`, `skip_honked`, `announce` |
-| `[speech]` | `server_player`, for **Play speech and sounds on this PC**; `sound_dir`, your own alert sounds |
-| `[copilot]` | `enabled`, `device`, `button`, `hold_ms`, `double_ms` |
-| `[assistant]` | `enabled`, `base_url`, `api_key`, `model`, `timeout`, `max_rounds`: the voice's optional AI layer |
-| `[mcp]` | `url`, `max_rows`, `password`: for the MCP bridge (see Ask an AI about your game) |
-| `[eddn]`, `[edsm]`, `[inara]` | `enabled`: written by the switches in Settings → Uploads (the only place to change them; off by default) |
-| `[overlay]` | `enabled`, `theme`, `text_size`, `system_panel`, `body_panel`, `radar`, `strip_panel`, `now_panel`, `bio_panel`, `system_seconds`, `radar_range` (the overlay is a game-PC feature: see In-game overlay) |
-| `[highway]` | `clipboard`, `efficiency`, `conservative`, `conservative_ly`, `background_image`, `background_extent`, `background_opacity`; auto-target: `autotarget`, `autotarget_delay`, `autotarget_entry`, `autotarget_map_wait`, `autotarget_search_wait`, `autotarget_key_delay`, `autotarget_keys`, `autotarget_search`, `autotarget_submit`, `autotarget_plot`, `autotarget_dry_run` |
+| `[journals]` | `live` and `legacy` folders, when auto-detection misses them (both auto-detected when absent; setting `live` turns off legacy auto-detection: list `legacy` too, `[]` for none) |
+| `[server]` | `host` ("127.0.0.1"), `port` (8025), `password` ("": none), `game_pc` ("auto": off inside a container), `update_check` (true), `allowed_hosts` ([]), `radius` (25 ly), `radius_choices` ([20, 25, 30, 40, 50]), `db` ("data/ed_outrider.sqlite"), `backup_dir` ("data/backups"), `backup_keep` (7), `backup_every_days` (1), `speech_file` ("resources/speech.json") |
+| `[defaults]` | What a new browser starts with: the thresholds `unsold_warn` (50000000), `unsold_urgent` (250000000), `bio_min` (10000000), `body_highlight_level` (500000), `biology_highlight_value` (10000000), `body_max_value_include_bonus` (true), `high_gravity` (2.0 g), `module_warn` (80 %); `sounds` (true), `voice` ("en_GB-cori-medium"), `voice_fallback` ("en_GB-jenny_dioco-medium"), `speech_styles` (["business"]), `speech_profanity` (false), `speech_profanity_pct` (50), `speech_danger_business` (true), `speak_bio_signals` (true), `speak_geo_signals` (true), `speak_mapped` (false), `codex_interesting` (true), `speech_speed` (1.0), `speech_names` ("Boss, Hefay, Sir"); the surface map's `surface_alt` (1000 m), `rig_spacing` (50 m), `surface_map_min` (500 m), `surface_map_strip` (false), `rig_warn` (3500 m) |
+| `[spansh]` | `concurrency` (4), `map_max_radius` (250 ly), `map_max_pages` (6), `watch_firsts` (true) |
+| `[autohonk]` | `enabled` (false), `key` ("auto": read from your controls preset), `delay` (2.0 s), `hold` (6.0 s), `skip_honked` (true), `announce` (true) |
+| `[speech]` | `server_player` ("auto"), for **Play speech and sounds on this PC**; `sound_dir` (none), your own alert sounds |
+| `[copilot]` | `enabled` (false), `device` (""), `button` (""), `hold_ms` (600), `double_ms` (400) |
+| `[assistant]` | `enabled` (false), `base_url` (""), `api_key` (""), `model` (""), `timeout` (20 s), `max_rounds` (4): the voice's optional AI layer |
+| `[mcp]` | `url` (this PC at `[server] port`), `max_rows` (25), `password` (""): for the MCP bridge (see Ask an AI about your game) |
+| `[eddn]`, `[edsm]`, `[inara]` | `enabled` (false): written by the switches in Settings → Uploads (the only place to change them) |
+| `[overlay]` | `enabled` (false), `theme` ("default"; or lcars, elite, babylon5, narn, minbari, centauri, vorlon, sith, alliance, dark), `text_size` ("normal"), `system_panel` (true), `body_panel` (true), `radar` (true), `strip_panel` (false), `now_panel` (false), `bio_panel` (false), `system_seconds` (0: while in supercruise there), `radar_range` (800 m) (the overlay is a game-PC feature: see In-game overlay) |
+| `[highway]` | `clipboard` (true), `efficiency` (60 %), `conservative` (false), `conservative_ly` (5 ly), `background_image` ("": none), `background_extent` ([-45000, 45000, -20000, 70000]), `background_opacity` (0.6); auto-target: `autotarget` (false), `autotarget_delay` (5 s), `autotarget_entry` ("type"), `autotarget_map_wait` (5 s), `autotarget_search_wait` (2 s), `autotarget_key_delay` (0.05 s), `autotarget_keys` ({}: read from your controls preset), `autotarget_search`, `autotarget_submit`, `autotarget_plot` (the galaxy map's steps: see the example file), `autotarget_dry_run` (false) |
 
 Command-line flags override the file for a single run:
 

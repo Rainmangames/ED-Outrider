@@ -43,6 +43,8 @@ switch them (they are not among the Server settings).
   - It needs your Inara API key ([inara.cz → Settings → API key](https://inara.cz/elite/cmdr-settings-api/)), per
     in-game commander, set in Settings → Uploads. The key stays on this Outrider: the page shows only its first and
     last four characters.
+  - A commander with no key sends nothing, and Settings says so. Once you enter a key (or another one), your ranks,
+    ship, inventory and the rest go whole again the next time the game writes them, most of it at your next login.
   - **Switch Inara off in any other app first** (EDMC, EDDI, EDDiscovery, EDDLite): two apps sending can get your key
     revoked. Outrider sees EDMC's setting on this PC and holds its own while EDMC sends; it cannot see the others.
   - A key or app Inara refuses stops the sending (not the recording) with Inara's words in Settings, until you change
@@ -57,7 +59,9 @@ hour (EDDN unreachable) is dropped, not sent late. A journal re-read sends nothi
 from where your journals are now, and switching an upload on starts from that moment: your history is never uploaded.
 
 Markets, outfitting, shipyards, carrier materials and plotted routes come from files the game rewrites each time, so a
-catch-up can send one only while the file is still the one that visit wrote (the last one, after a short gap). A codex
+catch-up can send one only while the file is still the one that visit wrote (the last one, after a short gap). Live,
+Outrider waits up to about half a minute for the game to write the file (it can write a fleet carrier's market well
+after the line); if it never comes, that one is not sent, and Outrider's log says so with what the file held. A codex
 entry caught up late has no body name, and a biology sample caught up late no position: both come from the live
 Status.json.
 
@@ -106,7 +110,7 @@ twice: EDDN has no way to tell. So:
 
 The header's Data tile shows, live, a line per upload in use: what it sent, has waiting and had refused in the last
 day. Settings → Uploads shows the same per service, with why nothing can be sent now (held by another uploader, a key
-EDSM refused, the beta or Legacy game) and the last message (a refusal, "saved").
+EDSM or Inara refused, the beta or Legacy game) and the last message (a refusal, "saved").
 
 If EDDN refuses one kind of message (markets, say) three times within an hour, or once with 426 (a version it no
 longer takes), Outrider stops sending that kind until it restarts: usually a game update EDDN does not take yet.

@@ -37,7 +37,8 @@ before.
   or on foot inside one). The system (and for 20 s after the jump whether it was
   undiscovered), the system you have targeted next (never reported, no scan data, partly or fully scanned, or visited;
   how many bodies are known; the star with ⛽ or ✕, and ⚠ for a neutron star or white dwarf), where the next jump goes
-  (the route's next stop, of the unfinished route plotted last, and a kept boxel's Next), fuel, and what the data
+  (the next stop of the unfinished route you plotted last: the Highway, a Road to Riches, Exomastery or trade route;
+  and a kept boxel's Next), fuel, and what the data
   aboard stands to lose once it passes your `unsold_warn` level: 🗺 and 🧬, how many times your rebuy it is ("× rebuy";
   none for a ship bought with Arx, whose hull has no credit value) and how long since you sold ("3 days unsold"; from a
   week "2 weeks 2 days since sold", or "2wk2d since sold" when that would not fit; whole days). Then, on a body,
@@ -51,7 +52,8 @@ before.
   show what they could be. The foot says how many are sampled, what is left and how many bodies are under your level.
 
 No panel covers the galaxy or system map, the orrery, the FSS, the SAA or the codex, and none shows in the hyperspace
-tunnel.
+tunnel or while the game is loading (from its launch, the main menu included, until your session is in), even after a
+crash left the old session's status behind.
 
 ## Starting it
 
@@ -69,7 +71,8 @@ tunnel.
 
 Settings → In-game overlay says how the window is doing (starting, drawing, waiting for the game's window). If the
 window stops by itself, Outrider starts it again after a growing wait; after five times in a row it gives up (Settings
-says so) until you switch the overlay off and on. **Show test panels** draws every panel (all six, switched on or
+says so) until you switch the overlay off and on. A window that drew for a minute or more before it stopped starts
+the count again. **Show test panels** draws every panel (all six, switched on or
 not) with made-up contents for a minute, without flying anywhere, even while Outrider's page is in front of the game.
 Start Outrider from your desktop (the launcher, or a terminal in your session): the window needs your screen.
 

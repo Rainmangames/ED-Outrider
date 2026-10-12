@@ -13,7 +13,7 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | File | What it does |
 |---|---|
 | `ed_outrider.py` | The server and the journal reader |
-| `static/` | The page (HTML, CSS, JS) — edit and reload; `sounds.json` holds the alert sounds; `favicon.svg` the tab icon; `tablet.css`, `themes/` and `fonts/` the tablet layout |
+| `static/` | The page (HTML, CSS, JS) — edit and reload; `sounds.json` holds the alert sounds; `favicon.svg` the tab icon; `tablet.css`, `themes/`, `fonts/`, `icons/` and `emblems/` the tablet layout and the themes |
 | `outrider/` | The modules below; those with a command line run as `python3 -m outrider.<name>` from this folder |
 | `outrider/unsold.py` | The unsold-data estimate; also works on its own (`python3 -m outrider.unsold --help`) |
 | `outrider/log.py` | One-line summaries of journal events for the Log view |
@@ -23,6 +23,7 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/tts.py` | Spoken alerts with Piper (optional), and playing lines and sounds on the PC |
 | `resources/speech.json` | The spoken lines, yours to edit (bans go in `data/speech_banned.json`) |
 | `outrider/speech.py` | Loads and checks `speech.json` |
+| `outrider/pronounce.py`, `resources/pronounce.json` | How Piper says the exobiology names: respellings turned into Piper's phonemes (English voices); yours go in `data/pronounce.json` |
 | `outrider/button.py` | The co-pilot button (Linux, optional); `--listen` |
 | `outrider/auth.py` | Sign-in for other devices: `[server] password`, session tokens, the sign-in rate limit |
 | `outrider/rail.py` | The tablet's control rail: the contexts (ship, SRV, Nomad, fighter, on foot), the default buttons, their states |
@@ -39,10 +40,14 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `outrider/checklist.py` | The Exo-Biology and Geology checklists: every species and site by galactic region, with what you have done with it there |
 | `outrider/codex_images.py` | The checklists' pictures: links to Canonn's screenshots and their credits, refreshed from Canonn once a day |
 | `resources/geo_codex.json` | The codex's Geology and Anomalies entries and how many sites of each are reported per region, for the Geology checklist |
+| `outrider/ggg.py` | Potential green gas giants: the community's seven-layer ladder model, from a scan's temperature, mass and radius |
+| `outrider/codex_bodies.py` | Which codex entry a star or planet type logs, for the ✦ / ✪ on types new to your codex |
+| `outrider/boxel.py` | Boxels: a procedural name's boxel, its place and its systems' addresses, for Boxel mode and the sector map |
 | `outrider/riches.py` | Road to Riches and Exomastery: Spansh's answer as route rows, what is still to do in a system, the arrival lines |
 | `outrider/uploads.py` | Uploads (opt-in, off by default): the session each journal line belongs to, the outbox, what may be sent |
 | `outrider/eddn.py` | EDDN: the messages a journal event becomes, and what EDDN's answer means |
 | `outrider/edsm.py` | EDSM's journal upload: what a line sends to your own EDSM account, and what EDSM's answer means |
+| `outrider/inara.py` | Inara: what a line sends to your own Inara profile (only what changed), and what Inara's answer means |
 | `outrider/overlay.py` | The in-game overlay, Outrider's side: what each panel draws, as draw lists the overlay window paints (GET `/api/overlay`) |
 | `outrider/overlay_runner.py` | Runs the overlay window as Outrider's child process on the game PC (restarted after a crash), installs PyQt6 when the overlay is on; `--setup` is the launchers' PyQt6 step |
 | `outrider/overlay_window.py` | The overlay window itself (PyQt6), over Elite's window; `--render <file.png>` draws one frame into a picture instead |
@@ -58,8 +63,8 @@ Changing Outrider yourself, or with a coding agent? Start with [`docs/AGENT_GUID
 | `scripts/build_codex_images.py`, `scripts/build_geo_codex.py` | Rebuild `resources/codex_images.json` and `resources/geo_codex.json` from Canonn's codex reference (read only) |
 | `scripts/riches_probe.py` | A one-off probe of Spansh's Road to Riches API that saves a real answer; not part of the tests |
 | `scripts/dark_icons.py` | Writes the tablet's Dark theme icons (Lucide, ISC) into `static/themes/dark.css` |
-| `data/` | Your own files, git-ignored: the database, `browser_defaults.json`, `speech_banned.json`, `backups/`, `piper-voices/`, `fonts/` |
-| `docs/` | Notes for contributors and their coding agents (code map, rules, journal traps, design notes, changelog); `images/` holds the screenshots |
+| `data/` | Your own files, git-ignored: the database, `browser_defaults.json`, `speech_banned.json`, `pronounce.json`, `backups/`, `piper-voices/`, `fonts/` |
+| `docs/` | Notes for contributors and their coding agents (code map, rules, journal traps, design notes, changelog); `guide/` is this user guide, `images/` its screenshots |
 
 For overlays, `GET /api/status` returns a compact JSON status and
 `GET /api/status.txt?fields=system,region,fuel,target,unsold,body,sampling` one line for an OBS text

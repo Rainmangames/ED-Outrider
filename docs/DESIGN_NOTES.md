@@ -14,20 +14,42 @@ upstream project's choices, not rules of the game.
   and a codex entry replaces it. It needs the journal's own temperature (green windows can be 0.00002 K wide): yours
   and Spansh's records keep it (checked: Spansh's equals the journal's); its class rules are a table. Written from the
   published rules; checked against Canonn's implementation on 21,747 giants (the author's 1,735 and 20,000 made up):
-  the same verdict every time. The author's 1,017 predictable giants: none called green, none in the codex.
+  the same verdict every time. The author's 1,017 predictable giants: none called green, none in the codex. Not a
+  curiosity (it would blend in there): its own mark, Now line and alert.
+- **✦ / ✪ on star and planet types go by EntryID, shown only** (2026-10-12, `outrider/codex_bodies.py`). The codex
+  logs each body type once per region, but its localised names are ambiguous for planets ("Terraformable", "Standard
+  gas giant"), so the table maps a body's class, luminosity, terraforming and atmosphere to the game's IDs, read from
+  the author's journals and EDDN's codex traffic. A type with no ID seen (a class II giant) gets no mark rather than a
+  wrong one. Shown on the page, never spoken. Your codex is your journals' codex lines plus every type you have
+  scanned in a region (not off a nav beacon): the game logs a type only the first time you scan one there, and a
+  commander's codex is often older than the journals kept, so a type scanned without a line was logged before.
+- **Discoveries are said once, and only the rare ones** (2026-10-11; Settings → Alerts groups them under
+  Discoveries, each with its own switches). Rare stars (black holes, Wolf-Rayet, carbon, O, Herbig Ae/Be,
+  supergiants, the rarer white dwarfs; neutron stars and ordinary giants are too common), FSS signals worth a detour
+  (Titans, Guardian beacons, generation ships, listening posts; tourist beacons, number stations and memorials are
+  shown, not said; ordinary megaships are traffic and left out), surface sites (Guardian, Thargoid, the planetary
+  anomaly; "other" is shown, never said: nobody knows what it is), notable stellar phenomena (the first FSS listing
+  in a system with none on record). Curiosities get one line per system, never the list ("check your panels"), once
+  per system ever (meta `curious_said`, live-only, the last 2,000 in the order said).
 - **Boxels: what can and cannot be known** (2026-10-11, `outrider/boxel.py`). A procedural name's boxel, its centre and
   any of its systems' id64 are computed from a known system's position (checked: 2,763 of 2,763 of the author's
   standard-sector systems), so auto-target checks a never-visited system by id64. A boxel's size (how many systems)
   cannot be known: the list offers TRY_ABOVE numbers past the highest known and marks "probably the end" when a
   higher one cannot be targeted. Sector names are not generated: recommendations cover sectors you have a system in.
   Hand-authored sectors use other origins: their names parse, their geometry is not claimed. The auto-target opt-in
-  needs a kept boxel (following whichever boxel you jump into would take over every target).
+  needs a kept boxel (following whichever boxel you jump into would take over every target). A boxel is complete by
+  itself once its end is known and every number below it visited; Done marks one finished either way (meta
+  `boxel_done`, undone any time): no Next, out of the recommendations. Skipping systems already fully scanned is
+  opt-in (meta `boxel_skip_known`): a system Spansh knows was often only honked in passing and keeps its bodies'
+  first discoveries, so only one with every body reported is passed over. The head shows the highest known number,
+  yours or Spansh's.
 - **Nothing is uploaded unless the player switches it on.** EDDN, EDSM and Inara (Settings → Uploads, off by default)
-  are the only uploads. Every other outside call is a read-only lookup: Spansh, EDSM, GitHub (the bio rules, ExploData's colour
-  tables and the update check), Hugging Face for voices, Canonn (its codex reference once a day; the page loads the
-  checklists' pictures from Canonn's storage), EDAstro for the DSSA carrier list when the Nearest finder opens. The
-  one exception is the AI layer (off by default, `[assistant]`): it sends the question and the read-only tools'
-  answers to the endpoint the player configures, so it is not a read-only lookup. This is the one full list.
+  are the only uploads. Every other outside call is a read-only lookup: Spansh, EDSM, GitHub (the bio rules, ExploData's
+  colour tables and the update check), Hugging Face for voices (the page plays a voice's ▶ sample from Piper's samples
+  site), Canonn (its codex reference once a day; the page loads the checklists' pictures from Canonn's storage), EDAstro
+  for the DSSA carrier list when the Nearest finder opens. The one exception is the AI layer (off by default,
+  `[assistant]`): it sends the question and the read-only tools' answers to the endpoint the player configures, so it is
+  not a read-only lookup. This is the one full list.
 - **EDSM has no test endpoint**, so its developer switch is a dry run (`OUTRIDER_EDSM_DRYRUN=1`: requests built and
   logged to `data/edsm-dryrun.jsonl` without the key, nothing sent; the rows end as `dry` and are never sent later).
   EDDN's is its `/test` schemas (`OUTRIDER_EDDN_TEST=1`). Neither is a setting.
@@ -263,7 +285,9 @@ upstream project's choices, not rules of the game.
   while docked** (the author, 2026-10-10, for docked). GuiFocus 6-11 (`OVERLAY_HIDE_FOCUS`) and the FSD-jump flag hide
   every panel; the ship's docked flag, or on foot in a station, hangar or social space (`FLAG_DOCKED`,
   `ON_FOOT_DOCKED`), hides Now. The test panels and Arrange mode are the exception: they show over the game's window
-  whatever is in front.
+  whatever is in front. Nothing shows while the game loads (2026-10-11): after a crash the game writes no Shutdown and
+  leaves Status.json saying live with the dead session's flags until the new session is in, so from a game launch (a
+  journal's first part) or LoadGame to the Location (meta `game_load`, journal-derived) the panels stay off.
 - **No rebuy multiple for a ship whose hull has no credit value** (the author, 2026-10-10). An Arx-bought ship's
   Loadout carries ModulesValue but no HullValue, and its rebuy is 5% of the modules alone, so "N× rebuy" said ~110
   on any trip and a rebuy-multiple level would always fire. Such a ship gets no rebuy in the risk figures (`risk_rebuy`,
@@ -375,7 +399,8 @@ upstream project's choices, not rules of the game.
   approached (`eddn.PLANETARY_STATIONS`), as EDMC adds them. shipyard/2 leaves out `allowCobraMkIV`: it describes the
   commander, not the station, and the other three leave it out. commodity/3's optional `statusFlags` is not sent (the
   author's call, 2026-10-10: not needed). outfitting/3 is not used (the author's call: the three main apps send
-  outfitting/2).
+  outfitting/2). A `Location`'s body is taken only when it is a planet or a star, as EDMC does: logged in docked, the
+  game names the station as the Body, which a later planetary Docked would have sent as its planet.
 - **Biology samples go to scanorganic/1, never the Analyse** (the author, 2026-10-10). The schema is on EDDN's develop
   branch and the gateway takes it. Log and Sample only (Analyse can be written in another system), after the location
   cross-check, `Body` sent as `BodyID`; `BodyName` only when the body you approached has that id; `Latitude` /
@@ -423,6 +448,18 @@ upstream project's choices, not rules of the game.
   (aplay has none), so the server scales the 16-bit WAV it hands them.
 - **Your own sounds are WAV only, up to 3 s** (review S16): every player and browser takes WAV, and the voice waits
   for a sound to end (the page holds it for the file's length, at most 3 s).
+- **The voice lab is part of the page, outside the alert queue** (the author, 2026-10-11; it was a separate Tk window,
+  `voice_lab.py`, now removed). It plays in the browser in use from the server's Piper (`api/say`), so it works on a
+  Docker server and the tablet and needs no python3-tk, and never goes through the alert queue, hush or "play on this
+  PC". More voices downloads a voice without switching to it: you hear it first, then Use this voice. A voice trained
+  on many people speaks as the speaker picked for it, kept per voice (meta `voice_speakers`, live-only); before, the
+  first speaker always spoke.
+- **Hard words are given as respellings** (2026-10-12, `outrider/pronounce.py`). Piper's English voices read the
+  exobiology Latin by espeak's English rules; `resources/pronounce.json` gives each genus and species word as a
+  respelling ("fon-TIK-yoo-loo-uh", the stressed syllable in capitals, or raw `[[phonemes]]`), and each syllable goes
+  through Piper's own espeak in the voice's own accent. Whole words only, English voices only. Your own
+  `data/pronounce.json` goes on top (the voice lab's How is it said box); the phrase cache's key carries the table's
+  version, so a change is heard at once. The shipped respellings are a first pass, to be checked by ear.
 - **Two status reports** (review S23, done): Vespa's "status report" is composed on the server (`outrider/ask.py`:
   the system, fuel, unsold, the Highway's next stop); the co-pilot button's double tap and the Now bar ask the window
   that speaks for the page's, which depends on each browser's thresholds and plan logic.
@@ -504,6 +541,9 @@ upstream project's choices, not rules of the game.
 - **Core module health is as of the last Loadout or repair;** the journal logs nothing in between, so jet-cone
   boosts since are only counted.
 - **Status.json does not update while you stand still,** so positions can be up to a reading old.
+- **Which notable stellar phenomenon you dropped at is not known:** the journal says only "a ring phenomenon", and two
+  sites can share a ring, so each drop counts as one site visited (`phenomena_sites`): dropping twice at one site counts
+  twice. A system's count is the most one FSS listing had (the game lists several of a kind as identical lines).
 - **Streak dots for arrivals before the strip existed are hollow** (Spansh cannot be asked about the past);
   carrier jumps usually have no arrival-star scan.
 - **A carrier jump booked just before quitting shows as "not yet confirmed"** until the next login.
@@ -564,6 +604,8 @@ confirmed while playing. Treat reports about them as likely real.
   current one (a camera yaw before the search, 1.5 s before Enter, a zoom in the plot step) is what worked on
   2026-10-03 (the author's bindings, Linux/Proton). Not yet tried: a run triggered by a real supercharge on a route,
   Target next and Retry from the page, other keyboard layouts and presets, and both entry modes side by side.
+- Inara uploads: not yet tried live (a refusal shows in Settings in Inara's words). Built from Inara's API
+  documentation, tested with fakes (`tests/test_inara.py`).
 - EDDN: ApproachSettlement, CarrierJump and FCMaterials messages have not been seen live on EDDN's relay yet, nor a
   planetary station's Docked with its Body.
 - The in-game overlay's real panels in live play (only the test panels have been seen over the game), Arrange mode

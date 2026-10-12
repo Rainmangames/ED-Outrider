@@ -11,8 +11,9 @@
 Open **<http://127.0.0.1:8025/>** and go fly.
 
 `launch_outrider.sh` sets Outrider up the first time (a virtual environment in `.venv` with `requirements.txt`),
-installs again only when `requirements.txt` has changed (after a `git pull`), and otherwise starts Outrider at once;
-its arguments go to Outrider (`./launch_outrider.sh --port 8026`). With the [in-game overlay](overlay.md) on
+installs again only when `requirements.txt` has changed (after a `git pull`) or the environment is broken, and
+otherwise starts Outrider at once; its arguments go to Outrider (`./launch_outrider.sh --port 8026`), and relative
+paths in them (`--config my.toml`) are taken from the folder you run it in. With the [in-game overlay](overlay.md) on
 (`[overlay] enabled = true`) it also installs PyQt6 (about 100 MB, into `.venv`) when it is missing; a failed install
 never stops Outrider starting. By hand it is
 `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`, then `.venv/bin/python ed_outrider.py`.
@@ -24,7 +25,9 @@ co-pilot button is Linux only for now. Windows is less tested than Linux: if som
 is welcome.
 
 > [!TIP]
-> The first start reads all your journals (a few seconds); after that it only reads what's new.
+> The first start reads all your journals (a few seconds, or a few minutes for years of them); after that it only
+> reads what's new. When an update changes how journals are read, its first start reads them all again once, and the
+> start-up log says so first, with why.
 > Journal folders are found automatically on Windows and Steam/Proton. A browser needs one click on the
 > page before it plays sound: the red **Click Here To Allow Audio** pill asks for it.
 
@@ -45,7 +48,7 @@ Elite's window with **`wmctrl`** and **`xprop`** / **`xwininfo`** (the `x11-util
 `sudo apt install wmctrl x11-utils`.
 
 Start Outrider with the `.venv`'s Python (`.venv/bin/python ed_outrider.py`, as above): plain `python3 ed_outrider.py` finds Piper and evdev in a `.venv` in the Outrider folder, but aiohttp must then be installed for that `python3` too.
-Your own files (the database, backups, downloaded voices, banned lines) all go in `data/`.
+Your own files (the database, backups, downloaded voices, banned lines, your own pronunciations) all go in `data/`.
 
 Run this way, on the PC the game runs on, everything works. Further down: [opening the page from a tablet or
 another device](#-other-devices-on-your-network), [running Outrider as a server in Docker](#-running-as-a-server-docker)
@@ -184,8 +187,8 @@ would without the proxy.
 Outrider backs itself up at start when the last backup is over a day old, and a few seconds after you quit
 the game. **Back up now** in the Data tile does it on demand.
 
-- Each backup is a dated zip in `data/backups/` holding the database, `browser_defaults.json`, the speech files
-  and your config file. The newest 7 are kept (`backup_keep`).
+- Each backup is a dated zip in `data/backups/` holding the database, `browser_defaults.json`, the speech files,
+  your config file and your own pronunciations (`pronounce.json`). The newest 7 are kept (`backup_keep`).
 - Every journal is also copied into `data/backups/journals/` and never deleted. Under Steam/Proton an uninstall
   deletes your journals, so this copy matters.
 - Every backup is checked before it counts; a bad one never rotates a good one out.

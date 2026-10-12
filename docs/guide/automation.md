@@ -9,7 +9,9 @@ only (never in Docker). On arriving by hyperspace it waits a moment,
 holds Primary Fire, and says how it went ("System Scan Completed, 12 Bodies discovered"). It is off until
 you tick it in ⚙ Settings.
 
-- It waits while a map or panel is open, and while the HUD is in combat mode (switch to analysis mode).
+- It waits while a map or panel is open, and while the HUD is in combat mode (switch to analysis mode). It never
+  presses while the game is at its menu or closed (the key would go to whatever window has focus): it waits, then
+  gives up.
 - It learns which fire groups the scanner is in, per ship, and waits on a group where it has missed twice in a
   row (one miss can be an alt-tab, which sends the key to another window).
   The dialog's **forget** clears that after you move the scanner.

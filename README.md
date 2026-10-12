@@ -38,11 +38,13 @@ also run 24/7 on a home server in Docker.
 | 🔭 **Find the undiscovered** | Every known system within 25 ly is listed. If the galaxy map shows one that *isn't* on the page, nobody with an uploader has been there. |
 | 🔊 **Hear it before you jump** | Target a system and get a fanfare if it's a brand-new discovery, a cheerful note if it's known but unscanned, a thud if it's been done. |
 | 🪐 **See the whole system** | Every body: value, gravity, atmosphere, rings and hotspots, curiosities, and which exobiology species it could hold — before you probe or land. |
+| 🌟 **Rare finds flagged** | Rare stars, stellar phenomena, Guardian and Thargoid sites, Titans and other signals worth a detour, potential green gas giants and star or planet types new to your codex: marked in Nearby and Here, most of them said out loud when you find them. |
 | ⚠️ **Don't leave money behind** | Target onward with mapping or exobiology worth your while still undone and the page says so, out loud if you like. Ordinary systems stay quiet. |
 | 💰 **Know what's on board** | Unsold cartographics and exobiology in credits, bonuses included, and your unsold 🏁 first discoveries. Dock somewhere that buys it and it tells you to sell. |
 | 🌿 **On the ground** | What is left to sample on the body, a countdown to the next colony, and a warning when a run elsewhere would be discarded. |
 | ⛽ **Fuel you can trust** | Jumps left at max range and at your pace, laden range, fuel per hop, how scoopable your recent stars have been, and a nudge to top up before a dry stretch. |
 | 🧭 **Decide where to go** | Unfinished systems nearby, the nearest buyers for your data, bookmarks and a next stop, stellar phenomena, and a search across Spansh. |
+| 📦 **Boxel by boxel** | Work through the boxel you are in by number: what you and Spansh know of each system, the next one to try with 🎯, the nearest boxels of each kind, and a map of the sector's boxels. |
 | 🛣 **Neutron Highway** | Plot a neutron route with Spansh for any ship you have flown; Outrider follows it as you fly and says the next stop. |
 | 💰 **Road to Riches, Exomastery** | Plot a [Spansh Road to Riches](https://spansh.co.uk/riches) or [Expressway to Exomastery](https://spansh.co.uk/exobiology) route in the Plot Route tab; Outrider follows it as you fly, shows what is left to scan and map in each system from your journal, and says it on arrival. |
 | 📦 **Cargo and your carrier** | Your hold with what you paid, and your fleet carrier's cargo and tritium tracked from your journal, with no Frontier sign-in. |
@@ -52,7 +54,7 @@ also run 24/7 on a home server in Docker.
 | 📈 **The long view** | Each trip from sale to sale with what it actually paid, what each ship loss cost, your best finds, ranks and career statistics. |
 | 🗣 **A voice with personality** | A natural neural voice, down to business, sarcastic or sweet, briefing you on arrival and warning before you leave something unfinished. |
 | ⛏️ **Rhino mining** | A heading-up surface map on Now with your rigs, sample points and ship, and every collection kept per body. |
-| 📱 **A tablet in the cockpit** | Every page in a touch layout with nine themes, alerts as banners, game buttons on a control rail, and the voice on the tablet if you like. |
+| 📱 **A tablet in the cockpit** | Every page in a touch layout with ten themes, alerts as banners, game buttons on a control rail, and the voice on the tablet if you like. |
 | 🎙️ **Ask out loud** | "Hey Vespa, status report": answered in the voice from what Outrider knows, with an optional AI for anything else. |
 | 🎯 **Automation (game PC; Linux, Windows experimental)** | Auto honk fires the Discovery Scanner on arrival, auto-target targets the next route system after a supercharge, and one HOTAS button (Linux) targets the next route system with a tap, gives a status report with a double tap and hushes with a hold. |
 
@@ -79,12 +81,12 @@ Everything about installing, the optional parts, Docker, other devices and backu
 |---|---|
 | **[What's new](docs/guide/whats-new.md)** | What each release brings: new things to try, settings worth a look, anything to know before updating |
 | <a id="-running-as-a-server-docker"></a><a id="-other-devices-on-your-network"></a><a id="-backups"></a>**[Install and run](docs/guide/install.md)** | Getting started in full (Linux, Windows, the optional parts), running as a server in Docker, other devices on your network, backups |
-| <a id="-the-views"></a><a id="-the-surface-map"></a>**[The views](docs/guide/views.md)** | Every tab (Overview, Nearby, Here, Map, History, Bio/Geo with the Exo-Biology and Geology checklists, Bookmarks, Log, Materials, Search, My firsts, Now; Plot Route has its own page), the header tiles, the desktop themes, the surface map |
+| <a id="-the-views"></a><a id="-the-surface-map"></a>**[The views](docs/guide/views.md)** | Every tab (Overview, Nearby, Here, Map, History, Bio/Geo with the Exo-Biology and Geology checklists, Bookmarks, Log, Materials, Search, My firsts, Now; Plot Route has its own page), the header tiles, the desktop themes, potential green gas giants, boxel exploration, the surface map |
 | <a id="-the-neutron-highway"></a>**[Plot Route](docs/guide/plot-route.md)** | The Neutron Highway (exact and neutron plotters), Road to Riches, Exomastery and trade routes, following a route, 🎯 and auto-target, the nearest place to dock |
 | <a id="-cargo-and-your-carrier"></a><a id="-trading"></a>**[Cargo and trading](docs/guide/cargo-and-trading.md)** | Your hold and your fleet carrier's (tracked, no Frontier sign-in), the carrier's tritium, Sell / Buy from Spansh's markets, trade routes |
 | <a id="-alerts"></a><a id="-the-voice"></a><a id="-ask-outrider-by-voice"></a><a id="-ask-an-ai-about-your-game"></a>**[Voice and alerts](docs/guide/voice-and-alerts.md)** | What Outrider tells you and when, the voice and its personalities, editing and banning lines, asking by voice, asking an AI |
 | <a id="-auto-honk"></a><a id="-the-co-pilot-button"></a>**[Automation](docs/guide/automation.md)** | Auto honk and the co-pilot button (on the game PC) |
-| <a id="-on-a-tablet"></a>**[On a tablet](docs/guide/tablet.md)** | The touch layout at /tablet, its nine themes, the control rail, the Android app |
+| <a id="-on-a-tablet"></a>**[On a tablet](docs/guide/tablet.md)** | The touch layout at /tablet, its ten themes, the control rail, the Android app |
 | **[In-game overlay](docs/guide/overlay.md)** | Panels drawn over the game: the system worth your time, the body you are heading to, a surface radar, the system strip, Now (To-Do & Info), bio signals; arranging them |
 | **[Uploads](docs/guide/uploads.md)** | EDDN, EDSM and Inara (opt-in, off by default): what is sent and never sent, one uploader at a time, the keys |
 | <a id="-settings"></a><a id="-good-to-know"></a>**[Settings and good to know](docs/guide/settings.md)** | Every setting and config key, and the things worth knowing (what "not on the page" means, estimates, updates) |

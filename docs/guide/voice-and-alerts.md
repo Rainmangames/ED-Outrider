@@ -16,9 +16,12 @@ notification and be spoken (🗣), chosen per alert in **⚙ Settings → Alerts
 - **discoveries**, grouped together in Settings → Alerts, each with its own switches, said with delight in every
   personality (the sarcastic and profane ones included: the co-pilot likes new things):
   - notable stellar phenomena the FSS finds in a system where you have none on record ("three notable stellar
-    phenomena, all in rings");
+    phenomena, all in rings")
   - a rare star resolved by the arrival's own scan or the FSS ("a black hole, the main star", "a Wolf-Rayet star at
-    B": black holes, Wolf-Rayet, carbon, O-type and Herbig Ae/Be stars, supergiants, the rarer white dwarfs)
+    B": black holes, Wolf-Rayet, carbon, MS- and S-type, O-type and Herbig Ae/Be stars, supergiants, the rarer white
+    dwarfs, exotic stars; neutron stars and ordinary giants are too common to count)
+  - a potential green gas giant: one of your own scans fits the community's ladder model, a guess to check in the
+    system map (see [Potential green gas giants](views.md#-potential-green-gas-giants))
   - surface sites on a body: Guardian or Thargoid sites (said once the DSS has mapped the body: the journal names them
     only then) or an unknown planetary anomaly (said when the FSS finds it)
   - an FSS signal worth a detour, new to the system: a Titan, a Guardian beacon, a generation ship, a listening post
@@ -77,7 +80,8 @@ Outrider runs (a Docker server too):
   (with that speed).
 - **Speakers**: some Piper voices are many people in one download (`en_GB-vctk-medium` has 109, `en_US-libritts_r-medium`
   about 900). The lab shows a speaker list for those: **‹ ›** step through them and **🎲** picks one at random, each
-  played as you go. The speaker you use is kept for that voice, and Settings → Voice shows it beside the voice.
+  played as you go. The speaker you use is kept for that voice, and Settings → Voice shows it beside the voice, where
+  you can change it too.
 - **More voices** lists every Piper voice by language, sorted by name, quality or size. **▶ sample** plays Piper's own
   recording of a voice (from its website) before you download anything. **Download** fetches it without switching:
   when it is ready it is picked above, so you can ▶ Hear it (and its speakers) and press Use this voice if you like it.

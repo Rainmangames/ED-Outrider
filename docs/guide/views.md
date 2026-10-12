@@ -10,12 +10,12 @@
 <b>Nearby</b> — every known system within range (20–50 ly, the Where tile's dropdown): distance, how much
 is scanned, the main star and whether it scoops, notable bodies, curiosities (🔭: odd orbits, ringed landables, rare
 classes such as water giants, helium giants, Sudarsky class V and green gas giants) and a credit estimate. Sort,
-or hide visited and fully scanned systems. A dashed <i>old data</i> mark flags Spansh records from before
-Odyssey (thin-atmosphere planets there may hold unsampled life). ⛏ N counts planetary mining locations on
-ground worth a Rhino. 🌀 N counts the notable stellar phenomena your FSS found there (life in clouds or rings; hover
+hide visited and fully scanned systems, or keep only those one jump away. A dashed <i>old data</i> mark flags Spansh
+records from before Odyssey (thin-atmosphere planets there may hold unsampled life). ⛏ N counts planetary mining
+locations on ground worth a Rhino. 🌀 N counts the notable stellar phenomena your FSS found there (life in clouds or rings; hover
 for what they are), dimmed once you have been to them. ⭐ marks a rare star (a black hole, a Wolf-Rayet, a carbon,
-O-type or Herbig Ae/Be star, a supergiant, a rare white dwarf), from Spansh's records too, so you see it before you go. 🏛 👾 ❔
-mark Guardian sites, Thargoid sites and planetary anomalies on a system's bodies (your own scans: an anomaly shows once
+MS, S or O-type star, a Herbig Ae/Be star, a supergiant, a rare white dwarf, an exotic star), from Spansh's records
+too, so you see it before you go. 🏛 👾 ❔ mark Guardian sites, Thargoid sites and planetary anomalies on a system's bodies (your own scans: an anomaly shows once
 the FSS finds it, Guardian and Thargoid sites only once the DSS has mapped the body); Here tags the body itself. 📍
 counts FSS signals worth a detour: Titans, Guardian beacons, generation ships, listening posts, number stations, tourist
 beacons and memorials (hover for which).
@@ -32,9 +32,10 @@ valued with the ×5 first-footfall bonus, except in a populated system: Vista Ge
 A footer under the list says what each icon means, for the icons that system's list shows (none, no footer); it
 stays in view while the list scrolls.
 "🧬? check in the FSS" marks a landable body you have only from an AutoScan or a nav beacon, whose signals nobody
-counted, where life is possible. The body panel lists why each other genus is not expected ("pressure too
-low"). Flying low over a body in your ship (under 5 km), the on-body strip already shows its bio card. A star's
-panel says its kind in words ("main sequence", "white dwarf (hydrogen-rich)"), a biology codex entry links to
+counted, where life is possible. A finished species is one line, its codex entry with what it pays ("📖 Bacterium
+Alcyoneum - Red ✦ 8.3M"), the colour's word in that colour (Settings → Display can turn that off). The body panel lists
+why each other genus is not expected ("pressure too low"). Flying low over a body in your ship (under 5 km), the
+on-body strip already shows its bio card. A star's panel says its kind in words ("main sequence", "white dwarf (hydrogen-rich)"), a biology codex entry links to
 Canonn's Bioforge (where it grows, and in what conditions), and **⬇ CSV** in the heading saves the system's bodies
 and values as a spreadsheet.
 <br><br><img src="../images/here.png" alt="The current system">
@@ -43,8 +44,8 @@ and values as a spreadsheet.
 <tr>
 <td width="50%" valign="top">
 <b>Map</b> — a 3D view: left-drag to rotate, right-drag to move, scroll to zoom. Your path in orange,
-your first discoveries in gold, visited systems in blue (by touch: one finger rotates, two move, pinch zooms); tick <i>boost stars</i> for neutron stars and
-white dwarfs.
+your first discoveries in gold, visited systems in blue (or colour them by star class; by touch: one finger rotates, two move,
+pinch zooms); tick <i>boost stars</i> for neutron stars and white dwarfs.
 <br><br><img src="../images/map.png" alt="The 3D map">
 </td>
 <td width="50%" valign="top">
@@ -79,8 +80,8 @@ and tons, saved spots, the last date and the distance.
 <td width="50%" valign="top">
 <b>Schematic</b> — Here switches between <i>list</i>, <i>tree</i> (orbital order) and <i>schematic</i>: stars
 with their planets left to right, moons underneath, barycentres boxed, each scanned body drawn from its scan data (as
-in the body panel: class colours, bands, oceans, clouds, atmosphere, rings). <i>Split</i> (on by default)
-keeps the schematic under the list or tree.
+in the body panel: class colours, bands, oceans, clouds, atmosphere, rings). <i>Split</i> (on the Here tab, on by
+default) keeps the schematic under the list or tree.
 <br><br><img src="../images/schematic.png" alt="The system schematic">
 </td>
 </tr>
@@ -104,7 +105,8 @@ behind</b> lists nearby systems with work over your thresholds.
 </tr>
 </table>
 
-The **Overview** at the top shows Here and Nearby together: drag the divider, swap sides or stack them.
+The **Overview** at the top shows Here and Nearby together: drag the divider, swap sides or stack them. Nearby's
+Standard / Boxel switch sits on its bar, left of ▾ This system.
 
 **Bookmarks** is its own tab: the systems you have bookmarked (☆ beside any system), each with its note and distance.
 The same ☆ sets your **next stop**, shown in the header until you get there. **Plot Route** has its own page:
@@ -116,7 +118,7 @@ them only on a small window). A table too wide for its box
 switches to short forms ("HMC", "G star"; hover for the full text) rather than scroll sideways.
 
 **Themes.** ⚙ Settings → Display → **Theme on this browser** dresses the page in one of the tablet's themes: LCARS,
-Elite, Babylon 5 (Earthforce, Narn, Minbari, Centauri), Sith, Rebel Alliance or Dark, each with its colours, its
+Elite, Babylon 5 (Earthforce, Narn, Minbari, Centauri, Vorlon), Sith, Rebel Alliance or Dark, each with its colours, its
 lettering on the title, tabs and labels, and its shapes. **Default - Outrider** is the look above, and the only one that
 follows your system's light mode. Each browser keeps its own choice, and the tablet has its own.
 
@@ -150,8 +152,8 @@ with different reporters.
 
 The **header** shows the galactic region, ranks, fuel, hull, any core module under your level (`module_warn`,
 80%; as of the last Loadout or repair, since the journal logs nothing in between), your carrier's jump countdown
-(and its tritium while it is on a sell order: see [Cargo and trading](cargo-and-trading.md)), the nearest places to
-sell, and the last backup.
+(and its tritium while it is on a sell order: see [Cargo and trading](cargo-and-trading.md); on the game PC 🎯 beside
+its system, when it is elsewhere, puts it in the galaxy map), the nearest places to sell, and the last backup.
 
 The **fuel tile** counts jumps as the ship gets lighter ("≈6 jumps at max range (484 ly), 3,500 at your pace"),
 for any drive, engineered or not, from your own Loadout and jumps. Nearby shows laden range and the targeted
@@ -181,7 +183,9 @@ journal's own figures for: your scans, and Spansh's records of other people's.
 
 The codex logs every star and planet type once per region, the first time you scan one there (a K-type giant, a
 terraformable water world, a rocky body with an atmosphere...). Outrider knows which entry each body would log and which
-your codex has:
+your codex has: the codex lines in your journals, and every type you have scanned yourself in a region (the game logs a
+type the first time, so one you scanned without a line was logged before your journals begin; a nav beacon's data does
+not count).
 
 - **✦** beside a body in Here: its type is not in your codex for this region; **✪**: in your codex nowhere. The
   tooltip names the type ("K-type giant: new to your codex in this region").
@@ -189,8 +193,8 @@ your codex has:
   too, so a system can be picked for it before you go.
 
 Shown only, never spoken. A type the journals give no codex entry for (a class II giant star, a helium gas giant) gets
-no mark, nor does a body Spansh lists without its luminosity or atmosphere. Without a single body type in your
-journals' codex there is nothing to compare with, and nothing is marked.
+no mark, nor does a body Spansh lists without its luminosity or atmosphere. With no body type in your journals at all
+(no codex line, no scan of your own) there is nothing to compare with, and nothing is marked.
 
 ## 📦 Boxel exploration
 
@@ -198,31 +202,44 @@ A procedural system name says which cube of space (a **boxel**) it is in and wha
 in `Drojau TF-H c13-5` the **c** is the mass code (a 40 ly cube of K and M stars, some G) and **5** the system's number.
 A boxel's systems are numbered 0, 1, 2… without gaps, so you can visit them in order.
 
-**Nearby → Boxel** (the switch at the top of Nearby, in the Overview pane and the Nearby tab alike) lists the boxel you
-are in by number: systems you visited show your scans as Nearby does, ones Spansh knows are marked "known" (someone
-has been there), the rest are "to try". **Next** (with 🎯) is the lowest number you have not visited, and every row has
-its own 🎯: auto-target types the name into the galaxy map and checks the game targeted it, even for a system nobody
-has visited (Outrider works out its address from the boxel).
+**Nearby → Boxel** (the switch on the Overview's bar, left of ▾ This system, and in Nearby's options on the Nearby tab;
+one choice for both) lists the boxel you are in by number: systems you visited show your scans as Nearby does, ones
+Spansh knows are marked "known" (someone has been there), the rest are "to try". Above the list: how many you have
+visited, how many Spansh knows and the **highest known** number (yours or Spansh's). On the game PC, **Next** (with 🎯)
+is the lowest number you have not visited, and every row has its own 🎯: auto-target types the name into the galaxy
+map and checks the game targeted it, even for a system nobody has visited (Outrider works out its address from the
+boxel).
+
+<p align="center">
+  <img src="../images/boxel.png" alt="Nearby in Boxel mode: the boxel you are in by number, visited ones with your scans, one Spansh knows, the rest to try, Next with its target button" width="900">
+</p>
 
 - **⚠ Outrider cannot know how many systems a boxel holds.** It offers a few numbers above the highest known; explore
   until a name the galaxy map cannot find. When auto-target cannot find one above every known number, the list says
   "probably the end" (**retry** if it was only a hiccup).
-- **✓ complete** shows by itself once the end is known and you have visited every system below it. **✓ Done with this
-  boxel** is your call, complete or not (undo any time). Either way Next offers nothing more, the boxel leaves the
-  recommendations (the next nearest of its kind takes its place; "done or complete nearby" lists them), and a kept
-  boxel is let go.
+- **✓ complete** shows by itself once the end is known and you have visited every system below it (**✓ empty** when
+  the galaxy map found none of its names). **✓ Done with this boxel** is your call, complete or not (undo any time).
+  Either way Next offers nothing more, the boxel leaves the recommendations (the next nearest of its kind takes its
+  place; "done or complete nearby" lists them), and a kept boxel is let go.
 - A system Spansh knows says how much of it anyone reported: "known · 3 of 14 bodies", "known · honked only", "known ·
   all 38 bodies". **Skip systems already fully scanned** (opt-in): Next and the auto-target pass over the ones with every
   body reported; one only passed through or partly scanned still has first discoveries to find.
 - **📌 Keep this boxel** stays on it when you jump out. **Auto-target the next on arrival** (opt-in) targets the kept
   boxel's next system each time you arrive in one of its systems.
-- **Boxels nearby** lists the nearest boxels of each mass code in sectors you have been to, what each kind tends to
-  hold, and your own figures for it ("from your 852 d systems: 41% with biology…"). **Explore this boxel** keeps one.
+- **Boxels nearby** lists the nearest boxels of each mass code in sectors you have been to, with each one's highest
+  known number, what each kind tends to hold, and your own figures for it ("from your 852 d systems: 41% with
+  biology…"). **Explore this boxel** keeps one.
 - **Sector map** draws the sector you are in as a grid of one mass code's boxels (b to h: a's 128 × 128 a layer is too
-  many), one Y layer at a time (yours first, ▲ ▼ for the others, and the layers you have visited in listed): visited
-  (with how many, on the coarser grids), ✓ complete, done, Spansh knows, you outlined, the kept boxel framed. +Z
-  (toward the core) is up and +X right, as on the galaxy map. A tap explores that boxel.
-- Hand-made sectors ("Col 285 Sector…") lay their boxels out differently: their list works, 🎯 cannot check them.
+  many), one Y layer at a time (yours first, ▲ ▼ for the others, the layers holding your visits listed beside them):
+  visited (with how many, on the coarser grids), ✓ complete, done, Spansh knows, you outlined, the kept boxel framed.
+  +Z (toward the core) is up and +X right, as on the galaxy map. A tap explores that boxel.
+
+<p align="center">
+  <img src="../images/boxel-grid.png" alt="The sector map: one layer of the sector's c boxels as a grid, the ones you have visited numbered, its legend below" width="700">
+</p>
+
+- Hand-made sectors ("Col 285 Sector…") lay their boxels out differently: their list works, without 🎯 (Outrider
+  cannot work out their systems' addresses).
 
 ## 🧬 The exobiology checklist
 
@@ -272,7 +289,9 @@ colour.
 ## 🗺️ The surface map
 
 On a planet, Now shows a map under its lines: on the ground, in the SRV, on foot, or flying below 1,000 m
-(it hides again 100 m higher). Hiding deletes nothing.
+(it hides again 100 m higher). Hiding deletes nothing. The Overview shows the same map in the lower half of its system
+pane (a body panel you open takes its place until you close it), with the body you are on brought to the top of the list
+above it; the firsts and the checklist under the system's name give it their room.
 
 <p align="center">
   <img src="../images/surface.png" alt="The surface map on Now: rigs, samples, a mining location and the ship" width="900">
@@ -294,7 +313,7 @@ On a planet, Now shows a map under its lines: on the ground, in the SRV, on foot
   placed or last collected from.
 - **The leash:** the game destroys a rig 5 km from its Rhino. Past 3.5 km it turns red and the voice warns,
   again at 4.5 km ("Rig 3 is 3.8 kilometres away, behind you; it is lost at 5.": which way, in eight sectors).
-- **Strip copy:** a tick in the dialog adds a small copy to the on-body strip, with a one-line legend.
+- **Strip copy:** a tick in ⚙ Settings → Surface map adds a small copy to the on-body strip, with a one-line legend.
 
 **Marking rigs.** The game logs nothing when you deploy or pick up a rig, so you tell Outrider with the
 co-pilot button. In the Rhino on a planet:

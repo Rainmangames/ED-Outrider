@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-12 · Docs sweep, screenshots in the Elite theme
+- Every guide page, the README and the developer notes checked against the code and the work since 2026.10.21: Inara,
+  the carrier's 🎯, boxel mode and its sector map, the rare finds, the ✦ body-type marks, the voice lab's speakers and
+  How is it said, every config key with its default in Settings, and stale details fixed.
+- Every page screenshot retaken in the Elite theme (the overlay's too), the tablet in its LCARS; Overview and Here
+  show a system with work left; new: Boxel mode and its sector map in the guide.
+
 ## 2026-10-12 · ✦ on body types: your scans count as logged; pronunciations backed up
 - The ✦ / ✪ on star and planet types marked nearly every body in the regions explored before the journals kept (the
   author's go back to May 2023, their codex further: Inner Orion Spur held 2 body-type codex lines, so 42 types read as
