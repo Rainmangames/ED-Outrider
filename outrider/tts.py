@@ -485,9 +485,9 @@ class Speaker:
         return True
 
     def _fetch_only(self, name):
-        before = self.status
+        before, mine = self.status, f"downloading {name} for the voice lab (about 63 MB)"
         try:
-            ok = self._download(name, f"downloading {name} for the voice lab (about 63 MB)")
+            ok = self._download(name, mine)
         except Exception as e:  # noqa: BLE001 -- the lab says it failed, nothing else changes
             ok = False
             print(f"spoken alerts: could not download {name}: {type(e).__name__}: {e}", file=sys.stderr)
@@ -495,8 +495,12 @@ class Speaker:
             self.fetching.discard(name)
         if not ok:
             self.fetch_failed[name] = "the download failed"
-        # the status goes back to what it said (the voice in use did not change); the page sees the new voice installed
-        self._set_status(before if before.startswith(("ready", "using")) else ("ready" if self.ready else before))
+        # the status goes back to what it said (the voice in use did not change), unless a switch or another download
+        # changed it meanwhile: that one's says what is going on (review 2026-10-12); the page sees the new voice either way
+        if self.status == mine:
+            self._set_status(before if before.startswith(("ready", "using")) else ("ready" if self.ready else before))
+        else:
+            self.on_change()
 
     def _switch_loop(self):
         while True:

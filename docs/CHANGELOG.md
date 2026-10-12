@@ -2,6 +2,19 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-12 · Review fixes: the overnight check
+A Fable check of 2cb1e60..9af0984 (and the EDDN listener tool): 8 bugs in the repository, all fixed with a test each.
+- Voice: picking the voice already speaking (Settings or the lab's Use this voice) answered ok but did nothing: it was
+  neither remembered nor did it stop a background switch to the configured voice. A voice named is always used now.
+- Voice lab: a voice not in use opened on speaker #0, and Use this voice then overwrote the speaker kept for it; it
+  opens on its kept speaker now. A lab download ending no longer wipes a switch's or another download's status.
+- Boxels: a stale end mark (a hiccup, then that number found) blocked every later end and made the recommendations call
+  the boxel complete; one place now says a boxel's end. An empty boxel (-0 not found) is complete ("✓ empty").
+- Boxel mode refetched its list and the recommendations on every journal line; now on a jump, a scan here, or a change.
+- Overview: bringing your body into view scrolled the whole window when the list was short; only the list moves now.
+- EDDN: a catch-up's companion-file wait was timed like a live one, re-read the file on every catch-up line and logged
+  a misleading "not written"; a catch-up's wait ends after its lines again, quietly.
+
 ## 2026-10-12 · Potential green gas giants
 - The community's seven-layer ladder model (CMDR Regza, from a hint by Dr. K. Ross and CMDR Arcanic; published by
   Canonn on 2026-10-05) predicts which gas giants render green from the journal's own temperature, mass and radius

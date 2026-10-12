@@ -471,10 +471,10 @@ class StationData(unittest.TestCase):
         import contextlib
         from outrider.core import iso_ts, ts_seconds
         t = ts_seconds(self.t)
-        self.s.source, self.s.now = "J.log:700", 7000.0
+        self.s.source, self.s.now = "J.log:700", t   # a live line: the server's clock is the line's time
         self.file("Market.json", {"timestamp": iso_ts(t - 60), "event": "Market", "Items": []})   # the last visit's
         self.assertEqual(E.build(self.ev("Market", StationType="FleetCarrier"), self.s, "v"), [])
-        self.s.now = 7012.0
+        self.s.now = t + 12
         self.file("Market.json", {"timestamp": iso_ts(t + 12), "event": "Market", "StationType": "FleetCarrier", "Items": []})
         [(name, env, origin)] = E.idle(self.s, "v")
         self.assertEqual((name, origin, env["message"]["timestamp"]), ("commodity", "J.log:700", iso_ts(t + 12)))
@@ -482,15 +482,26 @@ class StationData(unittest.TestCase):
         for n in ("Undocked", "Docked"):
             self.s.feed(self.ev(n))
             E.build(self.ev(n), self.s, "v")
-        self.s.now = 8000.0
+        t2 = t + 1000
+        self.s.now = t2
         self.file("Market.json", {"timestamp": iso_ts(t - 60), "event": "Market", "Items": []})
-        E.build(self.ev("Market", StationType="FleetCarrier"), self.s, "v")
-        self.s.now = 8000.0 + E.FILE_WAIT_S + 1
+        E.build(self.ev("Market", StationType="FleetCarrier", timestamp=iso_ts(t2)), self.s, "v")
+        self.s.now = t2 + E.FILE_WAIT_S + 1
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             self.assertEqual(E.idle(self.s, "v"), [])
         self.assertNotIn("commodity", self.s.pending)
-        self.assertIn(f"Market.json was not written for the line of {self.t} (the file says {iso_ts(t - 60)}, market 128)", out.getvalue())
+        self.assertIn(f"Market.json was not written for the line of {iso_ts(t2)} (the file says {iso_ts(t - 60)}, market 128)", out.getvalue())
+        # a catch-up's wait (its line hours old): ended by lines, never timed, and nothing said (review 2026-10-12)
+        self.s.now = t2 + 5000
+        E.build(self.ev("Market", StationType="FleetCarrier", timestamp=iso_ts(t2 + 100)), self.s, "v")
+        self.assertFalse(self.s.pending["commodity"]["live"])
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            for i in range(E.NAVROUTE_TRIES):
+                E.build({"timestamp": iso_ts(t2 + 101), "event": "Music"}, self.s, "v")
+        self.assertNotIn("commodity", self.s.pending)
+        self.assertEqual(out.getvalue(), "")
 
     def test_empty_bracket_kept(self):
         """A bracket the game writes as "" ("not normally sold here") goes as "", not 0 (EDDN's schema)."""

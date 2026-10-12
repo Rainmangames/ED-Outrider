@@ -1273,8 +1273,11 @@ function renderSurface() {
   else if (ovKey !== ovMapRevealed) {
     const row = [...document.querySelectorAll("#hereRows tr[data-body]")].find(r => r.dataset.body === s.body);
     if (row) {
+      // only the list moves: when it does not scroll (a short list), nothing (scrollIntoView would scroll the window:
+      // review 2026-10-12); in app mode the row's pane scrolls instead
       const list = document.getElementById("hereMain");
-      revealIn(row, "start", list.scrollHeight > list.clientHeight ? list : null);
+      if (list.scrollHeight > list.clientHeight) revealIn(row, "start", list);
+      else if (appOn()) revealIn(row, "start");
       ovMapRevealed = ovKey;
     }
   }
@@ -2865,7 +2868,7 @@ function drawBoxel() {
     const b = d.boxel, nxt = d.next != null ? d.rows.find(r => r.n === d.next) : null;
     const spansh = d.spansh_asking ? "asking Spansh…" : d.spansh_error ? `<span class="warnc">${esc(d.spansh_error)}</span>`
       : d.spansh_ts ? `Spansh knows ${d.spansh}${d.spansh ? ` (up to -${Math.max(...d.rows.filter(r => r.spansh).map(r => r.n))})` : ""}` : "";
-    const fin = d.complete ? `<span class="ok bxfin" title="the end is known and you have visited every system below it">✓ complete: ${d.end} of ${d.end} systems</span> `
+    const fin = d.complete ? `<span class="ok bxfin" title="the end is known and you have visited every system below it">${d.end ? `✓ complete: ${d.end} of ${d.end} systems` : "✓ empty: the galaxy map found none of its names"}</span> `
       : d.done ? `<span class="ok bxfin" title="marked done with: it is left out of the recommendations">✓ done</span> ` : "";
     html += `<div class="bxhead">${fin}<span class="bxname copy" data-name="${esc(b.label)}" title="click to copy">${esc(b.label)}</span>` +
       `${b.here ? " · you are here" : b.distance != null ? ` · ${b.distance.toFixed(0)} ly away` : ""} · <span class="bxkind">${boxelCodeLine(b.mc, {size: b.size, kind: b.kind, yours: boxelNear && boxelNear.codes && boxelNear.codes[b.mc] && boxelNear.codes[b.mc].yours})}</span>` +
@@ -7865,6 +7868,7 @@ document.getElementById("ttsVoice").onchange = e => apiJson("api/voice", {method
 // ---- speakers: a Piper voice trained on several people speaks as one of them (2026-10-11). Each voice keeps the
 // one picked for it (the server remembers it); the lists are fetched once per voice (some have hundreds).
 const speakerLists = {};   // voice -> [{id, name}]
+const speakerPicked = {};  // voice -> the speaker kept for it (the server's), so the lab opens a voice on its own pick
 async function speakersOf(voice) {
   if (!voice) return [];
   if (speakerLists[voice]) return speakerLists[voice];
@@ -7872,6 +7876,7 @@ async function speakersOf(voice) {
     const r = await fetch("api/voices/speakers?voice=" + encodeURIComponent(voice));
     if (!r.ok) return [];
     const j = await r.json();
+    if (Number.isInteger(j.speaker)) speakerPicked[voice] = j.speaker;
     return (speakerLists[voice] = Array.isArray(j.speakers) ? j.speakers : []);
   } catch { return []; }
 }
@@ -7886,8 +7891,10 @@ async function fillSpeakers(sel, voice, current) {
   if (document.activeElement !== sel) sel.value = String(current ?? 0);
   return list;
 }
-document.getElementById("ttsSpk").onchange = e => apiJson("api/voice", {method: "POST", headers: {"Content-Type": "application/json"},
-  body: JSON.stringify({speaker: Number(e.target.value)})});
+document.getElementById("ttsSpk").onchange = e => {
+  const t = data && data.tts; if (t && t.voice) speakerPicked[t.voice] = Number(e.target.value);
+  apiJson("api/voice", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({speaker: Number(e.target.value)})});
+};
 // ---- More voices (Settings > Voice): Piper's catalogue, from the server (GET api/voices/catalogue). Picking one
 // downloads it where Outrider runs and switches to it (POST api/voice, as the voice list does), so a Docker install has
 // every voice too. It sits in the voice lab's dialog. The download's progress shows in the status beside Voice.
@@ -8032,8 +8039,10 @@ async function labPlayLine(ln) {
 }
 async function labDrawSpeakers() {
   const voice = labEl("labVoice").value, t = data && data.tts;
-  const cur = voice === (t && t.voice) ? t.speaker : null;
-  const list = await fillSpeakers(labEl("labSpk"), voice, cur);
+  // the voice in use: its speaker; another voice: the speaker kept for it, never #0 by default (review 2026-10-12)
+  const list = await speakersOf(voice);
+  const cur = voice === (t && t.voice) ? t.speaker : speakerPicked[voice] ?? null;
+  await fillSpeakers(labEl("labSpk"), voice, cur);
   labEl("labSpkWrap").hidden = list.length < 2;
   labEl("labSpkCount").textContent = list.length > 1 ? `${list.length} people` : "";
   labDrawInUse();
@@ -8113,6 +8122,7 @@ labEl("labUse").onclick = async () => {
   try { r = await apiJson("api/voice", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)}); }
   catch { r = {error: "Outrider not reachable"}; }
   if (r.error) { labMsg(`Not switched: ${r.error}`, true); return; }
+  if (p.speaker != null) speakerPicked[p.voice] = p.speaker;
   if (Math.abs(p.speed - speechSpeed()) >= 0.001) { store.set("speechSpeed", p.speed); speedBox.value = String(p.speed); speedOut.textContent = p.speed.toFixed(2) + "×"; drawSpeechStyles(); }
   labMsg(`Outrider speaks in ${p.voice}${p.speaker != null ? `, speaker #${p.speaker}` : ""} at ${p.speed.toFixed(2)}× from now on`);
   labEl("labUse").disabled = true;

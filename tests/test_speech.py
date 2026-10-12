@@ -1543,6 +1543,7 @@ class Speakers(unittest.TestCase):
         import asyncio
         from aiohttp.test_utils import TestClient, TestServer
         self.sp.on_speaker = self.state.remember_speakers
+        self.used = []
 
         async def go():
             async with TestClient(TestServer(ed_outrider.make_app(self.state))) as c:
@@ -1551,6 +1552,9 @@ class Speakers(unittest.TestCase):
                 out["list"] = (r.status, await r.json())
                 out["missing"] = (await c.get("/api/voices/speakers", params={"voice": "en_GB-nope-low"})).status
                 out["set"] = (await c.post("/api/voice", json={"speaker": 1})).status            # the voice in use's
+                # the voice in use picked by name: still use()d, so it is remembered and wins over a background switch
+                self.sp.use = lambda name: self.used.append(name) or True
+                out["same"] = (await c.post("/api/voice", json={"voice": "en_GB-vctk-medium"})).status
                 out["bad"] = [(await c.post("/api/voice", json=b)).status for b in
                               ({"speaker": 5}, {"speaker": "1"}, {"voice": "en_GB-cori-medium", "speaker": 0}, {})]
                 r = await c.get("/api/say", params={"text": "Hello.", "speaker": "2"})
@@ -1560,6 +1564,7 @@ class Speakers(unittest.TestCase):
         self.assertEqual(out["list"], (200, {"voice": "en_GB-vctk-medium", "speaker": None,
                                              "speakers": [{"id": 0, "name": "p225"}, {"id": 1, "name": "p226"}, {"id": 2, "name": "p227"}]}))
         self.assertEqual((out["missing"], out["set"], out["bad"]), (404, 200, [400, 400, 400, 400]))
+        self.assertEqual((out["same"], self.used), (200, ["en_GB-vctk-medium"]))   # review 2026-10-12
         self.assertEqual(ed_outrider.meta_get(self.db, "voice_speakers"), {"en_GB-vctk-medium": 1})   # kept over restarts
         self.assertIn(b'{"speaker_id": 2}', out["say"])                                         # the lab's try of another
 
@@ -1613,6 +1618,17 @@ class LabDownload(unittest.TestCase):
                     break
                 time.sleep(0.01)
             self.assertEqual(sp.info()["fetch_failed"], {"en_GB-bad-low": "the download failed"})
+            # a switch's status set during the lab's download is not wiped when the download ends (review 2026-10-12)
+            def busy(name, status=None):
+                sp.status = "downloading en_US-other-low (about 63 MB)"
+                return False
+            sp._download = busy
+            sp.fetch("en_GB-busy-low")
+            for _ in range(100):
+                if not sp.fetching:
+                    break
+                time.sleep(0.01)
+            self.assertEqual(sp.status, "downloading en_US-other-low (about 63 MB)")
             db = ed_outrider.open_db(":memory:")
             self.addCleanup(db.close)
             state = ed_outrider.State(db, ed_outrider.Journals(db), types.SimpleNamespace(cached=lambda i: (None, None)), 25)

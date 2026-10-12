@@ -5993,7 +5993,10 @@ class State:
             "autotarget": self.autotarget_info(), "rail": self.rail_info(),   # the tablet's game buttons
             # boxel exploration: the page fetches api/boxel when this changes (a jump, a scan, Spansh's answer, a pick)
             "boxel": {"key": "|".join(str(x) for x in ((meta_get(self.db, "boxel_active") or {}).get("prefix"),
-                                                        (self.journals.pos or {}).get("id64"), self.journals.last_event_ts,
+                                                        (self.journals.pos or {}).get("id64"), len(self.visited),
+                                                        # your scans here (a boxel row's summary), not every journal line
+                                                        (self.db.execute("SELECT max(ts) FROM own_bodies WHERE system=?",
+                                                                         ((self.journals.pos or {}).get("id64"),)).fetchone() or [None])[0],
                                                         len(self._boxel_fetching), json.dumps(meta_get(self.db, "boxel_ends")),
                                                         json.dumps({k: (v or {}).get("ts") for k, v in (meta_get(self.db, "boxel_spansh") or {}).items()}),
                                                         meta_get(self.db, "boxel_auto"), meta_get(self.db, "boxel_skip_known"),
@@ -11103,6 +11106,18 @@ class State:
                 out[n] = (id64, name, x, y, z)
         return out
 
+    def boxel_known(self, prefix):
+        """Every number of the boxel known to exist: yours and Spansh's."""
+        cache = (meta_get(self.db, "boxel_spansh") or {}).get(prefix) or {}
+        return set(self.boxel_visited(prefix)) | {int(k) for k in (cache.get("systems") or {}) if str(k).isdigit()}
+
+    def boxel_end(self, prefix, known=None):
+        """The boxel's probable end (the first number the galaxy map could not find), only while it is above every number
+        known to exist: a name found since (yours or Spansh's) makes it no end (a failed search can be a hiccup)."""
+        end = (meta_get(self.db, "boxel_ends") or {}).get(prefix)
+        known = self.boxel_known(prefix) if known is None else known
+        return end if isinstance(end, int) and end > max(known, default=-1) else None
+
     def boxel_view(self, now=None):
         """The active boxel's list for the page: one row per number from 0 to the highest known (yours or Spansh's), then
         TRY_ABOVE more, until a name was not found (meta boxel_ends). Visited rows carry your scan summary (as Nearby's);
@@ -11115,12 +11130,9 @@ class State:
         visited = self.boxel_visited(prefix)
         cache = (meta_get(self.db, "boxel_spansh") or {}).get(prefix) or {}
         spansh = {int(k): v for k, v in (cache.get("systems") or {}).items() if str(k).isdigit() and isinstance(v, dict)}
-        ends = meta_get(self.db, "boxel_ends") or {}
-        end = ends.get(prefix) if isinstance(ends.get(prefix), int) else None
         known = set(visited) | set(spansh)
         top = max(known, default=-1)
-        if end is not None and end <= top:   # a name found since (yours or Spansh's): that was no end
-            end = None
+        end = self.boxel_end(prefix, known)
         last = end - 1 if end is not None else top + outrider.boxel.TRY_ABOVE
         rows = []
         for n in range(0, last + 1):
@@ -11142,7 +11154,7 @@ class State:
             rows.append(r)
         # ✓ complete: the end is known and every number below it visited (no button needed); done: you said so (meta
         # boxel_done). Either way Next offers nothing more (the rows' own 🎯 still work)
-        complete = end is not None and end > 0 and all(n in visited for n in range(end))
+        complete = end is not None and all(n in visited for n in range(end))   # end 0: an empty boxel, complete too
         done = prefix in (meta_get(self.db, "boxel_done") or {})
         # skip_known (opt-in, meta boxel_skip_known): Next passes over the ones Spansh knows too (someone has been there:
         # the first discovery is most likely gone), for first discoveries only
@@ -11283,13 +11295,13 @@ class State:
         if not tgt.get("boxel") or res.get("ok") or not (res.get("code") == "wrong" or res.get("why") == "no system was targeted"):
             return False
         prefix, n = tgt["boxel"], tgt.get("index")
-        cache = (meta_get(self.db, "boxel_spansh") or {}).get(prefix) or {}
-        known = set(self.boxel_visited(prefix)) | {int(k) for k in (cache.get("systems") or {}) if str(k).isdigit()}
+        known = self.boxel_known(prefix)
         if not isinstance(n, int) or n <= max(known, default=-1):
             return False
-        ends = meta_get(self.db, "boxel_ends") or {}
-        if isinstance(ends.get(prefix), int) and ends[prefix] <= n:
+        end = self.boxel_end(prefix, known)   # a stale mark (a name found above it since) does not block a new one
+        if end is not None and end <= n:
             return False
+        ends = meta_get(self.db, "boxel_ends") or {}
         ends[prefix] = n
         meta_set(self.db, "boxel_ends", ends)
         self.db.commit()
@@ -11317,9 +11329,8 @@ class State:
         """"done" (marked so), "complete" (its end known and every number below it visited) or None."""
         if prefix in (meta_get(self.db, "boxel_done") or {}):
             return "done"
-        ends = meta_get(self.db, "boxel_ends") or {}
-        end = ends.get(prefix)
-        if isinstance(end, int) and end > 0 and set(range(end)) <= set(self.boxel_visited(prefix)):
+        end = self.boxel_end(prefix)
+        if end is not None and set(range(end)) <= set(self.boxel_visited(prefix)):   # end 0: empty, complete too
             return "complete"
         return None
 
@@ -14581,8 +14592,10 @@ def make_app(state, hosts=None):
                 return web.json_response({"error": "speaker must be a number or null"}, status=400)
             if not state.speaker.set_speaker(name, sid):
                 return web.json_response({"error": f"{name} has no speaker {sid} (or is not installed yet)"}, status=400)
-        if name == getattr(state.speaker, "voice_name", None):
+        if not isinstance(body.get("voice"), str):   # {speaker} alone: the voice in use's speaker, nothing to switch
             return web.json_response({"ok": True})
+        # a voice named is always use()d, the one speaking too: its switch loop remembers it (voice_choice) and it wins
+        # over a background switch to the configured voice (review 2026-10-12)
         if not state.speaker.use(name):
             return web.json_response({"error": "not a Piper voice name"}, status=400)
         # remembered (over restarts, like the radius and auto honk) once it loads: see remember_voice

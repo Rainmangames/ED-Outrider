@@ -2389,10 +2389,17 @@ const settle = async maxMs => {
         bodies: ["ABC 2", "ABC 1"].map((name, i) => ({name, body_id: i + 2, type: "Planet", subtype: "Rocky body", genera: [], bio: 0, geo: 0,
           organics: [], codex: [], curiosities: [], bio_guess: [], value_parts: {bio_factor: 1}, mining: 0}))});
       revealIn = (el, block, box) => { if (block === "start") shown.push(el.dataset.body + " " + block + " " + (box ? box.id : "-")); };
+      const hm = document.getElementById("hereMain");   // the list scrolls (jsdom lays nothing out: told so)
+      Object.defineProperty(hm, "scrollHeight", {value: 900, configurable: true}); Object.defineProperty(hm, "clientHeight", {value: 300, configurable: true});
       size(640, 380); renderHere(); render(); o.on = state();
       render(); o.revealOnce = shown.slice();
       data.surface = {...data.surface, show: false, down: undefined}; render();
       data.surface = {...data.surface, show: true, down: true}; render(); o.revealAgain = shown.length;
+      // a short list (it does not scroll): nothing moves, the window least of all (review 2026-10-12)
+      Object.defineProperty(hm, "scrollHeight", {value: 200, configurable: true});
+      data.surface = {...data.surface, show: false, down: undefined}; render(); data.surface = {...data.surface, show: true, down: true}; render();
+      o.revealShort = shown.slice(2); o.app = appOn();
+      delete hm.scrollHeight; delete hm.clientHeight;
       revealIn = rv0; hereData = hd0;
       size(300, 400); render(); o.narrow = state();
       size(640, 380);
@@ -2417,7 +2424,9 @@ const settle = async maxMs => {
       body: !got.body.shown && !got.body.mapon && got.body.strip, closed: got.closed.shown && got.closed.mapon,
       off: !got.collapsed.shown && !got.off.shown && !got.off.mapon && !got.none.shown && !got.none.mapon,
       hereView: !got.hereView.shown && !got.hereView.mapon && got.hereView.strip,
-      reveal: got.revealOnce.length === 1 && got.revealOnce[0].startsWith("ABC 1 start") && got.revealAgain === 2};
+      reveal: got.revealOnce.length === 1 && got.revealOnce[0] === "ABC 1 start hereMain" && got.revealAgain === 2 &&
+        // a short list: nothing on the plain page; in app mode the row's pane scrolls (never the window: no box given)
+        JSON.stringify(got.revealShort) === JSON.stringify(got.app ? ["ABC 1 start -"] : [])};
     const good = Object.values(want).every(Boolean) && errors.length === before;
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| overview surface map |", good ? "lower half of the system pane, sized to the box, the body panel takes the spot while open, hidden when the map is off" : JSON.stringify({want, got}), errors.slice(before));
@@ -4876,6 +4885,11 @@ const settle = async maxMs => {
       labEl("labUse").click(); await tick();
       labEl("labVoice").value = "en_GB-cori-medium"; labEl("labVoice").dispatchEvent(new Event("change")); await tick();
       o.onePerson = labEl("labSpkWrap").hidden;
+      // vctk no longer the voice in use: the lab opens it on the speaker kept for it (2, just used), not #0 (review 2026-10-12)
+      data.tts = Object.assign({}, data.tts, {voice: "en_GB-cori-medium", speaker: null, speakers: 0});
+      labEl("labVoice").value = "en_GB-vctk-medium"; labEl("labVoice").dispatchEvent(new Event("change")); await tick();
+      o.kept = labEl("labSpk").value;
+      labEl("labVoice").value = "en_GB-cori-medium"; labEl("labVoice").dispatchEvent(new Event("change")); await tick();
       const key = "leaving";
       labEl("labAlert").value = key; labEl("labStyle").value = "business";
       labEl("labLine").click(); await tick();
@@ -4896,7 +4910,7 @@ const settle = async maxMs => {
       open: JSON.stringify(got.open) === JSON.stringify([true, true, "1", "✓ the voice in use", "3 people"]),
       stepped: said.length >= 1 && said[0].voice === "en_GB-vctk-medium" && said[0].speaker === "2" && /speaker p227/.test(said[0].text),
       used: posted.some(p => p[0] === "api/voice" && p[1].voice === "en_GB-vctk-medium" && p[1].speaker === 2),
-      onePerson: got.onePerson === true,
+      onePerson: got.onePerson === true, kept: got.kept === "2",
       line: got.line[0] && got.line[1] === false && said.some(x => x.voice === "en_GB-cori-medium" && !("speaker" in x)),
       cut: !!ban && typeof ban[1].alert === "string" && typeof ban[1].template === "string",
       saved: got.saved === "Saved as outrider-en_GB-cori-medium.wav" && said.some(x => /^Hello \S/.test(x.text))};

@@ -117,6 +117,13 @@ class Server(unittest.TestCase):
         self.assertEqual(self.state.boxel_target()[1], "Drojau TF-H c13 is complete")
         self.assertEqual(self.state.boxel_finished("Drojau TF-H c13-"), "complete")
         self.state.boxel_clear_end()
+        # an empty boxel (-0 not found, nothing known): complete, out of the recommendations (review 2026-10-12)
+        self.state.boxel_set("Drojau QQ-Z c13-", self.state.boxel_active()["sector_index"])
+        self.assertTrue(self.state.boxel_not_found(self.state.boxel_target(0)[0], {"ok": False, "why": "no system was targeted"}))
+        v = self.state.boxel_view()
+        self.assertEqual((v["complete"], v["end"], v["rows"], v["next"]), (True, 0, [], None))
+        self.assertEqual(self.state.boxel_finished("Drojau QQ-Z c13-"), "complete")
+        self.state.boxel_set(None)
         # done, your call: Next stops, a kept boxel is let go, undone again
         self.state.boxel_set("Drojau TF-H c13-", self.state.boxel_active()["sector_index"])
         self.assertTrue(self.state.boxel_mark_done(True))
@@ -139,6 +146,14 @@ class Server(unittest.TestCase):
         self.assertEqual((v["next"], v["skip_known"], self.state.boxel_target()[0]["index"]), (7, True, 7))
         ed_outrider.meta_set(self.db, "boxel_skip_known", False)
         self.assertFalse(self.state.boxel_spansh_due("Drojau TF-H c13-", self.now))
+
+        # a stale end (a hiccup at -13, then -13 found) blocks no later end and makes nothing "complete" (review 2026-10-12)
+        self.assertTrue(self.state.boxel_not_found(self.state.boxel_target(13)[0], {"ok": False, "why": "no system was targeted"}))
+        self.jump(40, (13, "Drojau TF-H c13-13", -4180.0, -60.0, 3339.0))
+        self.assertIsNone(self.state.boxel_view()["end"])
+        self.assertIsNone(self.state.boxel_finished("Drojau TF-H c13-"))
+        self.assertTrue(self.state.boxel_not_found(self.state.boxel_target(15)[0], {"ok": False, "why": "no system was targeted"}))
+        self.assertEqual(self.state.boxel_view()["end"], 15)
 
     def test_pick_nearby_and_api(self):
         import asyncio

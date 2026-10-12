@@ -127,11 +127,16 @@ def _seconds(ts):
         return None
 
 
+LIVE_LINE_S = 120   # a line this close to the server's clock is live: its companion-file wait is timed (FILE_WAIT_S)
+
+
 def _wait_start(session, key, ts, market_id=None):
     """A wait for the companion file an event wrote (NavRoute.json, Market.json...): the event's time, the MarketID the
     file must have (None: any), the lines tried, the line that started it (session.source: the idle() message's
     source) and when (session.now, the server's clock)."""
-    session.pending[key] = {"ts": ts, "market": market_id, "tries": 0, "origin": session.source, "since": session.now}
+    b = _seconds(ts)
+    live = session.now is not None and b is not None and abs(session.now - b) <= LIVE_LINE_S
+    session.pending[key] = {"ts": ts, "market": market_id, "tries": 0, "origin": session.source, "since": session.now, "live": live}
 
 
 def _wait_check(session, key, filename, line=True):
@@ -152,10 +157,14 @@ def _wait_check(session, key, filename, line=True):
     a, b = _seconds((data or {}).get("timestamp")) if isinstance(data, dict) else None, _seconds(wait["ts"])
     if a is None or b is None or not -NAVROUTE_WINDOW_S <= a - b <= FILE_LATE_S \
             or (wait["market"] is not None and data.get("MarketID") != wait["market"]):
-        timed = wait["since"] is not None and session.now is not None
-        if (session.now - wait["since"] > FILE_WAIT_S) if timed else wait["tries"] >= NAVROUTE_TRIES:
+        # a live line's wait ends by the clock (FILE_WAIT_S: the file can come well after its line) and says so; a
+        # catch-up's (its lines are hours old) ends after NAVROUTE_TRIES lines, or quietly on the clock when no line
+        # comes (the server's tick): review 2026-10-12
+        live = wait.get("live", True)
+        late = wait["since"] is not None and session.now is not None and session.now - wait["since"] > FILE_WAIT_S
+        if late if live else wait["tries"] >= NAVROUTE_TRIES or (late and not line):
             session.pending.pop(key, None)
-            if timed:   # live: say so, with what the file held (a wait that ends unsent is otherwise silent)
+            if live and late:   # live: say so, with what the file held (a wait that ends unsent is otherwise silent)
                 got = data if isinstance(data, dict) else {}
                 print(f"EDDN: {filename} was not written for the line of {wait['ts']} (the file says "
                       f"{got.get('timestamp') or 'nothing readable'}{', market ' + str(got.get('MarketID')) if got.get('MarketID') else ''}): not sent")
