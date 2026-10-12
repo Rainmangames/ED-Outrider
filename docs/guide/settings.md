@@ -87,8 +87,8 @@ Command-line flags override the file for a single run:
   appears beside the link pill (on the tablet, beside "linked"), in the theme's colours. It opens what's new and how
   to update this copy: Docker, a git clone or a downloaded release. **Skip this version** hides it until the next
   one (per browser).
-- **Small things worth knowing:** the pill at the top right says whether the page is linked to Outrider ("stale"
-  after 30 s without an answer; on the tablet just "linked"); Here's Dist, Grav, Now and Max headings sort the bodies; a genus's tooltip gives
+- **Small things worth knowing:** the pill at the top right says whether the page is linked to Outrider:
+  "linked", "linked · no game" (the game is not running), "unlinked · retrying" (after 30 s without an answer); Here's Dist, Grav, Now and Max headings sort the bodies; a genus's tooltip gives
   its colony distance; Search's mining list includes minerals you have refined, with those bodies first; the
   Settings' chips jump to its sections; and Settings → Display chooses this browser's theme and whether the header tiles fold to one line on a
   small window, on this device.

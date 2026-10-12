@@ -9052,15 +9052,16 @@ async function saveServerConfig() {
 }
 
 let disconnected = null, disconnectedAt = 0, lostSaid = false;
-// The link pill (review S41, the author's version): "linked · 2 s" since the last answer; "stale · 48 s" past what
-// a long poll should take (25 s, plus a little); "no link · retrying since 14:02". The page still dims when the link
-// is down. linkState() is the tablet's too.
+// The link pill: states only, no timer (the author, 2026-10-12): "linked", "linked · no game" (Outrider answers, the
+// game is not running), "unlinked · retrying" (no answer past what a long poll should take, 25 s plus a little, or
+// the link down: amber, then red). The page still dims when the link is down. linkState() is the tablet's too.
 const LINK_STALE_MS = 30000;
 function linkState(now = Date.now()) {
-  if (disconnected) return {state: "none", text: `no link · retrying since ${disconnected}`};
+  if (disconnected) return {state: "none", text: "unlinked · retrying"};
   if (!lastHeard) return {state: "stale", text: "connecting…"};
-  const age = Math.max(0, Math.round((now - lastHeard) / 1000));
-  return age * 1000 > LINK_STALE_MS ? {state: "stale", text: `stale · ${age} s`} : {state: "linked", text: `linked · ${age} s`};
+  if (now - lastHeard > LINK_STALE_MS) return {state: "stale", text: "unlinked · retrying"};
+  const live = !!(data && data.freshness && data.freshness.live);
+  return {state: "linked", text: live ? "linked" : "linked · no game"};
 }
 function drawLinkPill() {
   const el = document.getElementById("linkPill"); if (!el) return;
@@ -9430,12 +9431,8 @@ function tabDrawHush() {
   if (b.textContent !== text) b.textContent = text;
   b.classList.toggle("on", on);
 }
-// the link pill in words: LINKED · 2 S AGO, STALE · 48 S AGO, NO LINK · RETRYING (linkState's states)
-function tabLinkText(l, now = Date.now()) {
-  const age = lastHeard ? Math.max(0, Math.round((now - lastHeard) / 1000)) : null;
-  // linked: no seconds ticking by (the author: distracting); the age only once it is stale, when it means something
-  return l.state === "none" ? "no link · retrying" : age == null ? "connecting…" : l.state === "linked" ? "linked" : `stale · ${age} s ago`;
-}
+// the tablet's pill says what the desktop's does (linkState)
+const tabLinkText = l => l.text;
 function tabDrawLink(l) {
   const el = document.getElementById("tabLink"), text = tabLinkText(l);
   if (el.textContent !== text) el.textContent = text;

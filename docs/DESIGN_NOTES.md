@@ -467,10 +467,10 @@ upstream project's choices, not rules of the game.
   header's height and the app layout; left for the author. The tiles' fold has a per-device mode (S44): auto (a
   small window), six, line, or none, which follows the shared `tilesCollapsed` that ▴/▾ sets; ▴/▾ also makes its
   choice this device's.
-- **The link pill's "stale" is the long poll's limit, not quiet** (review S41): the server answers within 25 s even
-  with nothing new, so "stale" starts at 30 s without an answer; the desktop's "linked · N s" counts up to that in
-  quiet play. The tablet's pill says just "linked" (the ticking seconds distracted the author; 2026-10-04) and shows
-  the age only once stale. A long poll with no answer by `POLL_TIMEOUT_MS` (40 s) is aborted: a hung link (the PC
+- **The link pill's "unlinked" is the long poll's limit, not quiet** (review S41): the server answers within 25 s
+  even with nothing new, so "unlinked · retrying" starts at 30 s without an answer (amber; red once the link is down).
+  States only, no timer, on the desktop and the tablet alike (the author, 2026-10-12; the ticking seconds distracted
+  them): "linked", "linked · no game" (the game not running: `freshness.live`), "unlinked · retrying". A long poll with no answer by `POLL_TIMEOUT_MS` (40 s) is aborted: a hung link (the PC
   suspended) becomes "no link" and "Lost contact" instead of "stale" for good.
 - **The README is a front page; the guide is `docs/guide/`** (the author, 2026-10-07: the single README had grown to
   1,000 lines). Plain Markdown in the repository, not a wiki or a docs site: versioned with the code, changed in the

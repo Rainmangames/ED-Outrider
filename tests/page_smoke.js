@@ -3640,9 +3640,14 @@ const settle = async maxMs => {
       o.matRow = !!document.querySelector("#matTables > #matSources + #matSites");
       // S41
       const lh = lastHeard, dc = disconnected;
+      // states only, no timer (the author, 2026-10-12): linked / linked · no game / unlinked · retrying
+      const fr0 = data.freshness; data.freshness = Object.assign({}, fr0, {live: true});
       lastHeard = Date.now() - 2000; disconnected = null; o.link = [linkState().text, linkState().state];
+      data.freshness = Object.assign({}, fr0, {live: false}); o.nogame = [linkState().text, linkState().state];
+      data.freshness = Object.assign({}, fr0, {live: true});
       lastHeard = Date.now() - 48000; o.stale = [linkState().text, linkState().state];
       disconnected = "14:02"; o.none = [linkState().text, linkState().state];
+      data.freshness = fr0;
       lastHeard = lh; disconnected = dc; drawLinkPill();
       o.pill = !!document.getElementById("linkPill").textContent;
       // S43
@@ -3665,8 +3670,8 @@ const settle = async maxMs => {
       sortKeys.here = s0; hereData = h0;
       return JSON.stringify(o); })()`));
     const want = {colony: [500, null, " · 1,000 m"], sortTh: ["dist", "grav", "now", "max"], sortCycle: ["dist", "-dist rev", "max"],
-      nearCycle: ["value", "-value", "distance"], treeSort: "max", halves: [true, true, true], halvesOff: false, matRow: true, link: ["linked · 2 s", "linked"],
-      stale: ["stale · 48 s", "stale"], none: ["no link · retrying since 14:02", "none"], pill: true,
+      nearCycle: ["value", "-value", "distance"], treeSort: "max", halves: [true, true, true], halvesOff: false, matRow: true, link: ["linked", "linked"],
+      nogame: ["linked · no game", "linked"], stale: ["unlinked · retrying", "stale"], none: ["unlinked · retrying", "none"], pill: true,
       chips: ["Alerts", "Voice", "What is said", "Sounds", "Values", "Risk & warnings", "Surface map", "Auto honk", "Uploads", "In-game overlay", "Display", "Sharing", "Server", "Spoken lines"],
       autoSmall: true, autoBig: false, line: true, cut: true};
     const bad = Object.keys(want).filter(k => JSON.stringify(got[k]) !== JSON.stringify(want[k]));
@@ -4001,8 +4006,12 @@ const settle = async maxMs => {
       on(); document.querySelector('#tabNav [data-view="bm"]').click(); off(); o.push([view, tag()]);
       return JSON.stringify(o); })()`));
     // the link in words (linkState's states), and the pill drawn with them
-    got.link = tw.eval(`[tabLinkText({state: "linked"}, lastHeard + 2400), tabLinkText({state: "stale"}, lastHeard + 48000), tabLinkText({state: "none"})]`);
-    tw.eval("drawLinkPill()");
+    got.link = tw.eval(`(() => { const fr0 = data.freshness, d0 = disconnected, h0 = lastHeard; data.freshness = Object.assign({}, fr0, {live: true});
+      lastHeard = Date.now() - 2400; disconnected = null; const a = tabLinkText(linkState());
+      lastHeard = Date.now() - 48000; const b = tabLinkText(linkState());
+      disconnected = "14:02"; const c = tabLinkText(linkState());
+      data.freshness = fr0; disconnected = d0; lastHeard = h0; return [a, b, c]; })()`);
+    tw.eval("data.freshness = Object.assign({}, data.freshness, {live: true}); drawLinkPill()");   // the game running
     got.pill = [td.getElementById("tabLink").textContent === "linked", td.getElementById("tabLink").className];
     // an alert: a banner (danger marked), nothing queued to speak
     got.banner = JSON.parse(tw.eval(`(() => { alertOut("hull", "Hull at 40%", "take it easy");
@@ -4247,7 +4256,7 @@ const settle = async maxMs => {
       rail: [3, "tb-rb off", true, true, "Ship controls", "tb-rb pending", '[{"context":"ship","id":"gear"}]', "tb-rb on", "tb-rb notconf",
              "tb-rb nolink|no rail: docked|0", "tb-rb na|true|in supercruise|N/A"],
       serverRail: ["none", true],
-      reload: [true, true, false, false, 0, false, 0, true, true, 1], hint: [true, false], searchSheet: "123456", popKeeps: true, link: ["linked", "stale · 48 s ago", "no link · retrying"], pill: [true, "tb-link linked"],
+      reload: [true, true, false, false, 0, false, 0, true, true, 1], hint: [true, false], searchSheet: "123456", popKeeps: true, link: ["linked", "unlinked · retrying", "unlinked · retrying"], pill: [true, "tb-link linked"],
       banner: [true, true, true, 0], sheet: [true, true, true, true, true, true, true], sheetHere: [false, "here"],
       target: '{"countdown":0}', railEnter: ["Wheels", true, false], pinch: '{"dx":10,"dy":5,"scale":2,"x":15,"y":5}',
       settings: [true, true, "a browser (no app)", true], signOut: [true, false], emblem: [false, true, true, true, "false", false],

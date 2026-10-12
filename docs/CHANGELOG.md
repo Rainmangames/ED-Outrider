@@ -2,6 +2,12 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-12 · The link pill says states only
+- The link pill counted seconds ("linked · 2 s", "stale · 48 s", "no link · retrying since 14:02"); it now says only
+  the state (the author's ask): "linked", "linked · no game" when Outrider answers but the game is not running, and
+  "unlinked · retrying" (amber after 30 s without an answer, red once the link is down). The tablet's pill says the
+  same.
+
 ## 2026-10-12 · Version 2026.10.22
 - Boxel exploration (the list, Next with 🎯, complete/done, keep, auto-target, skip fully scanned, known counts, boxels
   nearby, the sector map), rare finds (rare stars, phenomena, surface sites, signals worth a detour, potential green
