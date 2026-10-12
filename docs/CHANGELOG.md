@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Babylon 5 - Vorlon theme
+- A tenth theme for the tablet, the desktop page (Settings → Display) and the overlay's panels (the author's ask):
+  **Babylon 5 - Vorlon**, the Vorlon Empire's living ships evoked, not copied. Deep sea-green dark, the emblem's sea
+  greens and golden tendrils, a pale glowing core; soft arcs like the emblem's crescents and a faint inner glow.
+  Marcellus and Inter (already shipped, SIL OFL); your own heading font as `data/fonts/vorlon-display.ttf`.
+- Its emblem under the tablet's page list: the Vorlon Empire's, a public-domain fan redrawing by Blind Wolf on the
+  Babylon 5 Wiki (Category:User-created public domain images, as the Narn, Minbari and Centauri ones), credited in
+  `static/emblems/CREDITS.txt`.
+
 ## 2026-10-11 · Boxel exploration
 - **Nearby → Boxel** (the author's idea; a switch in Nearby's bar, shared by the Overview pane and the Nearby tab, per
   browser) lists the boxel you are in by number: your visits with your scans (Nearby's cells), Spansh's known systems

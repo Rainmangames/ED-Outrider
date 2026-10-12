@@ -4221,7 +4221,7 @@ const settle = async maxMs => {
     const want = {desk: [true, true, true, true], shell: [true, true, true, true, true], moved: [true, true, true], theme: "lcars", start: "now",
       quiet: [false, false, "never", false], status: [true, true], pages: [],
       mapSwitch: [["now", true], ["hwy", false], ["bm", false]],
-      themes: [["elite", "babylon5", "lcars", "lcars"], ["elite", "babylon5", "lcars", "lcars"], ["lcars", "elite", "babylon5", "narn", "minbari", "centauri", "sith", "alliance", "dark"]],
+      themes: [["elite", "babylon5", "lcars", "lcars"], ["elite", "babylon5", "lcars", "lcars"], ["lcars", "elite", "babylon5", "narn", "minbari", "centauri", "vorlon", "sith", "alliance", "dark"]],
       bodies: [true, true, ["gas", "elw", "water", "ammonia", "ice", "ice", "metal", "metal", "rock", "gas"], true, null, null, "star", true, true, true, 2, true, true, true],
       schemArt: [true, true, 2, true, false, true, true, false],
       ask: [true, "Fuel at 41 percent.", 0, "Nearest unvisited: Smojooe ZC-D c12-2, 10.8 light years.", false, 1, true],
@@ -4459,7 +4459,7 @@ const settle = async maxMs => {
     got.on = [d.documentElement.dataset.theme, w.localStorage.getItem("desktopTheme"), bg() !== bg0];
     sel.value = ""; sel.dispatchEvent(new w.Event("change"));
     got.off = [d.documentElement.hasAttribute("data-theme"), w.localStorage.getItem("desktopTheme"), bg() === bg0];
-    const want = {opts: ["", "lcars", "elite", "babylon5", "narn", "minbari", "centauri", "sith", "alliance", "dark"], first: "Default - Outrider",
+    const want = {opts: ["", "lcars", "elite", "babylon5", "narn", "minbari", "centauri", "vorlon", "sith", "alliance", "dark"], first: "Default - Outrider",
                   label: "LCARS", on: ["elite", '"elite"', true], off: [false, '""', true]};
     const goodTh = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodTh;

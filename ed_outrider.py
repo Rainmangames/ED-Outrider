@@ -1109,7 +1109,7 @@ background_opacity = {n(st["highway"]["background_opacity"])}   # 0.05 to 1
 
 [overlay]   # the in-game overlay: panels drawn over Elite's window by a window Outrider runs on the game PC (not on a server)
 enabled = {"true" if st["overlay"]["enabled"] else "false"}   # build the panels (the window shows nothing while false; Settings -> In-game overlay switches it)
-theme = {q(st["overlay"]["theme"])}   # the panels' colours: default, lcars, elite, babylon5, narn, minbari, centauri, sith, alliance or dark
+theme = {q(st["overlay"]["theme"])}   # the panels' colours: default, lcars, elite, babylon5, narn, minbari, centauri, vorlon, sith, alliance or dark
 text_size = {q(st["overlay"]["text_size"])}   # small, normal or large
 system_panel = {"true" if st["overlay"]["system_panel"] else "false"}   # the system panel: the bodies worth your time, in supercruise
 body_panel = {"true" if st["overlay"]["body_panel"] else "false"}   # the body panel: the body you are heading to or near
@@ -13346,9 +13346,10 @@ def register_static_types():
 
 register_static_types()
 TABLET_STYLES = ("tablet.css", "themes/lcars.css", "themes/elite.css", "themes/babylon5.css", "themes/narn.css",
-                 "themes/minbari.css", "themes/centauri.css", "themes/sith.css", "themes/alliance.css", "themes/dark.css")
+                 "themes/minbari.css", "themes/centauri.css", "themes/vorlon.css", "themes/sith.css", "themes/alliance.css",
+                 "themes/dark.css")
 DESKTOP_STYLES = tuple(n for n in TABLET_STYLES if n.startswith("themes/"))   # the themes, without the tablet's shell
-TABLET_THEMES = ("lcars", "elite", "babylon5", "narn", "minbari", "centauri", "sith", "alliance", "dark")
+TABLET_THEMES = ("lcars", "elite", "babylon5", "narn", "minbari", "centauri", "vorlon", "sith", "alliance", "dark")
 FONT_DIR = os.path.join(outrider.DATA_DIR, "fonts")
 USER_FONT_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9 ._-]{0,80}\.(ttf|otf|woff2?)")
 

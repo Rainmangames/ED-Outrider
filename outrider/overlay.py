@@ -35,7 +35,7 @@ PANEL_NAMES = {"system": "System", "body": "Body", "radar": "Surface radar", "st
 # a panel is placed from a corner of the game window, or centred along its top or bottom edge (n, s: x is not used)
 CORNERS = ("nw", "ne", "sw", "se", "n", "s")
 SIZES = ("small", "normal", "large")
-THEMES = ("default", "lcars", "elite", "babylon5", "narn", "minbari", "centauri", "sith", "alliance", "dark")
+THEMES = ("default", "lcars", "elite", "babylon5", "narn", "minbari", "centauri", "vorlon", "sith", "alliance", "dark")
 TEST_SECONDS = 60       # "Show test panels": how long they stay (shown whether or not the game is in front)
 ARRANGE_SECONDS = 600   # Arrange mode ends by itself after this, so the overlay never stays in the way of the mouse
 
@@ -67,7 +67,7 @@ THEME_VARS = {"title": ("tb-title", "info", "accent"), "text": ("text",), "muted
               "warn": ("warn",), "bad": ("bad",), "accent": ("accent",), "panel": ("panel",), "frame": ("line",)}
 # the panels' frames per theme, as the 10-05 plan drew them: cut corners (Elite, Narn), a double line (Centauri,
 # Minbari), LCARS's bars, rounded for the rest
-THEME_STYLE = {"elite": "chamfer", "narn": "chamfer", "centauri": "double", "minbari": "double", "lcars": "lcars"}
+THEME_STYLE = {"elite": "chamfer", "narn": "chamfer", "centauri": "double", "minbari": "double", "lcars": "lcars"}   # Vorlon: rounded
 _palettes = {}
 
 

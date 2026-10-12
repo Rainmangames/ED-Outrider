@@ -1,0 +1,70 @@
+/* Babylon 5 - Vorlon, a tablet theme (data-theme="vorlon"): the Vorlon Empire's living ships from Babylon 5, evoked, not
+   copied. Deep sea-green dark, the emblem's sea greens and its golden tendrils, a pale glowing core; soft organic arcs
+   (the emblem's crescents) and a faint inner glow. Fonts: Marcellus (headings) and Inter (text), both SIL OFL 1.1, in
+   static/fonts/ with their licences. Your own heading font goes first if you drop it in as data/fonts/vorlon-display.ttf
+   (served at /userfonts/; never committed). No show assets apart from the faction emblem under the page list, a fan
+   redrawing (static/emblems/CREDITS.txt). */
+@font-face { font-family: "Vorlon Display"; font-display: swap;
+  src: url("../../userfonts/vorlon-display.ttf") format("truetype"), url("../fonts/Marcellus-Regular.ttf") format("truetype"); }
+@font-face { font-family: "Marcellus"; font-display: swap; src: url("../fonts/Marcellus-Regular.ttf") format("truetype"); }
+@font-face { font-family: "Inter"; font-weight: 100 900; font-display: swap; src: url("../fonts/Inter-VF.ttf") format("truetype"); }
+
+:root[data-theme="vorlon"] {
+  --vl-bg: #06110D; --vl-panel: #0D1E18; --vl-sea: #5FB596; --vl-deep: #2C6352; --vl-gold: #E6CF6A; --vl-core: #F4F1D0;
+  --vl-line: #22453A; --vl-muted: #93B3A5; --vl-rose: #FF8C7A; --vl-glow: rgba(95, 181, 150, .22); --vl-arc: 26px;
+  /* page.css's colours, so the views take the theme too */
+  --bg: var(--vl-bg); --panel: var(--vl-panel); --line: var(--vl-line); --text: #E2EFE6; --muted: var(--vl-muted);
+  --accent: var(--vl-gold); --good: #8EDBA8; --warn: var(--vl-gold); --bad: var(--vl-rose); --info: var(--vl-sea);
+  --hot: #A6EFC4; --biohot: #E7B8F0;
+  --tb-font: "Inter", system-ui, sans-serif; --tb-font-display: "Vorlon Display", "Marcellus", serif;
+  --tb-case: none; --tb-track: .6px; --tb-size: 17px;
+  --tb-title: var(--vl-gold);
+  --tb-chip-bg: var(--vl-panel); --tb-chip-k: var(--vl-muted); --tb-chip-v: #E2EFE6; --tb-chip-radius: 16px;
+  --tb-group-bg: var(--vl-panel); --tb-group-fg: var(--vl-sea); --tb-group-open-bg: var(--vl-deep); --tb-group-open-fg: var(--vl-core);
+  --tb-group-radius: var(--vl-arc) var(--vl-arc) 8px 8px; --tb-page-radius: 16px;
+  --tb-page-bg: transparent; --tb-page-fg: #E2EFE6; --tb-page-on-bg: var(--vl-sea); --tb-page-on-fg: var(--vl-bg);
+  --tb-fill: transparent;
+  --tb-btn-bg: var(--vl-deep); --tb-btn-fg: var(--vl-core); --tb-btn-on-bg: var(--vl-gold); --tb-btn-on-fg: var(--vl-bg); --tb-btn-radius: 16px;
+  --tb-link-ok: var(--vl-sea); --tb-link-stale: var(--vl-gold); --tb-link-none: var(--vl-rose);
+  --tb-rail-border: var(--vl-line); --tb-sheet-bg: #091812; --tb-sheet-border: var(--vl-sea); --tb-sheet-radius: 32px 32px 14px 14px;
+  --tb-banner-bg: #091812; --tb-banner-fg: #E2EFE6; --tb-banner-border: var(--vl-gold); --tb-danger: var(--vl-rose);
+  --tb-rb-on-bg: var(--vl-sea); --tb-rb-on-fg: var(--vl-bg); --tb-rb-off-bg: var(--vl-panel); --tb-rb-off-fg: #E2EFE6;
+  --tb-rb-high-bg: var(--vl-core); --tb-rb-pend-bg: var(--vl-panel); --tb-rb-pend-fg: var(--vl-gold); --tb-rb-unk-border: var(--vl-muted);
+  --tb-rb-unk-fg: var(--vl-muted); --tb-rb-dim: var(--vl-line); --tb-rb-dim-fg: #6E8C80; --tb-rb-amber: var(--vl-gold); --tb-rb-radius: 16px;
+  color-scheme: dark;
+}
+/* the dark of deep space with the emblem's pale core glowing from above */
+:root[data-theme="vorlon"] body.tablet { background: radial-gradient(ellipse at 50% -25%, #16352B, var(--vl-bg) 62%); color: var(--text); }
+/* soft arcs and a faint inner glow, like a living hull */
+[data-theme="vorlon"] .tb-sheet, [data-theme="vorlon"] .tb-banner { border: 1px solid var(--vl-sea); box-shadow: inset 0 0 18px var(--vl-glow); }
+[data-theme="vorlon"] .tb-group { border: 1px solid var(--vl-deep); border-top: 3px solid var(--vl-sea); }
+[data-theme="vorlon"] .tb-group.open { border-color: var(--vl-gold); box-shadow: inset 0 0 14px var(--vl-glow); }
+[data-theme="vorlon"] .tb-chip, [data-theme="vorlon"] .tb-link { border: 1px solid var(--vl-line); }
+[data-theme="vorlon"] .tb-page { border: 1px solid transparent; }
+[data-theme="vorlon"] .tb-page:not(.on) { border-color: var(--vl-line); }
+[data-theme="vorlon"] .tb-page.on { box-shadow: 0 0 12px var(--vl-glow); }
+[data-theme="vorlon"] .tb-rb { border: 1px solid var(--vl-line); border-radius: 22px 22px 8px 8px; }
+[data-theme="vorlon"] .tb-head .tb-corner { background: radial-gradient(circle at 70% 120%, var(--vl-core), var(--vl-sea) 35%, var(--vl-deep) 75%);
+  border-radius: 0 0 56px 0; }
+[data-theme="vorlon"] .tb-head .tb-bar { border-bottom: 2px solid var(--vl-deep); box-shadow: 0 2px 10px var(--vl-glow); }
+[data-theme="vorlon"] .tb-foot .tb-corner { background: var(--vl-deep); border-radius: 0 48px 0 0; }
+[data-theme="vorlon"] .tb-foot .tb-bar { border-top: 1px solid var(--vl-line); }
+[data-theme="vorlon"] .tb-title { font-family: var(--tb-font-display); letter-spacing: 2px; }
+/* the views */
+[data-theme="vorlon"] body.tablet th { color: var(--vl-gold); }
+[data-theme="vorlon"] body.tablet tr.target td { background: rgba(95, 181, 150, .14); }
+[data-theme="vorlon"] body.tablet .pane { border-radius: 22px 22px 10px 10px; }
+[data-theme="vorlon"] body.tablet #nowView .now-sys { color: var(--vl-gold); font-family: var(--tb-font-display); letter-spacing: 1.5px; }
+[data-theme="vorlon"] .tb-sheet h2 { color: var(--vl-gold); font-family: var(--tb-font-display); letter-spacing: 1px; }
+/* the faction's emblem under the page list (a public-domain fan redrawing: static/emblems/CREDITS.txt) */
+[data-theme="vorlon"] .tb-emblem { display: block; background-image: url("../emblems/vorlon.webp"); opacity: .85; }
+
+/* ---- the desktop page (Settings > Display): soft arcs and a faint glow ---- */
+:root[data-theme="vorlon"] { --desk-pill: 999px; --desk-radius: 22px 22px 8px 8px; --desk-lbl: var(--vl-sea); --desk-pill-size: 14px; }
+[data-theme="vorlon"] body:not(.tablet) { background: radial-gradient(ellipse at 50% -30%, #12302A, var(--vl-bg) 55%) fixed; }
+[data-theme="vorlon"] body:not(.tablet) header { border-bottom: 2px solid var(--vl-deep); box-shadow: 0 2px 12px var(--vl-glow); }
+[data-theme="vorlon"] body:not(.tablet) .tile { border-color: var(--vl-line); box-shadow: inset 0 0 12px var(--vl-glow); }
+[data-theme="vorlon"] body:not(.tablet) .views button { border-color: var(--vl-deep); }
+[data-theme="vorlon"] body:not(.tablet) .views button.on { background: var(--vl-sea); color: var(--vl-bg); border-color: var(--vl-sea); box-shadow: 0 0 10px var(--vl-glow); }
+[data-theme="vorlon"] body:not(.tablet) dialog { border: 1px solid var(--vl-sea); border-top: 3px solid var(--vl-gold); border-radius: 32px 32px 14px 14px; box-shadow: inset 0 0 24px var(--vl-glow); }
+[data-theme="vorlon"] body:not(.tablet) th { color: var(--vl-gold); }

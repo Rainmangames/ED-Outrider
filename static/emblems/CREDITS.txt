@@ -11,10 +11,11 @@ Elite Dangerous
     Assets borrowed from Elite Dangerous, with permission of Frontier Developments plc.
 
 Babylon 5 (babylon5.webp: the Earth Alliance seal, narn.webp: the Narn Regime, minbari.webp: the Minbari Federation,
-centauri.webp: the Centauri Republic)
+centauri.webp: the Centauri Republic, vorlon.webp: the Vorlon Empire)
   User-created redrawings released into the public domain by their authors on the Babylon 5 Wiki
   (babylon5.fandom.com; Category:User-created public domain images):
-    EAS_wiki.png, Wiki_narnregime.png, Wiki_minbarifed.png, Wiki_centaurirep.png
+    EAS_wiki.png, Wiki_narnregime.png, Wiki_minbarifed.png, Wiki_centaurirep.png, Wiki_vorlonemp.png (by Blind Wolf,
+    "Emblem of the Vorlon Empire", licensing {{Self}}; the wiki's CDN serves it as WebP, kept unchanged)
   The emblems themselves are Babylon 5's (c) Warner Bros.
 
 Star Wars
