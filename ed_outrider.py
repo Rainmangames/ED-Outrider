@@ -11395,6 +11395,18 @@ class State:
                 "kept": list(kept) if kept else None, "cells": sorted(cells.values(), key=lambda c: (c["z"], c["x"])),
                 "layers": {str(k): v for k, v in sorted(layers.items())}, "codes": BOXEL_GRID_CODES}
 
+    def sector_names(self, limit=40):
+        """The procedural sectors you have visited most, for the voice lab: [{name, say, visits}] ("Smojooe",
+        "SMOH-joo"), each word as the voice reads it (your own or the shipped table's way, else the rule's)."""
+        words, counts = outrider.tts.PRONOUNCE.words(), {}
+        for name, n in self.db.execute("SELECT name, count FROM visits"):
+            m = outrider.boxel.NAME.match(name or "")
+            if m and outrider.pronounce.sector_name(m["sector"]):
+                counts[m["sector"]] = counts.get(m["sector"], 0) + (n or 1)
+        top = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:limit]
+        return [{"name": s, "visits": n, "say": " ".join(words.get(w.lower()) or outrider.pronounce.sector_respelling(w)
+                                                         for w in s.split())} for s, n in top]
+
     def codex_types(self):
         """codex_types_logged, worked out again only when your scans or codex lines change; your scans are read once and
         then only the new ones (a re-read of the journals renumbers them: then all again)."""
@@ -14855,8 +14867,10 @@ def make_app(state, hosts=None):
 
     async def pronounce_view(_):
         """GET /api/pronounce: how the voice says the words espeak gets wrong: [{word, say, source: "shipped" | "yours",
-        shipped?}] (resources/pronounce.json, your data/pronounce.json on top)."""
-        return web.json_response({"words": outrider.tts.PRONOUNCE.entries(), "file": "data/pronounce.json"})
+        shipped?}] (resources/pronounce.json, your data/pronounce.json on top), and `sectors`: the sectors you have
+        visited most as the voice reads them (State.sector_names; procedural sector names are read by rule)."""
+        return web.json_response({"words": outrider.tts.PRONOUNCE.entries(), "file": "data/pronounce.json",
+                                  "sectors": state.sector_names()})
 
     async def pronounce_set_view(request):
         """POST /api/pronounce {word, say}: your own way of saying a word (a respelling, "fon-TIK-yoo-loo-uh", or raw

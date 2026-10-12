@@ -1,0 +1,1615 @@
+# Sector names seen on EDDN (every app, 2026-10-09..11) and in the author's journals: the sector reader's test set
+# (tests/test_pronounce.py): the sector part of every procedural system name seen ("... Dark Region" ones among them;
+# hand-named "... Sector" ones left out).
+Aaeyoea
+Abairdy
+Aedgorn
+Aemonz
+Aemorsch
+Aemost
+Agnaimt
+Agnairr
+Agnairs
+Agnairt
+Agnairy
+Agnaix
+Aidoms
+Aiphaisty
+Aiphaitl
+Aiphaitt
+Aishainn
+Aishaism
+Aquila Dark Region
+Aries Dark Region
+Athaip
+Athairk
+Athaiwyg
+Aucofs
+Aucoks
+Aucopp
+Aucops
+Aucoths
+Aunair
+Auphailn
+Auphailz
+Auphairsts
+Baukaae
+Baukeau
+Baukoa
+Bauloe
+Bla Blou
+Bla Phroi
+Blaa Blou
+Blaa Drye
+Blaa Dryou
+Blaa Eaec
+Blaa Eohn
+Blaa Eop
+Blaa Eork
+Blaa Hypa
+Blaa Hypai
+Blaa Hype
+Blaa Phoe
+Blae Drye
+Blae Dryeia
+Blae Dryoae
+Blae Eaec
+Blae Eock
+Blae Flyi
+Blae Flyoae
+Blae Flyuae
+Blae Hype
+Blae Hypue
+Blae Phoe
+Blae Phrua
+Blaea Aip
+Blaea Auscs
+Blaea Briae
+Blaea Brou
+Blaea Euq
+Blaea Flaae
+Blaea Phlai
+Blaea Thua
+Blau Aec
+Blau Aed
+Blau Aihm
+Blau Chraei
+Blau Chrea
+Blau Euq
+Blau Eur
+Blau Eurk
+Blau Thaa
+Blau Thua
+Blau Traa
+Ble Eaeb
+Blea Airgh
+Bleae Aewsy
+Bleae Aim
+Bleae Aub
+Bleae Eurk
+Bleae Eurl
+Bleae Free
+Bleae Thaa
+Bleae Thua
+Bleethoae
+Bleethu
+Bleethuae
+Bleia Dryiae
+Bleia Dryoae
+Bleia Eohn
+Bleia Hype
+Bleia Phrua
+Bleia Prao
+Bleia Prou
+Bleou Airgh
+Blia Aescs
+Blia Aim
+Blia Aob
+Blia Eup
+Blia Eurk
+Blia Phlai
+Blie Airg
+Blie Euhn
+Blie Eup
+Blie Phla
+Blie Phlue
+Blielia
+Blo Aerb
+Blo Aescs
+Blo Aihm
+Blo Aowsy
+Blo Auwsy
+Blo Eur
+Blo Eurl
+Blo Thae
+Bloo Blou
+Bloo Byoe
+Bloo Dryoo
+Bloo Eop
+Bloo Hypa
+Bloo Phoe
+Bloo Prao
+Blooe Byoe
+Blooe Dryoo
+Blooe Phoe
+Blooe Phoea
+Blooe Prao
+Bloomee
+Blu Ain
+Blu Aob
+Blu Aoscs
+Blu Aowsy
+Blu Brou
+Blu Euq
+Blu Flee
+Blu Thua
+Blua Eaec
+Blua Eoq
+Blua Hypa
+Blua Hypue
+Blua Phio
+Bludguia
+Blue Bloae
+Blue Eaewsy
+Blue Eohm
+Blue Hypae
+Boeff
+Boeft
+Boekh
+Boelts
+Boeph
+Boepp
+Boerth
+Boesky
+Boeths
+Boewnst
+Brairee
+Brairuia
+Braisio
+Braiso
+Braisoe
+Braisua
+Brambai
+Brambe
+Bya Ail
+Bya Eup
+Bya Phla
+Bya Thoi
+Byaa Aod
+Byaa Euq
+Byaa Eurk
+Byaa Theia
+Byae Aescs
+Byae Aip
+Byai Airgh
+Byeeqai
+Byeethe
+Byeethiae
+Byeia Aihm
+Byeia Ain
+Byeia Aoscs
+Byeia Aowsy
+Byeia Aub
+Byeia Bre
+Byeia Euq
+Byeia Eur
+Byeia Eurk
+Byeia Free
+Byeia Thaa
+Byeia Thae
+Byeia Thoea
+Byoi Aewsy
+Byoi Aip
+Byoi Euq
+Byoi Eur
+Byoi Eurk
+Byoi Thae
+Byoi Thua
+Byoo Aim
+Byoo Brai
+Byoo Euhn
+Byoo Thoi
+Byooe Aescs
+Byooe Aewsy
+Byooe Aim
+Byooe Thaa
+Byooma
+Byoomai
+Byoomao
+Byoomeae
+Byoomi
+Byoomu
+Byoomua
+Byua Ain
+Byua Aowsy
+Byua Aub
+Byua Euq
+Byua Eurk
+Byua Eurl
+Byua Treia
+Byua Trua
+Byue Phlue
+Ceeckia
+Cha Eohm
+Chaa Eohn
+Chalaae
+Chaniae
+Chanuae
+Chao Thae
+Chau Thua
+Cheia Drye
+Cho Eurk
+Chooe Eop
+Choomaae
+Choomaei
+Choomeae
+Choomeou
+Choomie
+Choomuae
+Chraichio
+Chraisao
+Chraisi
+Chraiteou
+Chraufai
+Chraufao
+Chraufe
+Chreetoi
+Chrufee
+Chu Thaa
+Chua Dryiae
+Chua Dryou
+Cliewuae
+Clookao
+Clookeou
+Clookia
+Clookiae
+Clookie
+Clookoae
+Clookou
+Clooku
+Clookuae
+Clookuia
+Cloomaa
+Cloomeia
+Coalsack Dark Region
+Coerns
+Coetls
+Cojaei
+Corona Austr. Dark Region
+Critchao
+Crivoe
+Crookaae
+Crookau
+Crooke
+Crooki
+Crookoa
+Crooku
+Croomaa
+Croomoea
+Croomoi
+Cryoea Aewsy
+Cumboa
+Cumbuae
+Cyoagea
+Cyoangeia
+Cyoangua
+Cyoidai
+Cyoide
+Dehau
+Deheae
+Dehue
+Droeth
+Droett
+Drojaea
+Drojao
+Drojau
+Drojeae
+Drojia
+Drojo
+Drojoae
+Droju
+Drojuae
+Drokoe
+Drooteou
+Drootie
+Drootue
+Dryaa Bluae
+Dryaa Flyi
+Dryaa Flyuae
+Dryaa Phio
+Dryaa Prao
+Dryaa Pri
+Dryaa Pruae
+Dryae Eaewsy
+Dryae Flyi
+Dryae Flyoae
+Dryaea Airg
+Dryaea Aowsy
+Dryaea Aub
+Dryaea Flee
+Dryafai
+Dryafoae
+Dryafou
+Dryao Aowsy
+Dryao Broae
+Dryao Chrea
+Dryao Chroa
+Dryau Aec
+Dryau Aihm
+Dryau Aod
+Dryau Aowsy
+Dryau Auscs
+Dryau Ausms
+Dryau Briae
+Dryau Chrea
+Dryau Scraa
+Dryeachiae
+Dryeae Aeb
+Dryeae Aescs
+Dryeae Aod
+Dryeae Aoscs
+Dryeae Aowsy
+Dryeae Auwsy
+Dryeae Brai
+Dryeejia
+Dryeia Blai
+Dryeia Flyao
+Dryeia Prao
+Dryeia Prou
+Dryi Aim
+Dryi Chrea
+Dryi Free
+Dryi Phylaa
+Dryio Bluae
+Dryio Flyuae
+Dryio Phoe
+Dryiqao
+Dryiqi
+Dryiqia
+Dryiquae
+Dryo Aewsy
+Dryo Chraea
+Dryo Fleau
+Dryoea Bluae
+Dryoea Flyao
+Dryoea Flyi
+Dryoea Flyoo
+Dryoea Flyuae
+Dryoea Phoe
+Dryoea Prao
+Dryoea Prau
+Dryoi Bli
+Dryoi Eaec
+Dryoi Flyao
+Dryoi Flyoo
+Dryoi Proo
+Dryoodea
+Dryooe Eaescs
+Dryooe Flyou
+Dryooe Flyuae
+Dryooe Prou
+Dryu Airg
+Dryu Chrie
+Dryu Flee
+Dryua Flyuae
+Dryua Hypa
+Dryua Hypue
+Dryua Phoea
+Dryua Ploe
+Dryua Prao
+Dryua Prau
+Dryua Prou
+Dryuae Aihm
+Dryuae Aoscs
+Dryuae Chrea
+Dumbaa
+Dumbae
+Dumbai
+Dumbeou
+Dumbio
+Dumboe
+Dumboi
+Dumbooe
+Dumbue
+Dunee
+Eactaiky
+Eactainds
+Eactaiwnst
+Eafoff
+Eafoppy
+Eafosty
+Eafosys
+Eafots
+Eembaids
+Eembaism
+Eephaik
+Eephaills
+Eephaim
+Eesholt
+Eeshoqs
+Eeshorks
+Eeshorps
+Eeshovvy
+Egnaiwn
+Egnaix
+Eidaih
+Eidaik
+Eidaills
+Eidairld
+Eifols
+Eiforks
+Eisharbs
+Eishoqs
+Ellaid
+Ellaidst
+Ellairb
+Ellaiscs
+Ellaisms
+Elloqs
+Ellorps
+Eob Blou
+Eob Bluae
+Eoch Blou
+Eoch Flyi
+Eoch Flyuae
+Eoch Pri
+Eoch Pruae
+Eock Bluae
+Eock Flyi
+Eock Flyuae
+Eock Phio
+Eock Prau
+Eocs Aihm
+Eocs Aoscs
+Eocs Aowsy
+Eodgold
+Eodgols
+Eodgonds
+Eodgorks
+Eodgorph
+Eodgorsts
+Eodgovvy
+Eofairg
+Eofairgh
+Eogarld
+Eok Blao
+Eok Blou
+Eok Bluae
+Eok Flyuae
+Eok Pruae
+Eol Ble
+Eol Bloae
+Eol Flyou
+Eol Prou
+Eol Pruae
+Eolls Flyi
+Eolls Phio
+Eolls Prao
+Eolls Prau
+Eor Aim
+Eor Bru
+Eor Chruia
+Eor Phyloi
+Eord Blou
+Eord Eaec
+Eord Flyoo
+Eord Flyuae
+Eord Prau
+Eord Pri
+Eorgh Flyi
+Eorgh Prooe
+Eorgh Prou
+Eorl Aod
+Eorl Auwsy
+Eorl Brou
+Eorl Bru
+Eorl Chroa
+Eorld Byio
+Eorld Byoe
+Eorld Prau
+Eorld Pri
+Eorld Proo
+Eorm Aed
+Eorm Auwsy
+Eorm Breae
+Eorm Briae
+Eorm Chreou
+Eorm Chroa
+Eos Aowsy
+Eos Auscs
+Eos Briae
+Eos Broae
+Eos Chrea
+Eos Chreou
+Eotchofy
+Eotchorts
+Eowrailt
+Eowyg Aihm
+Eowyg Aoscs
+Eowyg Auwsy
+Eozows
+Essack
+Essal
+Essalls
+Eupaipy
+Eussoths
+Ewrobb
+Exaq
+Fachaea
+Fachai
+Fache
+Fachiae
+Fachoae
+Fleaseia
+Fleckao
+Flimbuae
+Floabs
+Floadaea
+Floadou
+Floadu
+Floagh
+Floalk
+Floaln
+Floalt
+Floanth
+Floarks
+Floarph
+Floarps
+Floawns
+Flya Hypoo
+Flyae Drye
+Flyae Eaec
+Flyae Flyi
+Flyae Hype
+Flyae Ploe
+Flyae Prau
+Flyai Bluae
+Flyai Eaescs
+Flyai Eohm
+Flyai Gree
+Flyai Groa
+Flyai Hypooe
+Flyai Phroo
+Flyai Pre
+Flyaudiae
+Flyeia Dryiae
+Flyeia Dryoae
+Flyeia Hypa
+Flyeia Hypai
+Flyeia Phrae
+Flyiedgai
+Flyiedge
+Flyiedgiae
+Flyiedgooe
+Flyiedgou
+Flyiedgue
+Flyoo Gree
+Flyoo Hypoo
+Flyoo Prao
+Flyooe Dryeia
+Flyooe Eohn
+Flyooe Hypue
+Flyooe Phio
+Flyooe Prau
+Flyooe Pri
+Flyooe Proae
+Flyua Dryiae
+Flyua Dryoae
+Flyua Eoq
+Flyua Eork
+Flyua Hypa
+Flyua Hypue
+Flyua Phio
+Flyua Phoea
+Flyue Ble
+Flyue Byoe
+Flyue Dryai
+Flyue Dryiae
+Flyue Eaescs
+Flyue Eaewsy
+Flyue Eom
+Flyue Flyiae
+Flyumbue
+Fraufoo
+Fraufooe
+Froabs
+Froags
+Froall
+Froalt
+Froarks
+Froarsts
+Gaidue
+Glaichoe
+Glaiseae
+Glaitie
+Gludgaa
+Gludgae
+Gludgai
+Gludge
+Gludgeia
+Gludgoe
+Gludgoea
+Gludgoi
+Gludgooe
+Gludgou
+Glufee
+Glufoa
+Gongae
+Gongeia
+Gooraei
+Goori
+Gooroae
+Graea Dryoae
+Graea Eork
+Graea Flyi
+Graea Flyou
+Graea Hypa
+Graea Hypue
+Graei Blou
+Graei Dryai
+Graei Eaec
+Graei Hypoe
+Graei Phroi
+Graei Priae
+Granoae
+Grea Eaescs
+Grea Eohm
+Grea Eon
+Grea Hypae
+Grea Hypoo
+Grea Hypooe
+Greae Bluae
+Greae Dryoae
+Greae Eoq
+Greae Eorgh
+Greae Hypa
+Greae Hypai
+Greae Hype
+Greae Phio
+Greae Phoea
+Greae Pri
+Greou Blou
+Greou Dryai
+Greou Eop
+Greou Eorg
+Greou Greau
+Greou Hypooe
+Greou Prao
+Gria Drye
+Gria Eaec
+Gria Eoq
+Gria Eork
+Gria Flyuae
+Gria Gree
+Gria Hypue
+Gria Pri
+Grie Byoe
+Grie Drye
+Grie Eop
+Grie Flyou
+Grie Flyuae
+Grie Hypai
+Grie Hypooe
+Grie Hypue
+Grie Phoe
+Grie Phoea
+Grie Prao
+Grie Pre
+Groa Eaeb
+Groevsky
+Groomuia
+Gru Drye
+Gru Dryiae
+Gru Dryou
+Gru Eoq
+Gru Eork
+Gru Flyi
+Gru Hypai
+Gru Hypue
+Gru Phio
+Gru Ploe
+Gyradgaa
+Gyradgua
+Hachee
+Hatchio
+Hatchoi
+Hatchooe
+Hedgaea
+Hedgeou
+Hedgo
+Hegaa
+Hegai
+Hegau
+Hege
+Hegeia
+Hegio
+Hegoea
+Hegoi
+Hegoo
+Hegua
+Hegue
+Hoijau
+Hyia Eohn
+Hypaa Flyou
+Hypaa Groa
+Hypaa Hypoo
+Hypaa Proae
+Hypao Aed
+Hypao Ail
+Hypao Chreou
+Hypau Aec
+Hypau Bra
+Hypau Chruia
+Hypau Phlai
+Hypheedst
+Hypheeg
+Hypheerld
+Hypheesms
+Hypi Aed
+Hypi Aoc
+Hypi Aoscs
+Hypi Auwsy
+Hypiae Aec
+Hypiae Aescs
+Hypiae Aihm
+Hypiae Aip
+Hypiae Aub
+Hypiae Aug
+Hypiae Auscs
+Hypio Bli
+Hypio Bluae
+Hypio Byio
+Hypio Eaec
+Hypio Gree
+Hypio Groa
+Hypio Prao
+Hypio Pri
+Hypo Aeb
+Hypo Aowsy
+Hypo Bra
+Hypo Flee
+Hypo Fruia
+Hypoae Aescs
+Hypoae Aihm
+Hypoae Aim
+Hypoae Ain
+Hypoae Aip
+Hypoae Aurb
+Hypoae Briae
+Hypoae Chreou
+Hypoe Bluae
+Hypoe Flyi
+Hypoe Groa
+Hypoe Hypue
+Hypoe Prao
+Hypoe Prau
+Hypoea Eaeb
+Hypoea Ploe
+Hypoea Prau
+Hypoea Pre
+Hypoi Eaewsy
+Hypoi Hype
+Hypoi Prau
+Hypoi Proae
+Hypoi Prou
+Hypoi Prua
+Hypou Aim
+Hypou Ain
+Hypou Aip
+Hypou Ais
+Hypou Aod
+Hypou Chruia
+Hypou Freau
+Hypua Flyoae
+Hypua Groa
+Hypua Hypoo
+Hypua Hypooe
+Hypuae Aec
+Hypuae Aim
+Hypuae Ain
+Hypuae Aoc
+Hypuae Auwsy
+Hypuae Bra
+Hypuae Chraei
+Hypuae Scrua
+Hypuehee
+Hypumaea
+Hypumau
+Hyuedau
+Hyuedeae
+Hyuedo
+Hyuqau
+Hyuqi
+Hyuqia
+Hyuqo
+Hyuqu
+Hyuquae
+ICZ
+Ihab
+Iockols
+Iorady
+Iorant
+Iowhaih
+Iowhaik
+Iowhail
+Iowhairld
+Iwaisty
+Jongiae
+Jongoae
+Joorooe
+Joothee
+Juemaei
+Juemao
+Juemee
+Juemeou
+Juemi
+Juemuia
+Juena
+Juenae
+Juenoe
+Kasao
+Koijai
+Kueme
+Kuemiae
+Kyloabs
+Kyloagh
+Kyloagy
+Kyloalks
+Kyloall
+Kyloaln
+Kyloaqs
+Kyloarph
+Kyloasly
+Lasao
+Lasi
+Lasiae
+Leamae
+Leamao
+Leameia
+Leamoea
+Leamoi
+Leamua
+Leamuae
+Leamue
+Lupus Dark Region
+Lyaisaa
+Lyaisai
+Lyaisoo
+Lyaisua
+Lychoitl
+Lysooch
+Lysood
+Lysoof
+Lysoonts
+Lysoorb
+Lysoosms
+Moihaei
+Moihia
+Moihie
+Moijio
+Moijoe
+Muena
+Musca Dark Region
+Myaumaei
+Mycapp
+Myiesoae
+Mylaifaa
+Mylaifai
+Mylienga
+Mynoacy
+Mynoarr
+Mynoaw
+Myoagea
+Myoangua
+Myoideau
+Myoidee
+Myrielk
+Myrierph
+Myriesly
+Nuekaae
+Nuekau
+Nuekoa
+Nuekuae
+Nuekuia
+Nueliae
+Nueloi
+Nuwo
+Nyautheou
+Nyeajaae
+Nyeajaea
+Nyeajeau
+Nyeajee
+Nyeajeou
+Nyeajoa
+Nyeakeia
+Nyeakio
+Nyeakua
+Nyuenaa
+Nyuenooe
+Nyuenua
+Oephaic
+Oephaich
+Oephaid
+Oephaidst
+Oephaird
+Oephaivsky
+Oeshorps
+Ogaicy
+Ogaimy
+Ogairr
+Ogairt
+Ogairy
+Oob Aoscs
+Oob Aub
+Oob Brue
+Oob Chraei
+Oochody
+Oochont
+Oochonz
+Oochorphs
+Oochorrs
+Oochorsch
+Oochoss
+Oochost
+Oochosy
+Oochoxt
+Ood Flaae
+Ood Fleau
+Oofaich
+Oofaih
+Oofain
+Oopailn
+Oopairph
+Ooscs Airg
+Ooscs Chrie
+Ooscs Freau
+Ooscs Free
+Ootokh
+Ootordy
+Ootosky
+Ootosps
+Ophokh
+Orion Dark Region
+Ouchorrs
+Ouchorsch
+Ouchost
+Oumbaf
+Oumbaiqs
+Oumbavsky
+Oupailks
+Oushaind
+Outopps
+Outoppy
+Outordy
+Outorns
+Outorst
+Outotch
+Outott
+Outotz
+Pha Aeb
+Pha Airg
+Pha Aob
+Pha Bra
+Pha Bre
+Pha Free
+Phaa Ain
+Phaa Aug
+Phaa Aurb
+Phaa Briae
+Phaa Chroa
+Phae Aihm
+Phae Aob
+Phae Aoc
+Phae Aoscs
+Phae Auscs
+Phae Chreou
+Phae Chrie
+Pheia Aihm
+Pheia Ain
+Pheia Auwsy
+Pheia Chraei
+Pheia Flee
+Phimbeau
+Phimbee
+Phimbeou
+Phipaa
+Phipoe
+Phipoea
+Phlaudgoo
+Phleedgaa
+Phleedgae
+Phoi Aec
+Phoi Aescs
+Phoi Aod
+Phoi Aub
+Phoi Auscs
+Phoi Auwsy
+Phoi Brue
+Phoi Chrie
+Phoi Screia
+Phoo Aob
+Phoo Phlai
+Phooe Aeb
+Phooe Ail
+Phooe Aoc
+Phooe Phlue
+Phraa Blao
+Phraa Byio
+Phraa Byoe
+Phraa Eaec
+Phraa Groa
+Phraa Hypa
+Phraa Hypai
+Phrae Flyao
+Phrae Flyou
+Phrae Hypoo
+Phrae Proo
+Phrauppy
+Phrausks
+Phrausky
+Phrautch
+Phreia Hypooe
+Phreia Ploe
+Phreia Pra
+Phreia Pri
+Phrio Blue
+Phrio Flyai
+Phrio Phoea
+Phrio Prao
+Phroea Blao
+Phroea Bli
+Phroea Bloae
+Phroea Blou
+Phroea Bluae
+Phroea Hype
+Phroea Phio
+Phroea Phoe
+Phroea Phoea
+Phroea Ploe
+Phroea Prau
+Phroi Blou
+Phroi Bluae
+Phroi Byoe
+Phroi Byoea
+Phroi Flyou
+Phroi Hypai
+Phroi Hypue
+Phroi Phio
+Phroi Phoea
+Phroi Pri
+Phrooe Ble
+Phrooe Flyoae
+Phrooe Groa
+Phrua Bliae
+Phrua Flyeia
+Phrua Flyuae
+Phrua Ploe
+Phrua Pruae
+Phua Aub
+Phua Auwsy
+Phua Bre
+Phua Chrea
+Phylucs
+Phylur
+Phylurn
+Phyluwyg
+Plaa Aec
+Plaa Aed
+Plaa Aescs
+Plaa Ain
+Plaa Aip
+Plaa Chraei
+Plaa Chrea
+Plaa Eurk
+Plaa Theia
+Plaa Thua
+Plaa Trua
+Plae Aeb
+Plae Briae
+Plae Euhm
+Plae Eun
+Plae Fleau
+Plae Fraae
+Pleia Airg
+Pleia Aoc
+Pleia Brou
+Pleia Flee
+Pleia Fraae
+Pleia Thaa
+Plieluae
+Plimboa
+Plio Aihm
+Plio Aim
+Plio Aip
+Plio Chrea
+Plio Euq
+Plio Eurl
+Plipua
+Ploea Aim
+Ploea Aip
+Ploea Brou
+Ploea Eur
+Ploea Eurl
+Ploea Theia
+Ploi Aec
+Ploi Aewsy
+Ploi Aihm
+Ploi Aoscs
+Ploi Aowsy
+Ploi Briae
+Ploi Eurl
+Ploi Free
+Ploi Thua
+Plooe Airgh
+Plooe Eun
+Plooe Thio
+Plooe Thoi
+Ploxuia
+Plua Ail
+Plua Chraea
+Plua Thua
+Pra Drya
+Pra Eaewsy
+Prae Drye
+Prae Eaec
+Prae Flyao
+Prae Flyuae
+Prae Phio
+Prae Phrua
+Praea Aec
+Praea Aoscs
+Praea Bre
+Praea Brou
+Praea Chraei
+Praea Euq
+Praea Fraae
+Praei Aick
+Praei Chraea
+Praei Phlai
+Prai Eom
+Prai Greau
+Prai Hypoo
+Pre Phroo
+Prea Aick
+Preae Aec
+Preae Aescs
+Preae Aewsy
+Preae Aihm
+Preae Aim
+Preae Ain
+Preae Aod
+Preae Aub
+Preae Broae
+Preae Thaa
+Preae Theia
+Preia Dryiae
+Preia Eoq
+Preia Hypai
+Preia Phio
+Preia Phoe
+Preia Phoea
+Preia Phrae
+Preou Airgh
+Preou Bra
+Preou Phlai
+Preou Thio
+Pria Aim
+Pria Aip
+Pria Airg
+Pria Eup
+Prie Aim
+Prie Aoc
+Prie Bre
+Prie Flee
+Prie Phlai
+Prielaei
+Prielea
+Prieleae
+Prielee
+Prielu
+Prieluae
+Prieluia
+Priemoe
+Pro Aec
+Pro Aewsy
+Pro Aim
+Pro Eur
+Pro Eurl
+Pro Thaa
+Pro Thua
+Pro Treia
+Proo Drya
+Proo Eaec
+Proo Hypooe
+Proo Phoea
+Proo Prao
+Prooe Drye
+Prooe Dryeia
+Prooe Flyuae
+Prooe Hypa
+Prooe Hypue
+Prooe Phio
+Prooe Phoea
+Prooe Prau
+Prooe Proae
+Prooe Pruae
+Proxaei
+Pru Aed
+Pru Aerb
+Pru Aescs
+Pru Aihm
+Pru Aim
+Pru Ain
+Pru Aip
+Pru Euq
+Pru Eurk
+Prua Dryoae
+Prua Dryou
+Prua Eaec
+Prua Hypa
+Prua Hypai
+Prua Phio
+Prua Phoe
+Prua Phoea
+Prue Ble
+Prue Byoe
+Prue Dryai
+Prue Dryoo
+Prue Eaeb
+Prue Eaewsy
+Prue Eom
+Prungeou
+Puekao
+Puekea
+Puekeau
+Puekee
+Pueki
+Puekie
+Pueloe
+Pueloea
+Pueloi
+Puwaae
+Pyra Drye
+Pyra Eop
+Pyraea Euq
+Pyraea Thua
+Pyralaei
+Pyralea
+Pyraleau
+Pyralia
+Pyramio
+Pyramoe
+Pyrani
+Pyraniae
+Pyrie Eurk
+Pyrivo
+Pyroifa
+Pyroifooe
+Pyroomee
+Pythaics
+Pyuefoea
+Pyuefua
+Pyult
+Pyulz
+Pyuphs
+Pyurks
+Qaugneau
+Qauthoo
+Qeajaea
+Qeajie
+Qeajo
+Qiedau
+Qiedea
+Qiedeae
+Qiedeau
+Qieduia
+Qiefaa
+Qiefoea
+Qiefoi
+Qiefua
+Qosoa
+Quemeou
+Quemie
+Rhadi
+Rhooloea
+Rhoolooe
+Ridgio
+Ridgoe
+Roedaae
+Roefio
+Roefoo
+Rothaae
+Ruveia
+Scaukee
+Scaulae
+Scaulao
+Scauliae
+Scaulo
+Scaulou
+Scheau Blao
+Scheau Bli
+Scheau Bluae
+Scheau Byoea
+Scheau Flyi
+Scheau Greau
+Scheau Hype
+Scheau Phio
+Scheau Phoe
+Scheau Phoea
+Scheau Ploe
+Scheau Prao
+Scheau Pri
+Schee Blao
+Schee Bloae
+Schee Blou
+Schee Flyi
+Schee Hypue
+Schee Ploe
+Schee Prau
+Schignoi
+Schiqeou
+Scorpius Dark Region
+Screaka
+Screake
+Screakiae
+Screakoi
+Screakou
+Scutum Dark Region
+Seqaae
+Shaulae
+Shaulao
+Shrogaae
+Shrogaei
+Shrogeau
+Shrogee
+Shumbio
+Shumboi
+Sifaea
+Sifeae
+Sifi
+Sifoae
+Sifou
+Sifuia
+Skaudaea
+Skaudai
+Skaudao
+Skaude
+Skaudia
+Skaudoae
+Skaudou
+Skauduae
+Skueqae
+Skueqiae
+Slachie
+Slaiyoea
+Slatchue
+Slegao
+Slegeae
+Slegi
+Slegiae
+Slegoea
+Slegou
+Sleguae
+Slengeau
+Slengie
+Slengoa
+Slenguia
+Slulee
+Slyaiks
+Slyaips
+Slyaipt
+Smasiae
+Smojaea
+Smojai
+Smoje
+Smojeia
+Smojo
+Smojoea
+Smojoo
+Smojooe
+Smojou
+Smojue
+Smooraei
+Smoorea
+Smoosee
+Smootaea
+Smootao
+Smooti
+Smootiae
+Smootoa
+Smootoae
+Smootuia
+Spaidue
+Spasao
+Spasau
+Sphieseae
+Sphiesi
+Sphieso
+Sphuqeou
+Sphuqia
+Sphuqie
+Splierd
+Spliergh
+Splojeia
+Splojio
+Splojua
+Spoihaae
+Spoihee
+Spoorao
+Spooroa
+Sqeans
+Squecs
+Straae Eohn
+Stranoa
+Striechae
+Striechi
+Striechie
+Stroifai
+Stroifooe
+Stuelou
+Stuelue
+Stuemai
+Stuemao
+Stuemeae
+Stuemoa
+Stuenoe
+Styairph
+Styeks
+Sutchoi
+Sutchooe
+Swoafs
+Swoidai
+Swoide
+Swoils
+Swoilz
+Swoiphs
+Swoirks
+Swoiwns
+Swuemee
+Swuemo
+Swuenaa
+Swuenoea
+Synauloo
+Synaulooe
+Synaulue
+Syneayeia
+Synietchaa
+Synooka
+Synookio
+Synookoi
+Synookoo
+Synuedeau
+Synuedee
+Synueduia
+Synuefai
+Synuefe
+Synuefou
+Synuefua
+Synuefuae
+Synuefue
+Syralaei
+Syralia
+Syralie
+Syraloa
+Syralou
+Syraluia
+Syre Thaa
+Syreadiae
+Syriveia
+Syrivoo
+Systeasai
+Systeasue
+Systimbao
+Systimbea
+Systimbo
+Systimbu
+Systipoea
+Taurus Dark Region
+Teakooe
+Tepaa
+Tepua
+Teqie
+Thaae Bli
+Thaikoa
+Thaikuia
+Thaila
+Thailae
+Thaile
+Thaileia
+Thailiae
+Thailio
+Thailoe
+Thailoea
+Thailoi
+Thailooe
+Thaimuia
+Thainua
+Theau Pruae
+Theema
+Theemaa
+Thraikai
+Thraike
+Thraikiae
+Thraikou
+Thraikue
+Throsaae
+Throsia
+Throsoa
+Thuecheae
+Tiefoe
+Tilks
+Tradgoi
+Tradgue
+Traikaae
+Traikea
+Traikee
+Traikeou
+Traikoa
+Trailaa
+Trailua
+Trie Bluae
+Truecha
+Truechaae
+Truechiae
+Tyriedgae
+Tyriedgai
+Tyriedgeia
+Tyriedgoea
+Tyroeld
+Tyroerts
+Tyroopps
+Tyroosks
+Tyrootz
+Umbaiss
+Umbaist
+Ushott
+Vegnao
+Vegnoea
+Vela Dark Region
+Veqo
+Virps
+Voqua
+Vulpecula Dark Region
+Wembeau
+Wepaa
+Wepae
+Wepai
+Wepe
+Wepiae
+Wepio
+Wepoae
+Wepua
+Weqea
+Weqeae
+Whamboi
+Whambooe
+Whuedaei
+Wimly
+Wredgaei
+Wredgeou
+Wredgou
+Wredgu
+Wredguia
+Wregeia
+Wregoe
+Wregoi
+Wruegnaei
+Wruegneou
+Wruegnu
+Wruethoo
+Wrupaea
+Xeeheou
+Xembeou
+Xothie
+Yaimou
+Yaimuae
+Yoqa
+Yoqeia
+Yoque
+Zejiae
+Zejue
+Zumboea
+Zunai
+Zunia
+Zunuae
+Zunue

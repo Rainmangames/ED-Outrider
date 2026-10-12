@@ -4886,7 +4886,8 @@ const settle = async maxMs => {
       // How is it said: the table (never the real one: answered here, nothing written)
       if (s === "api/pronounce" && o && o.method === "POST") { const b = JSON.parse(o.body); posted.push([s, b]);
         return json({words: [{word: "Osseus", say: "OSS-ee-uss", source: "shipped"}].concat(b.say ? [{word: b.word, say: b.say, source: "yours"}] : [])}); }
-      if (s === "api/pronounce") return json({words: [{word: "Fonticulua", say: "fon-TIK-yoo-loo-uh", source: "shipped"}, {word: "Osseus", say: "OSS-ee-uss", source: "shipped"}]});
+      if (s === "api/pronounce") return json({words: [{word: "Fonticulua", say: "fon-TIK-yoo-loo-uh", source: "shipped"}, {word: "Osseus", say: "OSS-ee-uss", source: "shipped"}],
+        sectors: [{name: "Smojooe", visits: 5, say: "SMOH-joo"}, {name: "Flyeia Hypa", visits: 4, say: "fligh-AY-uh HIGH-puh"}]});
       return realFetch(u, o);
     };
     const got = await w.eval(`(async () => {
@@ -4930,6 +4931,12 @@ const settle = async maxMs => {
       labEl("pronSay").value = "fon-TIK-yoo-loo-wuh"; labEl("pronHearNew").click(); await tick();
       labEl("pronWord").value = "Jameson"; labEl("pronSay").value = "JAYM-sun"; labEl("pronSave").click(); await tick();
       o.pron.push(labEl("labMsg").textContent, labEl("pronList").textContent);
+      // the sectors you visited most: ▶ plays one as a sector, a click on a word puts it and its reading in the box
+      o.sectors = [labEl("pronSectors").querySelectorAll("[data-sector]").length];
+      labEl("pronSectors").querySelector('[data-sector="Flyeia Hypa"]').click(); await tick();
+      labEl("pronSectors").querySelector('[data-secword="Hypa"]').click(); await tick();
+      o.sectors.push(labEl("pronWord").value, labEl("pronSay").value);
+      labEl("pronWord").value = "Synuefe"; labEl("pronHearSector").click(); await tick();
       labEl("pronBox").open = false;
       tabClose(document.getElementById("labDlg"));
       speechLib = lib0;
@@ -4951,10 +4958,12 @@ const settle = async maxMs => {
       pron: JSON.stringify(got.pron) === JSON.stringify([2, "2 shipped · none of yours yet", "fon-TIK-yoo-loo-uh", "warnc",
         "Saved: Jameson is said JAYM-sun from now on", "1 shipped · yours: Jameson JAYM-sun"])
         && said.some(x => x.text === "{fon-TIK-yoo-loo-wuh}") && !said.some(x => x.text.includes("LOO uh"))
-        && posted.some(p => p[0] === "api/pronounce" && p[1].word === "Jameson" && p[1].say === "JAYM-sun")};
+        && posted.some(p => p[0] === "api/pronounce" && p[1].word === "Jameson" && p[1].say === "JAYM-sun"),
+      sectors: JSON.stringify(got.sectors) === JSON.stringify([2, "Hypa", "HIGH-puh"])
+        && said.some(x => x.text === "{{Flyeia Hypa}}") && said.some(x => x.text === "{{Synuefe}}")};
     const good = Object.values(want).every(Boolean) && errors.length === before;
     allOk = allOk && good;
-    console.log(good ? "OK" : "FAIL", "| voice lab |", good ? "speaker in Settings; the lab steps speakers, uses one, plays and cuts a line, saves a WAV, How is it said" : JSON.stringify({want, got, said, posted}), errors.slice(before));
+    console.log(good ? "OK" : "FAIL", "| voice lab |", good ? "speaker in Settings; the lab steps speakers, uses one, plays and cuts a line, saves a WAV, How is it said, sector names" : JSON.stringify({want, got, said, posted}), errors.slice(before));
   }
   // boxel exploration (2026-10-11): Nearby's Standard / Boxel switch shows the boxel's list (visited with your scans,
   // Spansh's, the ones to try), the warning, Target next and 🎯 by number, Keep, and the recommended boxels by mass code

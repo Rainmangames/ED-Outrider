@@ -187,10 +187,13 @@ def _syllable(p, espeak_voice, phonemize):
     return ph.replace("ʌ", "ə").replace("ɐ", "ə")
 
 
-def apply(text, espeak_voice, table, phonemize=piper_phonemize):
+def apply(text, espeak_voice, table, phonemize=piper_phonemize, known=None):
     """`text` with the table's words (and any {respelling}) as Piper's raw phonemes, punctuation right after one moved
-    inside its block (Piper drops a comma that starts the text after a block). Raw blocks already there are left as
-    they are. Only for an English voice (espeak "en..."); anything else gets the text unchanged."""
+    inside its block (Piper drops a comma that starts the text after a block); a procedural sector's words right
+    before a system's code (and the voice lab's {{Smojooe}}) read by rule (sector_phonemes): with `known` (the voice's
+    phoneme map), a word whose rule needs a sound the voice lacks is left as text (a voice Piper trained another way
+    would drop the sound). Raw blocks already there are left as they are. Only for an English voice (espeak "en...");
+    anything else gets the text unchanged."""
     if not str(espeak_voice or "").startswith("en"):
         return text
     pat = table.pattern() if table else None
@@ -205,11 +208,214 @@ def apply(text, espeak_voice, table, phonemize=piper_phonemize):
 
     def inline(m):
         return block(m.group(1), "") or m.group(1).replace("-", "")
+
+    def sector(m):   # a sector's words by rule, a word of the table as the table says
+        names = m.group(1).split()
+        lead = names[0] + " " if len(names) == 2 and names[0].lower() in english_words() else ""
+        if lead:
+            names = names[1:]
+        if not sector_name(" ".join(names)):
+            return m.group(0)
+        out = []
+        for w in names:
+            if w.lower() in words:
+                ph = to_phonemes(words[w.lower()], espeak_voice, phonemize)
+            else:
+                ph = sector_phonemes(w, espeak_voice)
+                ph = None if ph and known is not None and not set(ph) <= known else ph
+            out.append(f"[[{ph}]]" if ph else w)
+        return lead + " ".join(out)
     out = []
     for part in BLOCK.split(text):
         if not part.startswith("[["):
-            part = INLINE.sub(inline, part)
+            part = SECTOR_IN_TEXT.sub(sector, SECTOR_INLINE.sub(sector, part))
+            part = "".join(p if p.startswith("[[") else INLINE.sub(inline, p) for p in BLOCK.split(part))
             parts = BLOCK.split(part)   # the inline ones are blocks now: the table's words only between them
             part = "".join(p if p.startswith("[[") or not pat else pat.sub(one, p) for p in parts)
         out.append(part)
     return "".join(out)
+
+
+# ---- procedural sector names ("Smojooe", "Flyeia Hypa"; the author's ask, 2026-10-12) ----
+# The game builds them from fixed pieces, so they are read by rule, not listed: a word splits into consonant and
+# vowel clusters ("sm" "o" "j" "ooe"), the vowel runs into sounds (SECTOR_VOWELS, longest first), the consonants
+# between two sounds go one to the syllable before and the rest to the one after ("Wred-guia"; one alone starts the
+# next: "Smo-jooe"). A lone vowel is short before a consonant of its own syllable, long at its end ("Smo": smoh), a y
+# after a consonant a vowel ("Fly", "Syn"; a last -y after another vowel "ee"); c before e, i, y is s, a first x z. Stress: the first syllable of a word of two, else the second last. The
+# phonemes are written here (espeak guesses made-up spellings: "ligh" is "lig"), British or American by the voice.
+# A word in the table (shipped or yours) wins; only words right before a system's code ("Smojooe AR-E b25-8", or
+# spoken "Smojooe A R E, b 25 8") are read this way, never a hand-named "… Sector" or "… Dark Region".
+SECTOR_SOUNDS = {   # sound: (respelling, British, American)
+    "a": ("a", "æ", "æ"), "e": ("e", "ɛ", "ɛ"), "i": ("i", "ɪ", "ɪ"), "o": ("o", "ɒ", "ɑː"), "u": ("u", "ʌ", "ʌ"),
+    "ah": ("ah", "ɑː", "ɑː"), "eh": ("eh", "ɛ", "ɛ"), "ee": ("ee", "iː", "iː"), "oh": ("oh", "əʊ", "oʊ"),
+    "oo": ("oo", "uː", "uː"), "uh": ("uh", "ə", "ə"), "igh": ("igh", "aɪ", "aɪ"), "ay": ("ay", "eɪ", "eɪ"),
+    "ow": ("ow", "aʊ", "aʊ"), "oy": ("oy", "ɔɪ", "ɔɪ"), "yoo": ("yoo", "juː", "juː"), "aw": ("aw", "ɔː", "ɔː"),
+    "ar": ("ar", "ɑː", "ɑːɹ"), "or": ("or", "ɔː", "ɔːɹ"), "er": ("er", "ɜː", "ɜːɹ"), "yoor": ("yoor", "jʊə", "jʊɹ"),
+    "air": ("air", "eə", "ɛɹ"), "ire": ("ire", "aɪə", "aɪɹ"), "our": ("our", "aʊə", "aʊɹ"), "wee": ("wee", "wiː", "wiː")}
+SINGLE = {"a": ("a", "ah", "uh"), "e": ("e", "eh", "ee"), "i": ("i", "ee", "ee"), "o": ("o", "oh", "oh"),
+          "u": ("u", "oo", "oo"), "y": ("i", "igh", "igh")}   # a lone vowel: (closed, open, at the word's end)
+SECTOR_VOWELS = {   # a vowel run: (its sounds in a word, at the word's end)
+    "aa": (["ah"], ["ah"]), "ae": (["ay"], ["ay"]), "ai": (["ay"], ["ay"]), "ao": (["ow"], ["ow"]), "au": (["ow"], ["ow"]),
+    "ea": (["ee"], ["ee", "uh"]), "ee": (["ee"], ["ee"]), "ei": (["ay"], ["ay"]), "eo": (["ee", "oh"], ["ee", "oh"]),
+    "eu": (["yoo"], ["yoo"]), "ia": (["ee", "uh"], ["ee", "uh"]), "ie": (["ee"], ["ee"]), "io": (["ee", "oh"], ["ee", "oh"]),
+    "iu": (["ee", "oo"], ["ee", "oo"]), "oa": (["oh"], ["oh", "uh"]), "oe": (["oh"], ["oh"]), "oi": (["oy"], ["oy"]),
+    "oo": (["oo"], ["oo"]), "ou": (["ow"], ["ow"]), "ua": (["oo", "uh"], ["oo", "uh"]), "ue": (["oo"], ["oo"]),
+    "ui": (["oo", "ee"], ["oo", "ee"]), "aae": (["ah", "ay"], ["ah", "ay"]), "aea": (["ay", "uh"], ["ay", "uh"]),
+    "aei": (["ah", "ay"], ["ah", "ay"]), "eae": (["ee", "ay"], ["ee", "ay"]), "eau": (["oh"], ["oh"]),
+    "eia": (["ay", "uh"], ["ay", "uh"]), "eou": (["ay", "oo"], ["ay", "oo"]), "iae": (["ee", "ay"], ["ee", "ay"]),
+    "oae": (["oh", "ay"], ["oh", "ay"]), "oea": (["oh", "ee", "uh"], ["oh", "ee", "uh"]), "ooe": (["oo"], ["oo"]),
+    "uae": (["oo", "ay"], ["oo", "ay"]), "uia": (["wee", "uh"], ["wee", "uh"])}
+SECTOR_CONSONANTS = {   # a consonant piece: (respelling, phonemes); doubled letters are one
+    "sch": ("sk", "sk"), "tz": ("ts", "ts"), "chr": ("kr", "kɹ"), "tch": ("ch", "tʃ"), "ch": ("ch", "tʃ"), "ph": ("f", "f"), "th": ("th", "θ"),
+    "sh": ("sh", "ʃ"), "wr": ("r", "ɹ"), "wh": ("w", "w"), "rh": ("r", "ɹ"), "ck": ("k", "k"), "kh": ("k", "k"),
+    "gh": ("g", "ɡ"), "b": ("b", "b"), "c": ("k", "k"), "d": ("d", "d"), "f": ("f", "f"), "g": ("g", "ɡ"), "h": ("h", "h"),
+    "j": ("j", "dʒ"), "k": ("k", "k"), "l": ("l", "l"), "m": ("m", "m"), "n": ("n", "n"), "p": ("p", "p"), "q": ("k", "k"),
+    "r": ("r", "ɹ"), "s": ("s", "s"), "t": ("t", "t"), "v": ("v", "v"), "w": ("w", "w"), "x": ("ks", "ks"), "y": ("y", "j"),
+    "z": ("z", "z")}
+R_SOUND = {"a": "ar", "ah": "ar", "o": "or", "oh": "or", "e": "er", "i": "er", "u": "er", "eh": "er", "ee": "er", "oo": "or",
+           "yoo": "yoor", "ay": "air", "igh": "ire", "ow": "our"}   # a vowel before r (British: no r said after it)
+W_SOUND = {"a": "aw", "ah": "aw", "o": "ow", "oh": "ow", "e": "yoo", "eh": "yoo"}
+_SECTOR_WORD = re.compile(r"[A-Za-z]{2,}")
+_SECTOR_BEFORE = (r"(?=\s+(?:[A-Z][A-Z]-[A-Z]\s+[a-h]\d|[A-Z]\s[A-Z]\s[A-Z],?\s[a-h]\s\d))")
+SECTOR_IN_TEXT = re.compile(r"(?<![\w'’-])([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)" + _SECTOR_BEFORE)
+SECTOR_INLINE = re.compile(r"\{\{([A-Za-z]+(?: [A-Za-z]+)?)\}\}")   # the voice lab's "say this as a sector name"
+NOT_SECTOR = {"sector", "region", "dark"}
+SPEECH = os.path.join(RESOURCES_DIR, "speech.json")
+_english = None
+
+
+def english_words():
+    """Every word Outrider's spoken lines use (resources/speech.json), lower case: a capitalised one right before a
+    sector ("Leaving Smojooe AR-E b25-8 A 3") is English, not a two-word sector's first word ("Pro Eurl" keeps "Pro" as
+    English says it, its second word by rule)."""
+    global _english
+    if _english is None:
+        try:
+            with open(SPEECH, encoding="utf-8") as f:
+                _english = {w.lower() for w in re.findall(r"[A-Za-z]{2,}", f.read())}
+        except OSError:
+            _english = set()
+    return _english
+
+
+def _pieces(text, table):
+    out, i = [], 0
+    longest = max(len(k) for k in table)
+    while i < len(text):
+        for n in range(min(longest, len(text) - i), 0, -1):
+            if text[i:i + n] in table:
+                out.append(text[i:i + n])
+                i += n
+                break
+        else:   # a letter no table knows: skipped
+            i += 1
+    return out
+
+
+def _runs(word):
+    """[(kind, letters)]: "c" consonant runs and "v" vowel runs; a y is a vowel after a consonant, a consonant first
+    or between vowels, and a vowel y is a run of its own ("Fly" "eia")."""
+    out = []
+    for i, ch in enumerate(word):
+        if ch == "y":
+            before, after = word[i - 1] if i else "", word[i + 1] if i + 1 < len(word) else ""
+            kind = "c" if (not before or before in "aeiou") and after in "aeiou" and after else "y"
+        else:
+            kind = "v" if ch in "aeiou" else "c"
+        if out and out[-1][0] == kind and kind != "y":
+            out[-1][1] += ch
+        else:
+            out.append([kind, ch])
+    return [("v" if k == "y" else k, s) for k, s in out]
+
+
+def sector_word(word):
+    """A procedural sector word's syllables: [{"onset", "sound", "coda"}] (consonant pieces and a SECTOR_SOUNDS key),
+    or None for anything that is not one plain word of letters."""
+    if not isinstance(word, str) or not _SECTOR_WORD.fullmatch(word):
+        return None
+    word = re.sub(r"c(?=[eiy])", "s", re.sub(r"^x", "z", word.lower()))   # English habits: "Cyoa" sigh, "Xee" zee
+    runs = _runs(word)
+    nuclei, between = [], [[]]   # the sounds, and the consonant pieces before each (and after the last)
+    for k, (kind, letters) in enumerate(runs):
+        if kind == "c":
+            between[-1] += _pieces(re.sub(r"(.)\1", r"\1", letters), SECTOR_CONSONANTS)
+            continue
+        last = k == len(runs) - 1
+        if len(letters) == 1:
+            nuclei.append(letters)
+            between.append([])
+            continue
+        for part in _pieces(letters, {**SECTOR_VOWELS, **{v: 0 for v in "aeiouy"}}):
+            if part in SECTOR_VOWELS:
+                for s in SECTOR_VOWELS[part][1 if last and part == letters[-len(part):] else 0]:
+                    nuclei.append(s)
+                    between.append([])
+            else:
+                nuclei.append(part)
+                between.append([])
+    if not nuclei:
+        return None
+    syl = [{"onset": [], "sound": n, "coda": []} for n in nuclei]
+    syl[0]["onset"] = between[0]
+    for i in range(1, len(nuclei)):
+        cons = between[i]
+        if len(cons) == 1:
+            syl[i]["onset"] = cons
+        elif cons:
+            syl[i - 1]["coda"], syl[i]["onset"] = cons[:1], cons[1:]
+    syl[-1]["coda"] = between[-1]
+    for i, s in enumerate(syl):
+        if s["sound"] in SINGLE:
+            closed, open_, end = SINGLE[s["sound"]]
+            s["sound"] = closed if s["coda"] else end if i == len(syl) - 1 else open_
+            if s["sound"] == "igh" and i == len(syl) - 1 and i and not s["coda"]:   # "Kyloasly": -lee ("Fly" stays)
+                s["sound"] = "ee"
+        if s["coda"][:1] == ["r"] and s["sound"] in R_SOUND:
+            s["sound"], s["coda"] = R_SOUND[s["sound"]], s["coda"][1:]
+        elif s["coda"][:1] == ["w"] and s["sound"] in W_SOUND:
+            s["sound"], s["coda"] = W_SOUND[s["sound"]], s["coda"][1:]
+        elif s["coda"][:1] == ["h"]:   # "Hahm", "Bluehn": the h is not said
+            s["coda"] = s["coda"][1:]
+    return syl
+
+
+def sector_stress(syl):
+    """The stressed syllable's index: the first of a word of one or two, else the second last."""
+    return 0 if len(syl) <= 2 else len(syl) - 2
+
+
+def sector_respelling(word):
+    """"Smojooe" -> "SMOH-joo" (the voice lab shows it), or None."""
+    syl = sector_word(word)
+    if not syl:
+        return None
+    loud = sector_stress(syl)
+    parts = ["".join(SECTOR_CONSONANTS[c][0] for c in s["onset"]) + SECTOR_SOUNDS[s["sound"]][0]
+             + "".join(SECTOR_CONSONANTS[c][0] for c in s["coda"]) for s in syl]
+    return "-".join(p.upper() if i == loud else p for i, p in enumerate(parts))
+
+
+def sector_phonemes(word, espeak_voice):
+    """A sector word's raw Piper phonemes (British, or American for an en-us voice), or None."""
+    syl = sector_word(word)
+    if not syl:
+        return None
+    us = str(espeak_voice or "").startswith("en-us")
+    loud = sector_stress(syl)
+    out = ""
+    for i, s in enumerate(syl):
+        vowel = SECTOR_SOUNDS[s["sound"]][2 if us else 1]
+        if i == loud and s["sound"] == "uh":
+            vowel = "ʌ"
+        if i == loud:   # the mark right before the vowel, after a glide (espeak's "ɡwˈiː", "jˈuːk"; "ɡˈwiː" garbles)
+            vowel = re.sub(r"^([jw]?)", r"\1ˈ", vowel, count=1)
+        out += "".join(SECTOR_CONSONANTS[c][1] for c in s["onset"]) + vowel \
+            + "".join(SECTOR_CONSONANTS[c][1] for c in s["coda"])
+    return out
+
+
+def sector_name(name):
+    """Whether a run of one or two words can be a procedural sector's name (not "Hyades Sector", "Musca Dark Region")."""
+    words = name.split()
+    return 0 < len(words) <= 2 and not any(w.lower() in NOT_SECTOR for w in words) and all(sector_word(w) for w in words)

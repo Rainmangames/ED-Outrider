@@ -460,6 +460,17 @@ upstream project's choices, not rules of the game.
   through Piper's own espeak in the voice's own accent. Whole words only, English voices only. Your own
   `data/pronounce.json` goes on top (the voice lab's How is it said box); the phrase cache's key carries the table's
   version, so a change is heard at once. The shipped respellings are a first pass, to be checked by ear.
+- **Sector names by rule, phonemes written directly** (2026-10-12, the author's ask; `sector_*` in
+  `outrider/pronounce.py`). Procedural sector names are built by the game from a fixed set of pieces, so a list could
+  only ever hold the sectors seen: they are read by rule instead (consonant and vowel clusters, vowel runs to sounds
+  from `SECTOR_VOWELS`, consonants between two sounds one before and the rest after, stress first of two else the second
+  last). The community's piece list was not used (no licence found); the clusters give the same syllables. The rule
+  writes its phonemes itself, British or American, not through espeak, which guesses made-up spellings ("ligh" as
+  "lig", "loks" as "lokes"). Only words right before a system's code count (a capitalised word of `speech.json` leading
+  them is English: "Leaving Smojooe ..."); hand-named "... Sector" and "... Dark Region" names never. Tested against
+  every sector seen on EDDN in two days of all apps' traffic and in the author's journals (tests/fixtures/sector_names.txt).
+  A voice's own phoneme map is checked at speaking time (`apply(known=...)`): a word needing a sound the voice lacks
+  is left as text, so a future voice trained another way never loses a sound silently.
 - **Two status reports** (review S23, done): Vespa's "status report" is composed on the server (`outrider/ask.py`:
   the system, fuel, unsold, the Highway's next stop); the co-pilot button's double tap and the Now bar ask the window
   that speaks for the page's, which depends on each browser's thresholds and plan logic.

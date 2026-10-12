@@ -817,6 +817,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         <input id="pronSay" placeholder="fon-TIK-yoo-loo-uh" aria-label="how it is said" autocomplete="off">
         <button type="button" id="pronHearNow" title="the word as the voice says it now">▶ as now</button>
         <button type="button" id="pronHearNew" title="the word said the way typed beside it (not saved)">▶ this way</button>
+        <button type="button" id="pronHearSector" title="the word read as a sector's name is (the rule, or your way when saved)">▶ as a sector</button>
         <button type="button" id="pronSave" class="primary">Save</button>
         <button type="button" id="pronReset" title="take your own back out: the shipped way (or espeak's own reading) again">↺ mine out</button></div>
       <datalist id="pronWords"></datalist>
@@ -824,6 +825,10 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
         sounds; spell the rest plainly as English says it (kew, few, NIGH). Yours are kept in data/pronounce.json, on top of
         the shipped ones; the browser's own speech does not use them.</p>
       <div id="pronList" class="hint"></div>
+      <p class="hint"><b>Sector names</b> (Smojooe, Flyeia Hypa) are read by rule from the pieces the game builds them from,
+        so every sector is covered; yours that you have visited most are below. One said wrong: click its word, change it
+        above and Save (yours wins over the rule).</p>
+      <div id="pronSectors" class="pronsectors hint"></div>
     </details>
     <div class="btns"><span id="labMsg" class="hint"></span><span class="grow"></span>
       <button type="button" id="labStop">■ Stop</button><button type="button" data-close>Close</button></div>

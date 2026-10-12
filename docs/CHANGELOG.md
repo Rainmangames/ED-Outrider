@@ -2,6 +2,22 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-12 · Sector names said by rule
+- The voice now says procedural sector names the same natural way everywhere (the author's ask): Smojooe as
+  "SMOH-joo", Flyeia Hypa as "fligh-AY-uh HIGH-puh", Synuefe as "sigh-NOO-fee", not espeak's guesses. The game builds
+  them from a fixed set of pieces, so they are read by rule, not listed: every sector in the galaxy is covered. A
+  word splits into syllables at its consonant and vowel clusters, each said as English would; stress on the first of
+  two syllables, else the second last. The phonemes are written directly for British and American voices.
+- Only words right before a system's code (Smojooe AR-E b25-8) are read this way; hand-named sectors (Col 285
+  Sector, Hyades Sector), the Dark Regions and an English word leading the name ("Leaving Smojooe ...") are left as
+  they were. Your own word in How is it said wins over the rule.
+- The voice lab's How is it said box: **▶ as a sector**, and the sectors you have visited most listed below it (▶ to
+  hear one, a click on a word to change it). GET /api/pronounce gives them as `sectors`.
+- Tested on every sector seen on EDDN in two days of all apps' traffic plus the author's journals (1,612 names,
+  `tests/fixtures/sector_names.txt`): each reads, with one stress and only known sounds; every sound is in the
+  installed Piper voices' phoneme maps, and a voice added later whose map lacks one says that word as plain text
+  (Piper would drop the sound).
+
 ## 2026-10-12 · Babylon 5 - Shadows theme
 - An eleventh theme for the tablet, the desktop page (Settings → Display) and the overlay's panels (the author's ask):
   **Babylon 5 - Shadows**, the Shadows' ships evoked, not copied. Black with a purple floor, dark purple panels, light

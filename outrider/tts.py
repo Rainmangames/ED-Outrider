@@ -631,7 +631,9 @@ class Speaker:
         try:
             with wave.open(buf, "wb") as wf:
                 esv = voice_espeak(voice)
-                voice.synthesize_wav(pronounce.apply(body_letters(text, esv), esv, PRONOUNCE), wf, syn_config=cfg)
+                known = getattr(getattr(voice, "config", None), "phoneme_id_map", None)
+                voice.synthesize_wav(pronounce.apply(body_letters(text, esv), esv, PRONOUNCE,
+                                                     known=set(known) if isinstance(known, dict) else None), wf, syn_config=cfg)
         except wave.Error:
             return None
         return buf.getvalue() or None

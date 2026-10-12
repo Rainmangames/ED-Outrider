@@ -93,7 +93,9 @@ Outrider runs (a Docker server too):
 - **How is it said**: a word the voice says wrong, said your way. Pick or type the word, write how it sounds as
   syllables joined by "-" with the stressed one in capitals (**fon-TIK-yoo-loo-uh**; "uh", "eh", "ih" are short
   sounds, the rest spelled plainly as English says it: kew, few, NIGH), **▶ this way** to hear it, **Save** to keep it.
-  **▶ as now** plays the word as it is said today, **↺ mine out** takes yours back out.
+  **▶ as now** plays the word as it is said today, **↺ mine out** takes yours back out. **▶ as a sector** plays a
+  word (or two) read as a sector's name, and below the box are the sectors you have visited most: ▶ plays one, a click
+  on one of its words puts it in the box with the rule's reading, ready to change.
 
 Without Piper installed, the browser's own voice speaks. With Piper, the browser's voice is never used: a line Piper
 can't say is not said (what you asked for is still shown as a caption).
@@ -107,6 +109,14 @@ names are read as they are written.
 (anglicised) reading: "fon-TIK-yoo-loo-uh", "OSS-ee-uss", "KLIP-ee-uss LAK-rim-am". Yours go on top, in
 `data/pronounce.json` (the voice lab's How is it said box writes it): a station, a carrier, a system name, your commander
 name, or a shipped word said differently. Piper voices in English only; the browser's own speech reads as it always has.
+
+**Sector names are read by rule.** The game builds the names of procedural sectors (Smojooe, Flyeia Hypa, Synuefe)
+from a fixed set of pieces, so Outrider reads every one the same way instead of listing them: it splits the word into
+syllables and says each as English would ("SMOH-joo", "fligh-AY-uh HIGH-puh", "sigh-NOO-fee"), the stress on the
+first of two syllables and on the second last of more. Only a sector right before a system's code is read this way
+(Smojooe AR-E b25-8); hand-named sectors (Col 285 Sector, Hyades Sector) and the Dark Regions are read as written. A
+sector word of yours in How is it said wins over the rule. There is no official way to say these: the rule aims to be
+consistent and natural, and yours can say any of them your way.
 
 **"Click Here To Allow Audio".** A browser plays no sound on a page until you click on it, and Outrider reloads the
 page itself after an update. When the window that speaks is held back like this, a red **🔇 Click Here To Allow

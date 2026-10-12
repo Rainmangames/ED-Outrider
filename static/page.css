@@ -1167,3 +1167,5 @@ table.ovlay input[type=number]::-webkit-inner-spin-button, table.ovlay input[typ
 /* Settings → Alerts: a heading over a group of alerts (the discoveries) */
 #alertOpts tr.agroup th { text-align: left; padding-top: .7em; font-weight: 600; }
 .pronbox { margin-top: 8px; } .pronbox input { width: 12em; } #pronList a { color: var(--accent); }
+.pronsectors { display: flex; flex-wrap: wrap; gap: 2px 14px; max-height: 9.5em; overflow-y: auto; }
+.pronsectors a { color: var(--accent); } .pronsec { white-space: nowrap; }

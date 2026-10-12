@@ -8287,16 +8287,24 @@ labEl("labSave").onclick = async () => {
 // ---- How is it said (a review suggestion the author picked, 2026-10-12): the pronunciation table, word by word ----
 // api/pronounce: the shipped words with yours on top; a respelling ("fon-TIK-yoo-loo-uh") is tried as "{...}" in a line
 const PRON_SAY = /^(?:[A-Za-z]+(?:-[A-Za-z]+)*|\[\[[^\[\]{}]+\]\])$/, PRON_WORD = /^\p{L}[\p{L}\p{N}_'’-]*$/u;
-let pronEntries = null;
+let pronEntries = null, pronSectors = [];
 const pronFind = w => (pronEntries || []).find(e => e.word.toLowerCase() === w.trim().toLowerCase());
+// a sector word's reading as the server gave it ("Smojooe" -> "SMOH-joo"), from the sectors you visited most
+const pronSectorSay = w => { const lw = w.trim().toLowerCase();
+  for (const s of pronSectors) { const i = s.name.toLowerCase().split(" ").indexOf(lw); if (i >= 0) return s.say.split(" ")[i]; }
+  return null; };
 function pronDraw() {
   const mine = (pronEntries || []).filter(e => e.source === "yours");
   labEl("pronWords").innerHTML = (pronEntries || []).map(e => `<option value="${esc(e.word)}">`).join("");
   labEl("pronList").innerHTML = `${(pronEntries || []).length - mine.length} shipped` + (mine.length ? ` · yours: ` + mine.map(e =>
     `<a href="#" data-pron="${esc(e.word)}">${esc(e.word)}</a> <span class="unk">${esc(e.say)}</span>`).join(", ") : " · none of yours yet");
+  labEl("pronSectors").innerHTML = pronSectors.length ? pronSectors.map(s => `<span class="pronsec"><button type="button" class="mini"
+    data-sector="${esc(s.name)}" title="hear it">▶</button> ${s.name.split(" ").map(w => `<a href="#" data-secword="${esc(w)}">${esc(w)}</a>`).join(" ")}
+    <span class="unk">${esc(s.say)}</span></span>`).join("") : "No procedural sectors visited yet.";
 }
 async function pronLoad() {
-  try { pronEntries = (await apiJson("api/pronounce")).words; } catch { pronEntries = null; labMsg("Could not reach Outrider", true); }
+  try { const r = await apiJson("api/pronounce"); pronEntries = r.words; pronSectors = r.sectors || []; }
+  catch { pronEntries = null; labMsg("Could not reach Outrider", true); }
   pronDraw();
 }
 async function pronPost(word, say) {
@@ -8304,7 +8312,10 @@ async function pronPost(word, say) {
   try { r = await apiJson("api/pronounce", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({word, say})}); }
   catch { r = {error: "Outrider not reachable"}; }
   if (r.error) { labMsg(r.error, true); return false; }
-  pronEntries = r.words; pronDraw(); return true;
+  pronEntries = r.words; pronDraw();
+  // the sectors again (a saved word changes how one reads), the words kept as the save gave them
+  apiJson("api/pronounce").then(g => { pronSectors = g.sectors || pronSectors; pronDraw(); }).catch(() => {});
+  return true;
 }
 const pronReady = () => { if (((data && data.tts && data.tts.voices) || []).length) return true;
   labMsg("How is it said needs a Piper voice (the browser's own speech does not use it)", true); return false; };
@@ -8312,6 +8323,16 @@ labEl("pronBox").addEventListener("toggle", () => { if (labEl("pronBox").open &&
 labEl("pronWord").addEventListener("change", () => { const e = pronFind(labEl("pronWord").value); if (e) labEl("pronSay").value = e.say; });
 labEl("pronList").addEventListener("click", ev => { const a = ev.target.closest("[data-pron]"); if (!a) return;
   ev.preventDefault(); const e = pronFind(a.dataset.pron); labEl("pronWord").value = a.dataset.pron; labEl("pronSay").value = e ? e.say : ""; });
+labEl("pronSectors").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-sector]"), a = ev.target.closest("[data-secword]");
+  if (b) { if (pronReady()) labSay(`{{${b.dataset.sector}}}`, labPick()); return; }
+  if (!a) return;
+  ev.preventDefault(); const w = a.dataset.secword, e = pronFind(w);
+  labEl("pronWord").value = w; labEl("pronSay").value = e ? e.say : (pronSectorSay(w) || "");
+});
+labEl("pronHearSector").onclick = () => { const w = labEl("pronWord").value.trim();
+  if (!/^[A-Za-z]+(?: [A-Za-z]+)?$/.test(w)) { labMsg("Type a sector's name first: one or two words of letters", true); return; }
+  if (pronReady()) labSay(`{{${w}}}`, labPick()); };
 labEl("pronHearNow").onclick = () => { const w = labEl("pronWord").value.trim();
   if (!w) { labMsg("Type a word first", true); return; } if (pronReady()) labSay(w, labPick()); };
 labEl("pronHearNew").onclick = () => { const say = labEl("pronSay").value.trim();
