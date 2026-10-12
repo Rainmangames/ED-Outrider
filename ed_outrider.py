@@ -14803,6 +14803,27 @@ def make_app(state, hosts=None):
             task.add_done_callback(boxel_tasks.discard)
         return web.json_response(out)
 
+    async def pronounce_view(_):
+        """GET /api/pronounce: how the voice says the words espeak gets wrong: [{word, say, source: "shipped" | "yours",
+        shipped?}] (resources/pronounce.json, your data/pronounce.json on top)."""
+        return web.json_response({"words": outrider.tts.PRONOUNCE.entries(), "file": "data/pronounce.json"})
+
+    async def pronounce_set_view(request):
+        """POST /api/pronounce {word, say}: your own way of saying a word (a respelling, "fon-TIK-yoo-loo-uh", or raw
+        phonemes in [[ ]]), written to data/pronounce.json; say null takes yours back out. 400 for anything else."""
+        body = await json_object(request)
+        if body is None or not isinstance(body.get("word"), str) or "say" not in body \
+                or not (body["say"] is None or isinstance(body["say"], str)):
+            return web.json_response({"error": "expected {word, say} (say: a respelling, or null)"}, status=400)
+        try:
+            ok = outrider.tts.PRONOUNCE.save(body["word"], body["say"])
+        except OSError as e:
+            return web.json_response({"error": f"could not write data/pronounce.json: {e}"}, status=500)
+        if not ok:
+            return web.json_response({"error": "one word, said as syllables joined by '-' with the stressed one in capitals "
+                                               "(fon-TIK-yoo-loo-uh), or as phonemes in [[ ]]"}, status=400)
+        return web.json_response({"words": outrider.tts.PRONOUNCE.entries(), "file": "data/pronounce.json"})
+
     async def boxel_sector_view(request):
         """GET /api/boxel/sector?mc=d&layer=5: the sector you are in as a grid of one mass code's boxels, one Y layer
         (none: yours). 400 for a code outside b..h or a layer that is no whole number."""
@@ -14994,6 +15015,8 @@ def make_app(state, hosts=None):
     app.router.add_post("/api/boxel", boxel_set_view)
     app.router.add_get("/api/boxel/nearby", boxel_nearby_view)
     app.router.add_get("/api/boxel/sector", boxel_sector_view)
+    app.router.add_get("/api/pronounce", pronounce_view)
+    app.router.add_post("/api/pronounce", pronounce_set_view)
     app.router.add_post("/api/speaker/audio", speaker_audio_view)
     app.router.add_post("/api/autohonk", pc_only(autohonk_view))
     app.router.add_post("/api/uploads", uploads_view)

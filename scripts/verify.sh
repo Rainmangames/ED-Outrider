@@ -125,6 +125,9 @@ ed_outrider.Clipboard.TOOLS = ()   # the desktop clipboard is never touched by t
 if outrider.bio:
     outrider.bio.update_if_newer = lambda path=None, log=print: None
 outrider.tts.Speaker._download = lambda self, name, status=None: False
+import os
+# your own pronunciations (data/pronounce.json) are never read or written from here: a scratch file beside the database
+outrider.tts.PRONOUNCE.own = os.path.join(os.path.dirname(sys.argv[sys.argv.index("--db") + 1]), "pronounce.json")
 ed_outrider.main(sys.argv[1:])
 EOF
   PID=$!

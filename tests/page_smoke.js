@@ -4874,6 +4874,10 @@ const settle = async maxMs => {
       if (s.startsWith("api/voices/speakers")) return json({voice: "en_GB-vctk-medium", speakers: s.includes("vctk") ? people : [], speaker: 1});
       if (s.startsWith("api/say?")) { said.push(Object.fromEntries(new URLSearchParams(s.slice(8)))); return Promise.resolve(new Response(new w.Blob(["RIFF"]), {status: 200, headers: {"Content-Type": "audio/wav"}})); }
       if (s === "api/voice" || s.startsWith("api/speech/ban")) { posted.push([s, JSON.parse(o.body)]); return json({ok: true}); }
+      // How is it said: the table (never the real one: answered here, nothing written)
+      if (s === "api/pronounce" && o && o.method === "POST") { const b = JSON.parse(o.body); posted.push([s, b]);
+        return json({words: [{word: "Osseus", say: "OSS-ee-uss", source: "shipped"}].concat(b.say ? [{word: b.word, say: b.say, source: "yours"}] : [])}); }
+      if (s === "api/pronounce") return json({words: [{word: "Fonticulua", say: "fon-TIK-yoo-loo-uh", source: "shipped"}, {word: "Osseus", say: "OSS-ee-uss", source: "shipped"}]});
       return realFetch(u, o);
     };
     const got = await w.eval(`(async () => {
@@ -4907,6 +4911,17 @@ const settle = async maxMs => {
       labEl("labCut").click(); await tick();
       labEl("labText").value = "Hello {name}"; labEl("labSave").click(); await tick();
       o.saved = labEl("labMsg").textContent;
+      // How is it said: the list loads when opened, a word picked fills its way, ▶ this way tries it unsaved, Save
+      labEl("pronBox").open = true; labEl("pronBox").dispatchEvent(new Event("toggle")); await tick();
+      o.pron = [labEl("pronWords").options.length, labEl("pronList").textContent];
+      labEl("pronWord").value = "fonticulua"; labEl("pronWord").dispatchEvent(new Event("change"));
+      o.pron.push(labEl("pronSay").value);
+      labEl("pronSay").value = "fon-TIK-yoo-LOO uh"; labEl("pronHearNew").click(); await tick();
+      o.pron.push(labEl("pronMsg") ? "" : labEl("labMsg").className);
+      labEl("pronSay").value = "fon-TIK-yoo-loo-wuh"; labEl("pronHearNew").click(); await tick();
+      labEl("pronWord").value = "Jameson"; labEl("pronSay").value = "JAYM-sun"; labEl("pronSave").click(); await tick();
+      o.pron.push(labEl("labMsg").textContent, labEl("pronList").textContent);
+      labEl("pronBox").open = false;
       tabClose(document.getElementById("labDlg"));
       speechLib = lib0;
       labSound = sound0; URL.createObjectURL = cu; URL.revokeObjectURL = ru; data.tts = t0;
@@ -4923,10 +4938,14 @@ const settle = async maxMs => {
       onePerson: got.onePerson === true, kept: got.kept === "2",
       line: got.line[0] && got.line[1] === false && said.some(x => x.voice === "en_GB-cori-medium" && !("speaker" in x)),
       cut: !!ban && typeof ban[1].alert === "string" && typeof ban[1].template === "string",
-      saved: got.saved === "Saved as outrider-en_GB-cori-medium.wav" && said.some(x => /^Hello \S/.test(x.text))};
+      saved: got.saved === "Saved as outrider-en_GB-cori-medium.wav" && said.some(x => /^Hello \S/.test(x.text)),
+      pron: JSON.stringify(got.pron) === JSON.stringify([2, "2 shipped · none of yours yet", "fon-TIK-yoo-loo-uh", "warnc",
+        "Saved: Jameson is said JAYM-sun from now on", "1 shipped · yours: Jameson JAYM-sun"])
+        && said.some(x => x.text === "{fon-TIK-yoo-loo-wuh}") && !said.some(x => x.text.includes("LOO uh"))
+        && posted.some(p => p[0] === "api/pronounce" && p[1].word === "Jameson" && p[1].say === "JAYM-sun")};
     const good = Object.values(want).every(Boolean) && errors.length === before;
     allOk = allOk && good;
-    console.log(good ? "OK" : "FAIL", "| voice lab |", good ? "speaker in Settings; the lab steps speakers, uses one, plays and cuts a line, saves a WAV" : JSON.stringify({want, got, said, posted}), errors.slice(before));
+    console.log(good ? "OK" : "FAIL", "| voice lab |", good ? "speaker in Settings; the lab steps speakers, uses one, plays and cuts a line, saves a WAV, How is it said" : JSON.stringify({want, got, said, posted}), errors.slice(before));
   }
   // boxel exploration (2026-10-11): Nearby's Standard / Boxel switch shows the boxel's list (visited with your scans,
   // Spansh's, the ones to try), the warning, Target next and 🎯 by number, Keep, and the recommended boxels by mass code

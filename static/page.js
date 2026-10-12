@@ -8284,6 +8284,51 @@ labEl("labSave").onclick = async () => {
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
   labMsg(`Saved as ${a.download}`);
 };
+// ---- How is it said (a review suggestion the author picked, 2026-10-12): the pronunciation table, word by word ----
+// api/pronounce: the shipped words with yours on top; a respelling ("fon-TIK-yoo-loo-uh") is tried as "{...}" in a line
+const PRON_SAY = /^(?:[A-Za-z]+(?:-[A-Za-z]+)*|\[\[[^\[\]{}]+\]\])$/, PRON_WORD = /^\p{L}[\p{L}\p{N}_'’-]*$/u;
+let pronEntries = null;
+const pronFind = w => (pronEntries || []).find(e => e.word.toLowerCase() === w.trim().toLowerCase());
+function pronDraw() {
+  const mine = (pronEntries || []).filter(e => e.source === "yours");
+  labEl("pronWords").innerHTML = (pronEntries || []).map(e => `<option value="${esc(e.word)}">`).join("");
+  labEl("pronList").innerHTML = `${(pronEntries || []).length - mine.length} shipped` + (mine.length ? ` · yours: ` + mine.map(e =>
+    `<a href="#" data-pron="${esc(e.word)}">${esc(e.word)}</a> <span class="unk">${esc(e.say)}</span>`).join(", ") : " · none of yours yet");
+}
+async function pronLoad() {
+  try { pronEntries = (await apiJson("api/pronounce")).words; } catch { pronEntries = null; labMsg("Could not reach Outrider", true); }
+  pronDraw();
+}
+async function pronPost(word, say) {
+  let r;
+  try { r = await apiJson("api/pronounce", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({word, say})}); }
+  catch { r = {error: "Outrider not reachable"}; }
+  if (r.error) { labMsg(r.error, true); return false; }
+  pronEntries = r.words; pronDraw(); return true;
+}
+const pronReady = () => { if (((data && data.tts && data.tts.voices) || []).length) return true;
+  labMsg("How is it said needs a Piper voice (the browser's own speech does not use it)", true); return false; };
+labEl("pronBox").addEventListener("toggle", () => { if (labEl("pronBox").open && !pronEntries) pronLoad(); });
+labEl("pronWord").addEventListener("change", () => { const e = pronFind(labEl("pronWord").value); if (e) labEl("pronSay").value = e.say; });
+labEl("pronList").addEventListener("click", ev => { const a = ev.target.closest("[data-pron]"); if (!a) return;
+  ev.preventDefault(); const e = pronFind(a.dataset.pron); labEl("pronWord").value = a.dataset.pron; labEl("pronSay").value = e ? e.say : ""; });
+labEl("pronHearNow").onclick = () => { const w = labEl("pronWord").value.trim();
+  if (!w) { labMsg("Type a word first", true); return; } if (pronReady()) labSay(w, labPick()); };
+labEl("pronHearNew").onclick = () => { const say = labEl("pronSay").value.trim();
+  if (!PRON_SAY.test(say)) { labMsg('Say it as syllables joined by "-", the stressed one in capitals: fon-TIK-yoo-loo-uh', true); return; }
+  if (pronReady()) labSay(say.startsWith("[[") ? say : `{${say}}`, labPick()); };
+labEl("pronSave").onclick = async () => {
+  const w = labEl("pronWord").value.trim(), say = labEl("pronSay").value.trim();
+  if (!PRON_WORD.test(w)) { labMsg("One word to save", true); return; }
+  if (!PRON_SAY.test(say)) { labMsg('Say it as syllables joined by "-", the stressed one in capitals: fon-TIK-yoo-loo-uh', true); return; }
+  if (await pronPost(w, say)) labMsg(`Saved: ${w} is said ${say} from now on`);
+};
+labEl("pronReset").onclick = async () => {
+  const w = labEl("pronWord").value.trim(), e = pronFind(w);
+  if (!e || e.source !== "yours") { labMsg(`${w || "That word"} has no way of yours to take out`, true); return; }
+  if (await pronPost(e.word, null)) { const back = pronFind(w); labEl("pronSay").value = back ? back.say : "";
+    labMsg(back ? `${w}: the shipped way again` : `${w}: espeak's own reading again`); }
+};
 labEl("labStop").onclick = () => { labStop(); labMsg("Stopped"); };
 labEl("labDlg").addEventListener("close", labStop);   // closing the lab stops what it plays
 alertDialog.querySelectorAll("[data-alert]").forEach(cb => {

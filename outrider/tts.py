@@ -35,8 +35,11 @@ import wave
 from collections import OrderedDict
 
 from . import DATA_DIR, ROOT
+from . import pronounce
 
 VOICES_DIR = os.path.join(DATA_DIR, "piper-voices")
+# how the words espeak gets wrong are said (resources/pronounce.json, your data/pronounce.json on top)
+PRONOUNCE = pronounce.Table()
 DEFAULT_VOICE = "en_GB-cori-medium"   # the author's pick (2026-10-04); Southern English Female before
 DEFAULT_FALLBACK = "en_GB-jenny_dioco-medium"
 CACHE_PHRASES = 50
@@ -627,7 +630,8 @@ class Speaker:
         cfg = self.SynthesisConfig(**kw) if kw else None
         try:
             with wave.open(buf, "wb") as wf:
-                voice.synthesize_wav(body_letters(text, voice_espeak(voice)), wf, syn_config=cfg)
+                esv = voice_espeak(voice)
+                voice.synthesize_wav(pronounce.apply(body_letters(text, esv), esv, PRONOUNCE), wf, syn_config=cfg)
         except wave.Error:
             return None
         return buf.getvalue() or None
@@ -651,7 +655,8 @@ class Speaker:
         if speaker is None or isinstance(speaker, bool) or not isinstance(speaker, int) \
                 or not 0 <= speaker < len(self.voice_speakers(who)):
             speaker = self.speaker_for(who)
-        key = (text, round(speed, 2), voice if extra else None, speaker)
+        # the pronunciation table's version too: a word said differently is heard at once, not from the cache
+        key = (text, round(speed, 2), voice if extra else None, speaker, PRONOUNCE.stamp())
         with self._lock:
             if key in self._cache:
                 self._cache.move_to_end(key)

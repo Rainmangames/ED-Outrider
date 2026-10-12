@@ -86,6 +86,10 @@ Outrider runs (a Docker server too):
   eight key alerts in a row. A personality with a voice of its own (speech.json) speaks in it. **✂ Cut this line**
   bans the line just played, like 👎.
 - **Your own words**: type anything for **▶ Speak**, or **⬇ Save WAV** to keep it.
+- **How is it said**: a word the voice says wrong, said your way. Pick or type the word, write how it sounds as
+  syllables joined by "-" with the stressed one in capitals (**fon-TIK-yoo-loo-uh**; "uh", "eh", "ih" are short
+  sounds, the rest spelled plainly as English says it: kew, few, NIGH), **▶ this way** to hear it, **Save** to keep it.
+  **▶ as now** plays the word as it is said today, **↺ mine out** takes yours back out.
 
 Without Piper installed, the browser's own voice speaks. With Piper, the browser's voice is never used: a line Piper
 can't say is not said (what you asked for is still shown as a caption).
@@ -93,6 +97,12 @@ can't say is not said (what you asked for is still shown as a caption).
 **Body names are said letter by letter.** With an English Piper voice, "A 1" is "ay one" (not "uh one") and "ABC 3 a"
 is "ay, bee, see, three, ay", each letter clearly. Only a body's letters are spelled out: system, station and carrier
 names are read as they are written.
+
+**The exobiology names are said the usual way.** espeak's English rules mangle their Latin ("Fonticulua", "Osseus",
+"Clypeus Lacrimam"), so Outrider ships how each genus and species word is said, a first pass in the community's usual
+(anglicised) reading: "fon-TIK-yoo-loo-uh", "OSS-ee-uss", "KLIP-ee-uss LAK-rim-am". Yours go on top, in
+`data/pronounce.json` (the voice lab's How is it said box writes it): a station, a carrier, a system name, your commander
+name, or a shipped word said differently. Piper voices in English only; the browser's own speech reads as it always has.
 
 **"Click Here To Allow Audio".** A browser plays no sound on a page until you click on it, and Outrider reloads the
 page itself after an update. When the window that speaks is held back like this, a red **🔇 Click Here To Allow

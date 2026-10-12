@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-12 · How the voice says the exobiology names
+- Piper's English voices read the Latin of the exobiology names by espeak's English rules and mangled most of them
+  ("Fonticulua", "Osseus", "Clypeus Lacrimam"; a Fable suggestion the author picked). `resources/pronounce.json` now
+  says the 120 genus and species words in a respelling ("fon-TIK-yoo-loo-uh", the stressed syllable in capitals), a
+  first pass for the author's ears; `outrider/pronounce.py` turns each into Piper's raw phonemes in the voice's own
+  accent (each syllable through Piper's own espeak, under its lock) and swaps whole words in a line for them. Your own
+  `data/pronounce.json` goes on top: the voice lab's new **How is it said** box tries a respelling (▶ this way), saves
+  it, or takes yours out (GET/POST `/api/pronounce`). The phrase cache's key carries the table's version, so a change
+  is heard at once. verify.sh's scratch server writes its own file, never yours.
+
 ## 2026-10-12 · Boxels: the sector map
 - Boxels nearby listed the nearest three per mass code, with no picture of progress across a sector (a Fable
   suggestion the author picked). Boxel mode now has a **Sector map**: the sector you are in as a grid of one mass
