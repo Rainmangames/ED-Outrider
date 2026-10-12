@@ -4704,6 +4704,12 @@ SUPERGIANT_WORDS = {"Blue-White": "a blue-white supergiant", "White": "a white s
                     "White-Yellow": "a yellow-white supergiant", "Red": "a red supergiant"}
 
 
+def boxel_fully_scanned(sp):
+    """Whether Spansh has every body of a boxel's system (its reported bodies reach the honk's count)."""
+    k, c = sp.get("bodies_known"), sp.get("body_count")
+    return isinstance(k, int) and isinstance(c, int) and c > 0 and k >= c
+
+
 def ggg_state(record, codex_names=()):
     """A body's green gas giant state: {"confirmed": True} when its codex entry says so, else the model's prediction
     (outrider.ggg.predict_record: {chance, class, rung, border, temperature}) or None."""
@@ -11137,7 +11143,11 @@ class State:
         rows = []
         for n in range(0, last + 1):
             name = outrider.boxel.name_of(prefix, n)
-            r = {"n": n, "name": name, "visited": n in visited, "spansh": n in spansh, "distance": None, "summary": None}
+            sp = spansh.get(n) or {}
+            r = {"n": n, "name": name, "visited": n in visited, "spansh": n in spansh, "distance": None, "summary": None,
+                 # what Spansh has of it: its bodies reported of the honk's count (most were only passed through)
+                 "known": {"bodies": sp.get("bodies_known"), "count": sp.get("body_count")} if n in spansh else None,
+                 "scanned": n in spansh and boxel_fully_scanned(sp)}
             if b.get("standard"):
                 r["id"] = str(outrider.boxel.id64(b["sector_index"], b["boxel"], b["mc"], n))
             where = visited.get(n) or spansh.get(n)
@@ -11158,8 +11168,10 @@ class State:
         done = prefix in (meta_get(self.db, "boxel_done") or {})
         # skip_known (opt-in, meta boxel_skip_known): Next passes over the ones Spansh knows too (someone has been there:
         # the first discovery is most likely gone), for first discoveries only
+        # skip (opt-in): Next passes over the systems someone has fully scanned (every body reported); one only passed
+        # through or partly scanned still has its first discoveries open (review suggestion, 2026-10-12)
         skip = bool(meta_get(self.db, "boxel_skip_known"))
-        nxt = None if complete or done else next((r["n"] for r in rows if not r["visited"] and not (skip and r["spansh"])), None)
+        nxt = None if complete or done else next((r["n"] for r in rows if not r["visited"] and not (skip and r["scanned"])), None)
         return {"complete": complete, "done": done, "boxel": {"prefix": prefix, "label": b["label"], "mc": b["mc"], "size": outrider.boxel.size(b["mc"]),
                           "kind": outrider.boxel.KINDS[b["mc"]], "standard": bool(b.get("standard")), "here": b["here"],
                           "picked": b["picked"], "center": b.get("center"), "sector_index": b.get("sector_index"),
@@ -11197,7 +11209,9 @@ class State:
                 for s in d.get("results") or []:
                     n = outrider.boxel.number_of(prefix, s.get("name"))
                     if n is not None:
-                        found[str(n)] = {k: s.get(k) for k in ("id64", "x", "y", "z", "body_count")}
+                        found[str(n)] = dict({k: s.get(k) for k in ("id64", "x", "y", "z", "body_count")},
+                                             # how many of its bodies anyone reported (the honk's count is body_count)
+                                             bodies_known=len(s["bodies"]) if isinstance(s.get("bodies"), list) else None)
                         got += 1
                 if not got:
                     break

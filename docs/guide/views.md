@@ -192,8 +192,9 @@ has visited (Outrider works out its address from the boxel).
   boxel** is your call, complete or not (undo any time). Either way Next offers nothing more, the boxel leaves the
   recommendations (the next nearest of its kind takes its place; "done or complete nearby" lists them), and a kept
   boxel is let go.
-- **Skip systems someone has visited** (opt-in): Next and the auto-target go only to "to try" numbers, passing over
-  the ones Spansh knows (their first discovery is most likely gone; first mapping or footfall may not be).
+- A system Spansh knows says how much of it anyone reported: "known · 3 of 14 bodies", "known · honked only", "known ·
+  all 38 bodies". **Skip systems already fully scanned** (opt-in): Next and the auto-target pass over the ones with every
+  body reported; one only passed through or partly scanned still has first discoveries to find.
 - **📌 Keep this boxel** stays on it when you jump out. **Auto-target the next on arrival** (opt-in) targets the kept
   boxel's next system each time you arrive in one of its systems.
 - **Boxels nearby** lists the nearest boxels of each mass code in sectors you have been to, what each kind tends to

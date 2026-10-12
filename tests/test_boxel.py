@@ -138,12 +138,17 @@ class Server(unittest.TestCase):
         v = self.state.boxel_view()
         self.assertEqual((v["top"], v["spansh"], v["rows"][12]["spansh"], v["rows"][-1]["n"]), (12, 1, True, 12 + ed_outrider.outrider.boxel.TRY_ABOVE))
         self.assertIsNotNone(v["rows"][12]["distance"])
-        # skip the ones someone has visited (opt-in): Next passes over Spansh's -6 (you have -0 to -5)
-        ed_outrider.meta_set(self.db, "boxel_spansh", {"Drojau TF-H c13-": {"ts": ed_outrider.iso_ts(self.now), "systems": {"6": {}, "12": {}}}})
+        # skip the fully scanned (opt-in): Next passes over Spansh's -6 (every body reported), not -7 (honked only) or
+        # -8 (3 of 14): their first discoveries are open (review suggestion, 2026-10-12)
+        ed_outrider.meta_set(self.db, "boxel_spansh", {"Drojau TF-H c13-": {"ts": ed_outrider.iso_ts(self.now), "systems": {
+            "6": {"body_count": 9, "bodies_known": 9}, "7": {"body_count": 14, "bodies_known": 0}, "8": {"body_count": 14, "bodies_known": 3},
+            "12": {}}}})
         self.assertEqual(self.state.boxel_view()["next"], 6)
         ed_outrider.meta_set(self.db, "boxel_skip_known", True)
         v = self.state.boxel_view()
         self.assertEqual((v["next"], v["skip_known"], self.state.boxel_target()[0]["index"]), (7, True, 7))
+        self.assertEqual([(r["n"], r["scanned"], r["known"]) for r in v["rows"] if r["n"] in (6, 7, 8)],
+                         [(6, True, {"bodies": 9, "count": 9}), (7, False, {"bodies": 0, "count": 14}), (8, False, {"bodies": 3, "count": 14})])
         ed_outrider.meta_set(self.db, "boxel_skip_known", False)
         self.assertFalse(self.state.boxel_spansh_due("Drojau TF-H c13-", self.now))
 

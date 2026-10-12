@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-12 · Boxels: how much of a known system was found
+- A boxel row Spansh knows said only "known", and "skip systems someone has visited" passed over all of them, though
+  most were only honked or partly scanned in passing and keep their bodies' first discoveries (a Fable suggestion the
+  author picked). The Spansh request the boxel already makes returns each system's bodies: the row now says "known · 3
+  of 14 bodies", "known · honked only" or "known · all 38 bodies", and the switch, now **skip systems already fully
+  scanned**, passes over only the ones with every body reported. (A list fetched before keeps Next on them until it is
+  asked again, within a day.)
+
 ## 2026-10-12 · Review fixes: the overnight check
 A Fable check of 2cb1e60..9af0984 (and the EDDN listener tool): 8 bugs in the repository, all fixed with a test each.
 - Voice: picking the voice already speaking (Settings or the lab's Use this voice) answered ok but did nothing: it was

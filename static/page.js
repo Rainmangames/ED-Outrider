@@ -2852,6 +2852,14 @@ function renderBoxelMode() {
   const nk = `${posId()}|${key}`;   // a jump, or Spansh's answers about the boxels nearby
   if (nk !== boxelNearKey) { boxelNearKey = nk; loadBoxelNear(); }
 }
+// a system Spansh knows: how much of it anyone reported ("known · 3 of 14 bodies"): one only passed through keeps its
+// first discoveries open
+function boxelKnown(r) {
+  const k = r.known || {}, b = k.bodies, c = k.count;
+  const words = r.scanned ? `known · all ${c} bodies` : Number.isInteger(c) && c > 0 ? (b ? `known · ${b} of ${c} bodies` : "known · honked only")
+    : b ? `known · ${b} bod${b === 1 ? "y" : "ies"}, count unknown` : "known · nothing reported";
+  return `<span class="unk" title="Spansh knows it: someone has been here${r.scanned ? ", and every body is reported" : "; bodies nobody reported may still be first discoveries"}">${words}</span>`;
+}
 const BOXEL_WARNING = "Outrider cannot know how many systems a boxel holds: explore until a name the galaxy map cannot find.";
 const boxelCodeLine = (mc, c) => { const y = c && c.yours;
   return `<b>${mc}</b> · ${c ? c.size : ""} ly cubes · ${esc(c ? c.kind : "")}` + (y && y.systems ? ` <span class="bxyours">· from your ${y.systems} ${mc} system${y.systems === 1 ? "" : "s"}: ` +
@@ -2879,16 +2887,16 @@ function drawBoxel() {
       (!b.picked ? `<button type="button" class="try" data-bxkeep="${esc(b.prefix)}" title="keep exploring this boxel when you jump out of it (auto-target works on a kept boxel)">📌 Keep this boxel</button>`
         : `<button type="button" class="try" data-bxback="1" title="follow the boxel you are in again">${b.here ? "📌 kept · let go" : "↩ the boxel I am in"}</button>`) +
       (pc ? `<label title="arriving in a system of the kept boxel, auto-target its next one (after the Highway's delay)"><input type="checkbox" id="bxAuto"${d.auto ? " checked" : ""}> auto-target the next on arrival${d.auto && !b.picked ? ` <span class="warnc">(keep a boxel first)</span>` : ""}</label>` : "") +
-      `<label title="Next and the auto-target go only to the systems nobody is known to have visited (Spansh knows the others: the first discovery is most likely gone, though first mapping or footfall may not be)"><input type="checkbox" id="bxSkip"${d.skip_known ? " checked" : ""}> skip systems someone has visited</label>` +
+      `<label title="Next and the auto-target pass over the systems someone has fully scanned (every body reported to Spansh); one only passed through or partly scanned still has first discoveries to find"><input type="checkbox" id="bxSkip"${d.skip_known ? " checked" : ""}> skip systems already fully scanned</label>` +
       (d.done ? `<button type="button" class="try" data-bxdone="0" title="take the done mark back">undo done</button>`
         : !d.complete ? `<button type="button" class="try" data-bxdone="1" title="finished with this boxel, complete or not: it leaves the recommendations (a kept boxel is let go)">✓ Done with this boxel</button>` : "") +
       (d.end != null ? `<button type="button" class="try" data-bxretry="1" title="a failed search is not always a missing name: offer the numbers above it again">retry above -${d.end}</button>` : "") +
       (!b.standard ? `<span class="unk">a hand-made sector: 🎯 cannot check its systems</span>` : "") + `</div>`;
     const rowHtml = r => { const s = r.summary;
-      return `<tr class="${[r.visited && "visited", r.n === d.next && "next", !r.visited && !r.spansh && "try", d.skip_known && r.spansh && !r.visited && "skipped"].filter(Boolean).join(" ")}">` +
+      return `<tr class="${[r.visited && "visited", r.n === d.next && "next", !r.visited && !r.spansh && "try", d.skip_known && r.scanned && !r.visited && "skipped"].filter(Boolean).join(" ")}">` +
         `<td class="n">-${r.n}</td><td class="name copy" data-name="${esc(r.name)}" title="click to copy">${nameWords(r.name)}${s ? firstsIcon(s.firsts) : ""}</td>` +
         `<td class="num">${r.distance != null ? r.distance.toFixed(1) : ""}</td>` +
-        `<td>${r.visited ? `<span class="ok" title="you have been here">✓ visited</span>` : r.spansh ? `<span class="unk" title="Spansh knows it: someone has been here">known</span>` : `<span class="unk">to try</span>`}</td>` +
+        `<td>${r.visited ? `<span class="ok" title="you have been here">✓ visited</span>` : r.spansh ? boxelKnown(r) : `<span class="unk">to try</span>`}</td>` +
         `<td>${s ? star(s) : ""}</td><td>${s ? bodies(s) : ""}</td><td class="num"${s ? ` title="${valueTitle(s)}"` : ""}>${s ? valueCell(s) : ""}</td>` +
         `<td>${pc && b.standard && !r.visited ? hwyAimBtn(r.name, "boxel", r.n, true) : ""}</td></tr>`; };
     html += `<table id="boxelTable"><thead><tr><th class="num">#</th><th>System</th><th class="num">Dist</th><th>Status</th><th>Main star</th><th>Bodies</th><th class="num">Value now / max</th><th></th></tr></thead>` +
