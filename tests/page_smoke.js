@@ -1489,6 +1489,20 @@ const settle = async maxMs => {
     allOk = allOk && goodRL;
     console.log(goodRL ? "OK" : "FAIL", "| route line |", bad.length ? `failed ${bad.join(", ")}: ${JSON.stringify(got)}` : "a survey route's line (💰, 🧬), the Highway's, the one shown with both, complete", errors.slice(before));
   }
+  // the game's own route (NavRoute.json) is labelled "In-Game Route:" (the author, 2026-10-12): Outrider's route is the
+  // "Next:" line, and the two differ until 🎯 targets its next stop
+  {
+    const w = dom.window, d = w.document, before = errors.length;
+    const got = w.eval(`(() => { const saved = data.route;
+      data.route = {hops: [{name: "Drojau ST-D b18-4", star_class: "M", scoopable: true, ly: 70.1, known: true},
+                           {name: "Drojau DQ-V d3-8", star_class: "A", scoopable: true, ly: 69.0, known: true},
+                           {name: "Drojo OP-V d3-36", star_class: "N", scoopable: false, ly: 70.2, known: false}], ly: 209.3, next_scoop: 1, longest_dry: 1};
+      renderRoute(); const t = document.getElementById("routeStrip").textContent;
+      data.route = saved; renderRoute(); return t; })()`);
+    const goodIG = got.startsWith("In-Game Route: 3 jumps · 209 ly · next scoop in 1") && errors.length === before;
+    allOk = allOk && goodIG;
+    console.log(goodIG ? "OK" : "FAIL", "| in-game route |", goodIG ? 'the game\'s route is "In-Game Route:"' : got, errors.slice(before));
+  }
   // Settings links to the project on GitHub, with the version running (desktop at the top; the tablet's sheet too)
   {
     const w = dom.window, d = w.document, before = errors.length;

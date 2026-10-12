@@ -65,7 +65,9 @@ It is known life, so first footfall (×5) is unlikely: the values shown are the 
 same place as Road to Riches and Exomastery (one of the three at a time). See [Trading](cargo-and-trading.md#-trading).
 
 **The route line and 🎯.** The line under the tiles shows the next stop of whichever route the tab shows (🛣 the
-Highway, 💰 Road to Riches, 🧬 Exomastery, 💱 a trade route). A 🎯 beside that next system, and beside every system in the tab's lists,
+Highway, 💰 Road to Riches, 🧬 Exomastery, 💱 a trade route). The **In-Game Route:** line above it is the game's own
+route, the one plotted in the galaxy map: it can differ from Outrider's until 🎯 targets the next stop, which has the
+game plot its route there. A 🎯 beside that next system, and beside every system in the tab's lists,
 targets it in the galaxy map for you (game PC only, after a 5 s countdown to click back into the game; on the tablet,
 the row's sheet has 🎯 Target). The same 🎯 sits beside your carrier's system on the Carrier tile while it is elsewhere,
 and beside a boxel's Next and its rows (see [Boxel exploration](views.md#-boxel-exploration), whose opt-in **auto-target
