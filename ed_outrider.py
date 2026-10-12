@@ -204,6 +204,7 @@ import outrider.checklist  # the exobiology checklist: every species by region, 
 import outrider.codex_images  # the checklists' pictures: Canonn's links and credits, refreshed once a day
 import outrider.overlay    # the in-game overlay's panels as draw lists (the window: python3 -m outrider.overlay_window)
 import outrider.overlay_runner  # Outrider runs that window itself on the game PC while the overlay is wanted
+import outrider.boxel      # boxel exploration: the cube a procedural name places a system in, its systems, its id64s (pure)
 from outrider.core import iso_ts, ts_seconds   # journal timestamps
 from outrider.fsd import (   # the frame shift drive's maths: range, fuel per jump, the fuel model, fleet figures
     FSD_RANGE_MODS, GUARDIAN_BOOST, conservative_optimal_mass, conservative_range, fleet_figures, fleet_range, fsd_range,
@@ -295,6 +296,10 @@ HIGHWAY_POLL_S = 1.5        # s between two asks for a plot job's result (Spansh
 HIGHWAY_PLOT_TIMEOUT = 180  # s a plot may take before we give up on it
 HIGHWAY_AHEAD = 200         # route rows GET /api/highway lists ahead of you...
 HIGHWAY_DONE = 20           # ...and done rows above them (the most recent)
+BOXEL_SPANSH_CHUNK = 300   # names per Spansh request (an exact list of a boxel's names)
+BOXEL_SPANSH_MAX = 3000    # names asked about at most for one boxel
+BOXEL_SPANSH_MAX_AGE = 86400   # s: Spansh's list of a boxel is asked again after a day
+BOXEL_SPANSH_KEEP = 20     # boxels whose Spansh list is kept (meta boxel_spansh)
 HIGHWAY_LIVE_S = 120        # s: an arrival or a supercharge older than this is catch-up (no clipboard, no auto-target)
 HIGHWAY_SUGGEST_CACHE = 200  # system-name suggestions kept (per typed prefix)
 HIGHWAY_HEAVY_SLACK = 0.5    # t: fuel over the most the next jump allows by more than this is "too heavy" (Spansh plans
@@ -5868,6 +5873,10 @@ class State:
         self.overlay_runner = None   # outrider.overlay_runner.OverlayRunner on the game PC (run() makes it; None in tests)
         self._hw_copied = (meta_get(db, "highway") or {}).get("arrival_ts")   # copied before a restart: not again
         self._autotarget_boost = (journals.boost or {}).get("ts")
+        # boxel exploration: the arrival an automatic boxel run was decided for (one per arrival), Spansh's fetch running
+        self._boxel_arrival = (journals.pos or {}).get("ts")
+        self._boxel_fetching = set()
+        self._boxel_sectors = (None, {})   # (visits count when built, {(sx, sy, sz): sector name})
         self.autotarget_task = None
         self._autotarget_cancel = None   # threading.Event: the automatic run's own token (switch-off, route cleared/replaced)
         self._autotarget_next_cancel = None   # the same for a Target next / Retry run (route cleared/replaced only)
@@ -5951,6 +5960,13 @@ class State:
             "speech": self.speech.info() if self.speech else None,
             "autohonk": self.autohonk_info(),
             "autotarget": self.autotarget_info(), "rail": self.rail_info(),   # the tablet's game buttons
+            # boxel exploration: the page fetches api/boxel when this changes (a jump, a scan, Spansh's answer, a pick)
+            "boxel": {"key": "|".join(str(x) for x in ((meta_get(self.db, "boxel_active") or {}).get("prefix"),
+                                                        (self.journals.pos or {}).get("id64"), self.journals.last_event_ts,
+                                                        len(self._boxel_fetching), json.dumps(meta_get(self.db, "boxel_ends")),
+                                                        json.dumps({k: (v or {}).get("ts") for k, v in (meta_get(self.db, "boxel_spansh") or {}).items()}),
+                                                        meta_get(self.db, "boxel_auto"))),
+                      "auto": bool(meta_get(self.db, "boxel_auto"))},
             "hush": self.hush_info(),
             "firsts_watch": self.firsts_watch_info(),
             "copilot": dict(self.copilot, button=self.button.status if self.button else None),
@@ -9496,9 +9512,10 @@ class State:
         return {"value_now": int(now_c + now_b), "value_max": int(now_c + now_b + rem_c + rem_b),
                 "value_parts": {"carto_now": int(now_c), "bio_now": int(now_b), "carto_left": int(rem_c), "bio_left": int(rem_b)}}
 
-    def row(self, id64):
-        """Page row for a system: its Spansh base merged with your own scans."""
-        source, base = self.bases[id64]
+    def row(self, id64, fallback=None):
+        """Page row for a system: its Spansh base merged with your own scans. `fallback`: (source, base) for a system
+        not in the Nearby sphere (a boxel's: {name, x, y, z, records: []}, your own scans only)."""
+        source, base = self.bases[id64] if id64 in self.bases else fallback
         own, hotspots, own_count = own_data(self.db, id64, base["name"])
         records = merge_records(base.get("records") or [], own, hotspots)
         counts = [c for c in (base.get("body_count"), own_count) if c]
@@ -9512,7 +9529,7 @@ class State:
             own_genera.setdefault(short_name(base["name"], r_["name"]), []).append(r_["genus_name"])
         s = summarise(records, body_count, star, ctx, own_genera)
         s.update(id64=id64, id=str(id64), name=base["name"], source=source, in_spansh=source == "spansh",
-                 visited=id64 in self.visited, distance=round(dist(self.center, base), 2),
+                 visited=id64 in self.visited, distance=round(dist(self.center or base, base), 2),   # (no sphere yet: 0)
                  own_scans=len(own), firsts=own_firsts(self.db, id64, base["name"]),
                  mapped=self.db.execute(
                      """SELECT count(*) FROM own_firsts f LEFT JOIN own_mapped m
@@ -10992,6 +11009,278 @@ class State:
         self.bump()
         return True
 
+    # ---- boxel exploration (outrider/boxel.py; the author, 2026-10-11) ----
+
+    def boxel_sectors(self):
+        """{(sx, sy, sz): sector name} for every standard sector you have a system of (sector names are not generated:
+        a system seen in one names it). Rebuilt when your visits grow."""
+        n = self.db.execute("SELECT count(*) FROM visits").fetchone()[0]
+        if self._boxel_sectors[0] != n:
+            names = {}
+            for name, x, y, z in self.db.execute("SELECT name, x, y, z FROM visits WHERE x IS NOT NULL"):
+                b = outrider.boxel.of_system(name, {"x": x, "y": y, "z": z})
+                if b and b["standard"]:
+                    names[tuple(b["sector_index"])] = b["sector"]
+            self._boxel_sectors = (n, names)
+        return self._boxel_sectors[1]
+
+    def boxel_active(self):
+        """The boxel being explored: the one picked (meta boxel_active: {prefix, sector_index, mc}), else the one you are
+        in (None in a hand-named system). {prefix, label, mc, standard, sector_index?, boxel?, center?, here}."""
+        pick, pos = meta_get(self.db, "boxel_active"), self.journals.pos
+        here = outrider.boxel.of_system(pos["name"], pos) if pos and pos.get("name") else None
+        if isinstance(pick, dict) and isinstance(pick.get("prefix"), str):
+            p = outrider.boxel.parse(outrider.boxel.name_of(pick["prefix"], 0))
+            if p:
+                if here and here["prefix"] == p["prefix"]:
+                    return dict(here, here=True, picked=True)
+                si = pick.get("sector_index")
+                if isinstance(si, list) and len(si) == 3 and all(isinstance(v, int) for v in si):
+                    bx = outrider.boxel.boxel_index(p["letters"], p["n1"])
+                    p.update(standard=True, sector_index=si, boxel=list(bx), center=outrider.boxel.center(si, bx, p["mc"]))
+                else:
+                    p["standard"] = False
+                return dict(p, here=False, picked=True)
+        return dict(here, here=True, picked=False) if here else None
+
+    def boxel_set(self, prefix=None, sector_index=None):
+        """Explore another boxel (a recommended one: its prefix and sector index), or None: the one you are in again.
+        False for a prefix that is no boxel's."""
+        if prefix is None:
+            meta_set(self.db, "boxel_active", None)
+        else:
+            p = outrider.boxel.parse(outrider.boxel.name_of(prefix, 0)) if isinstance(prefix, str) else None
+            if not p or p["prefix"] != prefix:
+                return False
+            ok = isinstance(sector_index, list) and len(sector_index) == 3 and all(isinstance(v, int) and not isinstance(v, bool) for v in sector_index)
+            meta_set(self.db, "boxel_active", {"prefix": prefix, "mc": p["mc"], "sector_index": sector_index if ok else None})
+        self.db.commit()
+        self.bump()
+        return True
+
+    def boxel_visited(self, prefix):
+        """{number: (id64, name, x, y, z)} of the boxel's systems you have been to."""
+        out = {}
+        like = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        for id64, name, x, y, z in self.db.execute("SELECT id64, name, x, y, z FROM visits WHERE name LIKE ? ESCAPE '\\'", (like,)):
+            n = outrider.boxel.number_of(prefix, name)
+            if n is not None:
+                out[n] = (id64, name, x, y, z)
+        return out
+
+    def boxel_view(self, now=None):
+        """The active boxel's list for the page: one row per number from 0 to the highest known (yours or Spansh's), then
+        TRY_ABOVE more, until a name was not found (meta boxel_ends). Visited rows carry your scan summary (as Nearby's);
+        Spansh's carry where they are. next: the lowest number you have not been to."""
+        b = self.boxel_active()
+        auto = bool(meta_get(self.db, "boxel_auto"))
+        if not b:
+            return {"boxel": None, "auto": auto, "why": "this system has a hand-made name, so it is in no boxel: pick one below"}
+        prefix, pos = b["prefix"], self.journals.pos
+        visited = self.boxel_visited(prefix)
+        cache = (meta_get(self.db, "boxel_spansh") or {}).get(prefix) or {}
+        spansh = {int(k): v for k, v in (cache.get("systems") or {}).items() if str(k).isdigit() and isinstance(v, dict)}
+        ends = meta_get(self.db, "boxel_ends") or {}
+        end = ends.get(prefix) if isinstance(ends.get(prefix), int) else None
+        known = set(visited) | set(spansh)
+        top = max(known, default=-1)
+        if end is not None and end <= top:   # a name found since (yours or Spansh's): that was no end
+            end = None
+        last = end - 1 if end is not None else top + outrider.boxel.TRY_ABOVE
+        rows = []
+        for n in range(0, last + 1):
+            name = outrider.boxel.name_of(prefix, n)
+            r = {"n": n, "name": name, "visited": n in visited, "spansh": n in spansh, "distance": None, "summary": None}
+            if b.get("standard"):
+                r["id"] = str(outrider.boxel.id64(b["sector_index"], b["boxel"], b["mc"], n))
+            where = visited.get(n) or spansh.get(n)
+            xyz = ({"x": where[2], "y": where[3], "z": where[4]} if n in visited else
+                   {k: where.get(k) for k in "xyz"} if where else None)
+            if pos and xyz and all(isinstance(xyz.get(k), (int, float)) for k in "xyz"):
+                r["distance"] = round(dist(pos, xyz), 2)
+            if n in visited:
+                id64 = visited[n][0]
+                try:
+                    r["summary"] = self.row(id64, ("own", {"name": name, "x": visited[n][2], "y": visited[n][3], "z": visited[n][4], "records": []}))
+                except (KeyError, TypeError, ValueError) as e:   # a row that cannot be made: the list still shows
+                    print(f"boxel: no summary for {name} ({type(e).__name__}: {e})", file=sys.stderr)
+            rows.append(r)
+        nxt = next((r["n"] for r in rows if not r["visited"]), None)
+        return {"boxel": {"prefix": prefix, "label": b["label"], "mc": b["mc"], "size": outrider.boxel.size(b["mc"]),
+                          "kind": outrider.boxel.KINDS[b["mc"]], "standard": bool(b.get("standard")), "here": b["here"],
+                          "picked": b["picked"], "center": b.get("center"), "sector_index": b.get("sector_index"),
+                          "distance": round(dist(pos, b["center"]), 1) if pos and b.get("center") else None},
+                "rows": rows, "next": nxt, "end": end, "top": top, "visited": len(visited), "spansh": len(spansh),
+                "spansh_ts": cache.get("ts"), "spansh_error": cache.get("error"), "spansh_asking": prefix in self._boxel_fetching,
+                "auto": auto}
+
+    def boxel_spansh_due(self, prefix, now=None):
+        """Whether Spansh's list of this boxel is older than BOXEL_SPANSH_MAX_AGE (or was never asked for)."""
+        cache = (meta_get(self.db, "boxel_spansh") or {}).get(prefix) or {}
+        try:
+            return (time.time() if now is None else now) - ts_seconds(cache["ts"]) > BOXEL_SPANSH_MAX_AGE
+        except (KeyError, TypeError, ValueError):
+            return True
+
+    async def boxel_spansh_fetch(self, prefix):
+        """Ask Spansh which of the boxel's names it knows: BOXEL_SPANSH_CHUNK at a time, an exact list of names, until a
+        chunk has none (at most BOXEL_SPANSH_MAX names). Kept a day (meta boxel_spansh, the BOXEL_SPANSH_KEEP latest
+        boxels); a failure is said in the list and asked again on the next look."""
+        if prefix in self._boxel_fetching or not self.spansh.session:
+            return
+        self._boxel_fetching.add(prefix)
+        self.bump()
+        found, err = {}, None
+        try:
+            for start in range(0, BOXEL_SPANSH_MAX, BOXEL_SPANSH_CHUNK):
+                names = [outrider.boxel.name_of(prefix, n) for n in range(start, start + BOXEL_SPANSH_CHUNK)]
+                body = {"filters": {"name": {"value": names}}, "size": BOXEL_SPANSH_CHUNK, "page": 0}
+                async with self.spansh.sem_fast:
+                    async with self.spansh.session.post(SPANSH_SEARCH, json=body) as r:
+                        r.raise_for_status()
+                        d = await r.json()
+                got = 0
+                for s in d.get("results") or []:
+                    n = outrider.boxel.number_of(prefix, s.get("name"))
+                    if n is not None:
+                        found[str(n)] = {k: s.get(k) for k in ("id64", "x", "y", "z", "body_count")}
+                        got += 1
+                if not got:
+                    break
+        except (ClientError, asyncio.TimeoutError, ValueError) as e:
+            err = f"Spansh could not be asked ({type(e).__name__})"
+        finally:
+            self._boxel_fetching.discard(prefix)
+        allc = meta_get(self.db, "boxel_spansh") or {}
+        old = allc.get(prefix) or {}
+        allc[prefix] = {"ts": iso_ts(time.time()) if not err else old.get("ts"), "systems": found if not err else old.get("systems") or {},
+                        "error": err}
+        for k in sorted(allc, key=lambda k: str((allc[k] or {}).get("ts") or ""))[:-BOXEL_SPANSH_KEEP]:
+            allc.pop(k, None)
+        meta_set(self.db, "boxel_spansh", allc)
+        self.db.commit()
+        self.bump()
+
+    def boxel_code_stats(self):
+        """Your own figures per mass code (the recommendations' "from your scans"): {code: {systems, bio (systems with a
+        biological signal), elw, ww, aw, terraformable}}."""
+        bio = {r[0] for r in self.db.execute("SELECT DISTINCT system FROM own_signals WHERE bio > 0")}
+        kinds = {}
+        for system, sub, terra in self.db.execute("SELECT system, json_extract(record, '$.subtype'), json_extract(record, '$.terraformable') FROM own_bodies"):
+            k = kinds.setdefault(system, {"elw": 0, "ww": 0, "aw": 0, "terraformable": 0})
+            k["elw"] += sub == "Earth-like world"
+            k["ww"] += sub == "Water world"
+            k["aw"] += sub == "Ammonia world"
+            k["terraformable"] += bool(terra)
+        out = {c: {"systems": 0, "bio": 0, "elw": 0, "ww": 0, "aw": 0, "terraformable": 0} for c in outrider.boxel.CODES}
+        for id64, name in self.db.execute("SELECT id64, name FROM visits"):
+            p = outrider.boxel.parse(name)
+            if not p:
+                continue
+            o = out[p["mc"]]
+            o["systems"] += 1
+            o["bio"] += id64 in bio
+            for k, v in (kinds.get(id64) or {}).items():
+                o[k] += v
+        return out
+
+    def boxel_nearby(self):
+        """The recommended boxels near you (outrider.boxel.nearby, sectors you have systems in), each with how many of its
+        systems you have been to; and per mass code what it tends to hold and your own figures."""
+        pos = self.journals.pos
+        if not pos or pos.get("x") is None:
+            return {"boxels": [], "codes": {}}
+        boxels = outrider.boxel.nearby(pos, self.boxel_sectors())
+        for b in boxels:
+            v = self.boxel_visited(b["prefix"])
+            b.update(visited=len(v), top=max(v, default=None), kind=outrider.boxel.KINDS[b["mc"]], size=outrider.boxel.size(b["mc"]))
+        stats = self.boxel_code_stats()
+        return {"boxels": boxels, "codes": {c: {"kind": outrider.boxel.KINDS[c], "size": outrider.boxel.size(c), "yours": stats[c]}
+                                            for c in outrider.boxel.CODES}}
+
+    def boxel_target(self, n=None):
+        """({name, id64, here, route: None, index, boxel}, None) for 🎯 on number n of the active boxel (None: the next
+        you have not been to), or (None, why not). The id64 is computed (a system nobody has been to has one too), so
+        only a standard sector's boxel can be targeted and checked."""
+        b, pos = self.boxel_active(), self.journals.pos
+        if not b:
+            return None, "no boxel is being explored"
+        if not b.get("standard"):
+            return None, f"{b['label']} is in a hand-made sector: Outrider cannot check its systems"
+        if not pos or pos.get("id64") is None:
+            return None, "your position is not known yet"
+        if n is None:
+            n = self.boxel_view().get("next")
+            if n is None:
+                return None, f"every system of {b['label']} you know of is visited"
+        if isinstance(n, bool) or not isinstance(n, int) or n < 0:
+            return None, "the number must be a whole number"
+        id64 = outrider.boxel.id64(b["sector_index"], b["boxel"], b["mc"], n)
+        name = outrider.boxel.name_of(b["prefix"], n)
+        if id64 == pos["id64"]:
+            return None, f"you are in {name} already"
+        return {"name": name, "id64": id64, "here": pos["id64"], "route": None, "index": n, "boxel": b["prefix"]}, None
+
+    def boxel_not_found(self, tgt, res):
+        """An auto-target run for a boxel system ended with nothing (or something else) targeted: when its number is above
+        every one known (yours and Spansh's), the galaxy map probably had no such name: the boxel probably ends there
+        (meta boxel_ends; a name found later undoes it). True when marked."""
+        if not tgt.get("boxel") or res.get("ok") or not (res.get("code") == "wrong" or res.get("why") == "no system was targeted"):
+            return False
+        prefix, n = tgt["boxel"], tgt.get("index")
+        cache = (meta_get(self.db, "boxel_spansh") or {}).get(prefix) or {}
+        known = set(self.boxel_visited(prefix)) | {int(k) for k in (cache.get("systems") or {}) if str(k).isdigit()}
+        if not isinstance(n, int) or n <= max(known, default=-1):
+            return False
+        ends = meta_get(self.db, "boxel_ends") or {}
+        if isinstance(ends.get(prefix), int) and ends[prefix] <= n:
+            return False
+        ends[prefix] = n
+        meta_set(self.db, "boxel_ends", ends)
+        self.db.commit()
+        return True
+
+    def boxel_clear_end(self):
+        """The active boxel's end mark taken back (Retry: a failed run is not always a missing name)."""
+        b = self.boxel_active()
+        ends = meta_get(self.db, "boxel_ends") or {}
+        if b and ends.pop(b["prefix"], None) is not None:
+            meta_set(self.db, "boxel_ends", ends)
+            self.db.commit()
+        self.bump()
+
+    def maybe_boxel_autotarget(self, now=None):
+        """The opt-in (meta boxel_auto): arriving live in a system of the boxel being explored, target its next system
+        after autotarget_delay s (one attempt per arrival, as the Highway's does after a supercharge). Only a boxel kept
+        (📌, or picked from the recommendations): following whichever boxel you jump into would take over every target."""
+        pos = self.journals.pos
+        if not pos or pos.get("ts") == self._boxel_arrival:
+            return False
+        self._boxel_arrival = pos.get("ts")
+        if not meta_get(self.db, "boxel_auto"):
+            return False
+        now = time.time() if now is None else now
+        try:
+            if now - ts_seconds(pos["ts"]) > HIGHWAY_LIVE_S:
+                return False
+        except (KeyError, TypeError, ValueError):
+            return False
+        b = self.boxel_active()
+        if not b or not b["picked"] or outrider.boxel.number_of(b["prefix"], pos.get("name")) is None:
+            return False
+        tgt, _why = self.boxel_target()
+        if not tgt or not self.targeter or not self.targeter.available:
+            return False
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:   # no event loop (a test driving tick() by hand): nothing to schedule
+            return False
+        if self.autotarget_busy():
+            return False
+        self._autotarget_cancel = cancel = threading.Event()
+        self.autotarget_task = loop.create_task(self._autotarget(tgt, cancel=cancel))
+        return True
+
     # ---- the Neutron Highway ----
 
     def fleet_list(self):
@@ -11853,9 +12142,12 @@ class State:
     def route_target(self, route, index):
         """({name, id64, here, route, index}, None) for 🎯 on a system of a route ("highway" or "survey": Road to Riches /
         Exomastery), or (None, why not): a row of the route plotted now, not the system you are in, with an id64 (the
-        target is checked against Status.json's Destination by id64). Route "carrier": your carrier's system."""
+        target is checked against Status.json's Destination by id64). Route "carrier": your carrier's system; "boxel":
+        number `index` of the boxel being explored (None: the next you have not been to)."""
         if route == "carrier":
             return self.carrier_target()
+        if route == "boxel":
+            return self.boxel_target(index)
         if route not in ("highway", "survey"):
             return None, "route must be highway or survey"
         if isinstance(index, bool) or not isinstance(index, int):
@@ -12198,6 +12490,9 @@ class State:
             return "stopped"
         if test:
             return None
+        if tgt.get("boxel"):   # the boxel opt-in's run: switched off, or another boxel picked meanwhile
+            b = self.boxel_active()
+            return None if meta_get(self.db, "boxel_auto") and b and b["prefix"] == tgt["boxel"] else "switched off"
         if not self.highway_cfg["autotarget"]:
             return "switched off"
         if (meta_get(self.db, "highway") or {}).get("id") != tgt.get("route"):
@@ -12263,6 +12558,10 @@ class State:
         self.autotarget_last = {"system": name, "ts": iso_ts(time.time()), "done": ok or already, "phase": res.get("phase"),
                                 "label": res.get("label"), "why": why, "dry_run": bool(res.get("dry_run")),
                                 "test": kind == "test", "kind": kind, "route": tgt.get("route"), "index": tgt.get("index")}
+        end = self.boxel_not_found(tgt, res)   # a boxel system nowhere to be found: probably the boxel's end
+        if end:
+            why = f"{name} was not found: probably the end of the boxel"
+            self.autotarget_last["why"] = why
         if test:
             test.update(state="done" if ok or already else "failed", why=why)
         print(f"highway auto-target{' test' if kind == 'test' else ' (target next)' if kind == 'next' else ''}: " + (
@@ -12271,9 +12570,10 @@ class State:
         if say and not already and not res.get("dry_run"):
             wrong = res.get("wrong") if res.get("code") == "wrong" else None   # said by name: you must not jump to it (Q3)
             self.journals.moment("autotarget", iso_ts(time.time()), ok=ok, system=name, phase=res.get("phase"), why=why,
-                                 text=(f"Successfully targeted neutron jump target {name}" if ok
+                                 text=(f"{name} was not found. That is probably the end of the boxel." if end
+                                       else (f"Targeted {name}." if tgt.get("boxel") else f"Successfully targeted neutron jump target {name}") if ok
                                        else f"Targeted the wrong system: {wrong}. Check before you jump." if wrong
-                                       else f"Failed to target neutron jump target {name}"))
+                                       else f"Failed to target {'' if tgt.get('boxel') else 'neutron jump target '}{name}"))
         self.bump()
 
     async def highway_suggest(self, q):
@@ -12475,7 +12775,8 @@ class State:
                                ("maybe_curious", self.maybe_curious),
                                ("maybe_locate_carrier", self.maybe_locate_carrier), ("maybe_find_sellers", self.maybe_find_sellers),
                                ("maybe_backup_on_quit", self.maybe_backup_on_quit), ("highway_copy_next", self.highway_copy_next), ("riches_copy_next", self.riches_copy_next),
-                               ("highway_heavy_check", self.highway_heavy_check), ("maybe_autotarget", self.maybe_autotarget)):
+                               ("highway_heavy_check", self.highway_heavy_check), ("maybe_autotarget", self.maybe_autotarget),
+                               ("maybe_boxel_autotarget", self.maybe_boxel_autotarget)):
                 try:
                     step()
                 except sqlite3.Error:
@@ -13813,6 +14114,11 @@ def make_app(state, hosts=None):
         aim = None
         if body.get("route") == "carrier":       # 🎯 beside your carrier: its system
             aim = ("carrier", None)
+        elif body.get("route") == "boxel":       # a boxel's system by number (none: the next you have not been to)
+            n = body.get("index")
+            if n is not None and (isinstance(n, bool) or not isinstance(n, int)):
+                return web.json_response({"error": "index must be a whole number"}, status=400)
+            aim = ("boxel", n)
         elif "route" in body or "index" in body:   # 🎯 on a system of a route: {route: "highway" | "survey", index}
             aim = (body.get("route"), body.get("index"))
             if aim[0] not in ("highway", "survey") or isinstance(aim[1], bool) or not isinstance(aim[1], int):
@@ -14210,6 +14516,42 @@ def make_app(state, hosts=None):
             state.bump()
         return web.json_response({"ok": True})
 
+    async def boxel_view(_):
+        """GET /api/boxel: the boxel being explored (State.boxel_view); Spansh is asked about it when its list is older
+        than a day (in the background: the payload's boxel key changes when it answers)."""
+        out = state.boxel_view()
+        b = out.get("boxel")
+        if b and state.boxel_spansh_due(b["prefix"]) and b["prefix"] not in state._boxel_fetching:
+            task = asyncio.get_running_loop().create_task(state.boxel_spansh_fetch(b["prefix"]))
+            boxel_tasks.add(task)
+            task.add_done_callback(boxel_tasks.discard)
+            out["spansh_asking"] = True
+        return web.json_response(out)
+
+    boxel_tasks = set()
+
+    async def boxel_set_view(request):
+        """POST /api/boxel {prefix: str | null, sector_index?: [sx, sy, sz]} picks the boxel to explore (null: the one
+        you are in); {auto: bool} the opt-in auto-target on arrival; {clear_end: true} takes back the active boxel's end."""
+        body = await json_object(request)
+        if body is None or not ({"prefix", "auto", "clear_end"} & set(body)):
+            return web.json_response({"error": "expected {prefix}, {auto} or {clear_end}"}, status=400)
+        if "auto" in body:
+            if not isinstance(body["auto"], bool):
+                return web.json_response({"error": "auto must be true or false"}, status=400)
+            meta_set(state.db, "boxel_auto", body["auto"])
+            state.db.commit()
+        if "prefix" in body and not state.boxel_set(body["prefix"], body.get("sector_index")):
+            return web.json_response({"error": "not a boxel's name (the name of one of its systems, less its number)"}, status=400)
+        if body.get("clear_end"):
+            state.boxel_clear_end()
+        state.bump()
+        return web.json_response(state.boxel_view())
+
+    async def boxel_nearby_view(_):
+        """GET /api/boxel/nearby: recommended boxels near you, by mass code, with what each tends to hold and your figures."""
+        return web.json_response(state.boxel_nearby())
+
     async def voice_download_view(request):
         """POST /api/voices/download {voice}: download a Piper voice without switching to it (the voice lab's More
         voices); the payload's tts.fetching lists it meanwhile, then tts.voices has it (or tts.fetch_failed says why)."""
@@ -14387,6 +14729,9 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/voices/catalogue", voice_catalogue_view)
     app.router.add_get("/api/voices/speakers", voice_speakers_view)
     app.router.add_post("/api/voices/download", voice_download_view)
+    app.router.add_get("/api/boxel", boxel_view)
+    app.router.add_post("/api/boxel", boxel_set_view)
+    app.router.add_get("/api/boxel/nearby", boxel_nearby_view)
     app.router.add_post("/api/speaker/audio", speaker_audio_view)
     app.router.add_post("/api/autohonk", pc_only(autohonk_view))
     app.router.add_post("/api/uploads", uploads_view)

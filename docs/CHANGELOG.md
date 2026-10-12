@@ -2,6 +2,18 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Boxel exploration
+- **Nearby → Boxel** (the author's idea; a switch in Nearby's bar, shared by the Overview pane and the Nearby tab, per
+  browser) lists the boxel you are in by number: your visits with your scans (Nearby's cells), Spansh's known systems
+  (asked automatically with an exact list of the boxel's names, 300 a request, kept a day), the numbers to try, the
+  warning that Outrider cannot know a boxel's size. **Next** and every row's 🎯 auto-target by number (POST
+  `/api/highway/target` {route: "boxel", index}); a name the galaxy map cannot find above every known number marks
+  "probably the end" (meta `boxel_ends`, **retry**). **📌 Keep this boxel**; opt-in **auto-target the next on arrival**
+  (meta `boxel_auto`, a kept boxel only). **Boxels nearby**: the nearest of each mass code in sectors you have been to,
+  what each tends to hold and your own figures per code; **Explore this boxel**.
+- `outrider/boxel.py` computes a boxel and any of its systems' id64 from a known position: checked against the author's
+  journals, 2,763 of 2,763 standard-sector systems (hand-authored sectors differ: list only).
+
 ## 2026-10-11 · More voices in columns
 - More voices' rows did not line up: ▶ sample sat wherever the text before it ended (the author's screenshot). Each row
   is a grid of four columns now (name, quality/speakers/size, ▶ sample, the action), with an empty cell where a voice

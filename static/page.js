@@ -2782,6 +2782,7 @@ function render() {
       <td class="notable c2hide">${nb}</td><td class="num hide-sm" title="${valueTitle(s)}">${valueCell(s)}</td><td class="num hide-sm c2hide">${known}</td></tr>`;
   }).join("") || `<tr><td colspan="10" class="unk">${emptyMessage(rows)}</td></tr>`;
   refocus("rows", fkRows);
+  renderBoxelMode();
   document.getElementById("updateLine").hidden = !data.restart_needed;
   drawUpdatePill();
   for (const id of ["setVersion", "tabOutVer"]) { const el = document.getElementById(id), v = data.outrider ? `version ${data.outrider}` : "";
@@ -2794,6 +2795,100 @@ function render() {
   // the strips drawn above may have grown the header past what app mode leaves room for (or shrunk it back)
   if (applyAppMode()) { renderSurface(); drawMap(); drawHwyMap(); }
 }
+// ---- boxel exploration (2026-10-11): Nearby's Standard / Boxel switch (one choice per browser, the Overview pane and
+// the Nearby tab alike). Boxel lists the boxel you are in, or one kept (📌, or picked below), by number: your visits
+// filled in with your scans, Spansh's known ones, the unknown ones to try; 🎯 / Target next by auto-target (the id64 is
+// computed: a system nobody has visited is checked too); recommended boxels nearby by mass code (api/boxel/nearby).
+const nearMode = () => store.get("nearMode", "standard") === "boxel" ? "boxel" : "standard";
+let boxelData = null, boxelKey = null, boxelNear = null, boxelNearKey = null, boxelLoading = false;
+document.querySelectorAll("input[name=nearMode]").forEach(r => r.onchange = () => { store.set("nearMode", r.value); boxelKey = null; render(); });
+async function loadBoxel() {
+  if (boxelLoading) return;
+  boxelLoading = true;
+  try { const r = await fetch("api/boxel"); if (r.ok) boxelData = await r.json(); } catch {}
+  boxelLoading = false;
+  drawBoxel();
+}
+async function loadBoxelNear() {
+  try { const r = await fetch("api/boxel/nearby"); if (r.ok) boxelNear = await r.json(); } catch {}
+  drawBoxel();
+}
+async function boxelPost(body) {
+  let r;
+  try { r = await apiJson("api/boxel", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)}); }
+  catch { r = {error: "Outrider not reachable"}; }
+  if (r.error) { toast(r.error); return; }
+  boxelData = r; drawBoxel();
+}
+function renderBoxelMode() {
+  const on = nearMode() === "boxel";
+  document.querySelectorAll("input[name=nearMode]").forEach(r => { r.checked = r.value === nearMode(); });
+  document.getElementById("nearWrap").classList.toggle("boxel", on);
+  document.getElementById("nearPane").hidden = on;
+  document.getElementById("boxelPane").hidden = !on;
+  if (!on || !data) return;
+  const key = data.boxel && data.boxel.key;
+  if (key !== boxelKey) { boxelKey = key; loadBoxel(); }
+  const nk = `${posId()}`;
+  if (nk !== boxelNearKey) { boxelNearKey = nk; loadBoxelNear(); }
+}
+const BOXEL_WARNING = "Outrider cannot know how many systems a boxel holds: explore until a name the galaxy map cannot find.";
+const boxelCodeLine = (mc, c) => { const y = c && c.yours;
+  return `<b>${mc}</b> · ${c ? c.size : ""} ly cubes · ${esc(c ? c.kind : "")}` + (y && y.systems ? ` <span class="bxyours">· from your ${y.systems} ${mc} system${y.systems === 1 ? "" : "s"}: ` +
+    `${Math.round(100 * y.bio / y.systems)}% with biology${y.elw ? `, ${y.elw} Earth-like` : ""}${y.ww ? `, ${y.ww} water world${y.ww === 1 ? "" : "s"}` : ""}` +
+    `${y.terraformable ? `, ${y.terraformable} terraformable` : ""}</span>` : ""); };
+function drawBoxel() {
+  const el = document.getElementById("boxelPane");
+  if (!el || el.hidden) return;
+  const d = boxelData, pc = data && data.game_pc !== false;
+  let html = "";
+  if (!d) html = `<div class="unk">loading…</div>`;
+  else if (!d.boxel) html = `<div class="bxhead unk">${esc(d.why || "no boxel")}</div>`;
+  else {
+    const b = d.boxel, nxt = d.next != null ? d.rows.find(r => r.n === d.next) : null;
+    const spansh = d.spansh_asking ? "asking Spansh…" : d.spansh_error ? `<span class="warnc">${esc(d.spansh_error)}</span>`
+      : d.spansh_ts ? `Spansh knows ${d.spansh}${d.spansh ? ` (up to -${Math.max(...d.rows.filter(r => r.spansh).map(r => r.n))})` : ""}` : "";
+    html += `<div class="bxhead"><span class="bxname copy" data-name="${esc(b.label)}" title="click to copy">${esc(b.label)}</span>` +
+      `${b.here ? " · you are here" : b.distance != null ? ` · ${b.distance.toFixed(0)} ly away` : ""} · <span class="bxkind">${boxelCodeLine(b.mc, {size: b.size, kind: b.kind, yours: boxelNear && boxelNear.codes && boxelNear.codes[b.mc] && boxelNear.codes[b.mc].yours})}</span>` +
+      `<div class="hint">you have visited ${d.visited}${spansh ? ` · ${spansh}` : ""}${d.end != null ? ` · -${d.end} not found: probably the end` : ""}</div></div>` +
+      `<div class="bxwarn">⚠ ${BOXEL_WARNING}</div>` +
+      `<div class="bxacts">` +
+      (pc && nxt && b.standard ? `<span>Next: <b>${esc(nxt.name)}</b>${hwyAimBtn(nxt.name, "boxel", null)}</span>` : "") +
+      (!b.picked ? `<button type="button" class="try" data-bxkeep="${esc(b.prefix)}" title="keep exploring this boxel when you jump out of it (auto-target works on a kept boxel)">📌 Keep this boxel</button>`
+        : `<button type="button" class="try" data-bxback="1" title="follow the boxel you are in again">${b.here ? "📌 kept · let go" : "↩ the boxel I am in"}</button>`) +
+      (pc ? `<label title="arriving in a system of the kept boxel, auto-target its next one (after the Highway's delay)"><input type="checkbox" id="bxAuto"${d.auto ? " checked" : ""}> auto-target the next on arrival${d.auto && !b.picked ? ` <span class="warnc">(keep a boxel first)</span>` : ""}</label>` : "") +
+      (d.end != null ? `<button type="button" class="try" data-bxretry="1" title="a failed search is not always a missing name: offer the numbers above it again">retry above -${d.end}</button>` : "") +
+      (!b.standard ? `<span class="unk">a hand-made sector: 🎯 cannot check its systems</span>` : "") + `</div>`;
+    const rowHtml = r => { const s = r.summary;
+      return `<tr class="${[r.visited && "visited", r.n === d.next && "next", !r.visited && !r.spansh && "try"].filter(Boolean).join(" ")}">` +
+        `<td class="n">-${r.n}</td><td class="name copy" data-name="${esc(r.name)}" title="click to copy">${nameWords(r.name)}${s ? firstsIcon(s.firsts) : ""}</td>` +
+        `<td class="num">${r.distance != null ? r.distance.toFixed(1) : ""}</td>` +
+        `<td>${r.visited ? `<span class="ok" title="you have been here">✓ visited</span>` : r.spansh ? `<span class="unk" title="Spansh knows it: someone has been here">known</span>` : `<span class="unk">to try</span>`}</td>` +
+        `<td>${s ? star(s) : ""}</td><td>${s ? bodies(s) : ""}</td><td class="num"${s ? ` title="${valueTitle(s)}"` : ""}>${s ? valueCell(s) : ""}</td>` +
+        `<td>${pc && b.standard && !r.visited ? hwyAimBtn(r.name, "boxel", r.n, true) : ""}</td></tr>`; };
+    html += `<table id="boxelTable"><thead><tr><th class="num">#</th><th>System</th><th class="num">Dist</th><th>Status</th><th>Main star</th><th>Bodies</th><th class="num">Value now / max</th><th></th></tr></thead>` +
+      `<tbody>${d.rows.map(rowHtml).join("")}</tbody></table>`;
+  }
+  // the recommendations: the nearest boxels per mass code, in sectors you have systems in
+  const nb = boxelNear;
+  if (nb && nb.boxels && nb.boxels.length) {
+    const codes = [...new Set(nb.boxels.map(x => x.mc))];
+    html += `<details class="bxnear setsec" open><summary>Boxels nearby <span class="sum-note">the nearest of each kind, in sectors you have been to; what each tends to hold is what explorers have seen, not a promise</span></summary>` +
+      codes.map(mc => `<h4>${boxelCodeLine(mc, nb.codes[mc])}</h4>` + `<div class="bxcode">` + nb.boxels.filter(x => x.mc === mc).map(x =>
+        `<div>${esc(x.label)} · ${x.distance.toFixed(0)} ly${x.visited ? ` · you visited ${x.visited}` : ""} ` +
+        `<button type="button" class="try" data-bxpick="${esc(x.prefix)}" data-bxsec="${esc(JSON.stringify(x.sector_index))}">Explore this boxel</button></div>`).join("") + `</div>`).join("") +
+      `</details>`;
+  }
+  if (el.innerHTML !== html) el.innerHTML = html;
+}
+document.getElementById("boxelPane").addEventListener("click", e => {
+  const k = e.target.closest("[data-bxkeep]"), back = e.target.closest("[data-bxback]"), pick = e.target.closest("[data-bxpick]"), retry = e.target.closest("[data-bxretry]");
+  if (k) boxelPost({prefix: k.dataset.bxkeep, sector_index: boxelData && boxelData.boxel && boxelData.boxel.sector_index});
+  else if (back) boxelPost({prefix: null});
+  else if (pick) boxelPost({prefix: pick.dataset.bxpick, sector_index: JSON.parse(pick.dataset.bxsec || "null")});
+  else if (retry) boxelPost({clear_end: true});
+});
+document.getElementById("boxelPane").addEventListener("change", e => { if (e.target.id === "bxAuto") boxelPost({auto: e.target.checked}); });
 function emptyMessage(rows) {
   const others = data.systems.filter(s => sysId(s) !== posId()).length;
   if (/^asking|^fetching/.test(data.status)) return "loading…";
@@ -5604,7 +5699,7 @@ async function hwyAutoStart(kind, aim = null) {
   const tick = () => {
     if (mine.done || mine !== hwyRun) return;
     mine.msg = mine.n > 0 ? `click into the game: targeting ${j.system} in ${mine.n} s${j.dry_run ? " (dry run)" : ""}` : `targeting ${j.system}…`;
-    drawHwyAuto(); renderHwyLine(); renderCarrier(); renderTilesLine();   // the carrier's 🎯 counts down too
+    drawHwyAuto(); renderHwyLine(); renderCarrier(); renderTilesLine(); drawBoxel();   // the carrier's and the boxel's 🎯 count down too
     if (view === "hwy") renderHwy();   // the list's 🎯 counts down too
     if (mine.n > 0) { mine.n--; setTimeout(tick, 1000); }
   };

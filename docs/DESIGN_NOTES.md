@@ -9,6 +9,13 @@ upstream project's choices, not rules of the game.
 - **No keyboard shortcuts.** A deliberate upstream choice, declined more than once; clickable things are reachable with
   Tab and act on Enter/Space instead.
 - **No VoiceAttack integration.** Not used upstream; the co-pilot button and the page cover the same ground.
+- **Boxels: what can and cannot be known** (2026-10-11, `outrider/boxel.py`). A procedural name's boxel, its centre and
+  any of its systems' id64 are computed from a known system's position (checked: 2,763 of 2,763 of the author's
+  standard-sector systems), so auto-target checks a never-visited system by id64. A boxel's size (how many systems)
+  cannot be known: the list offers TRY_ABOVE numbers past the highest known and marks "probably the end" when a
+  higher one cannot be targeted. Sector names are not generated: recommendations cover sectors you have a system in.
+  Hand-authored sectors use other origins: their names parse, their geometry is not claimed. The auto-target opt-in
+  needs a kept boxel (following whichever boxel you jump into would take over every target).
 - **Nothing is uploaded unless the player switches it on.** EDDN, EDSM and Inara (Settings → Uploads, off by default)
   are the only uploads. Every other outside call is a read-only lookup: Spansh, EDSM, GitHub (the bio rules, ExploData's colour
   tables and the update check), Hugging Face for voices, Canonn (its codex reference once a day; the page loads the

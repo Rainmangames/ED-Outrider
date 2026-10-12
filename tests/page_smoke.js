@@ -4904,6 +4904,52 @@ const settle = async maxMs => {
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| voice lab |", good ? "speaker in Settings; the lab steps speakers, uses one, plays and cuts a line, saves a WAV" : JSON.stringify({want, got, said, posted}), errors.slice(before));
   }
+  // boxel exploration (2026-10-11): Nearby's Standard / Boxel switch shows the boxel's list (visited with your scans,
+  // Spansh's, the ones to try), the warning, Target next and 🎯 by number, Keep, and the recommended boxels by mass code
+  {
+    const w = dom.window, realFetch = w.fetch, before = errors.length, posted = [];
+    const view = {boxel: {prefix: "Drojau TF-H c13-", label: "Drojau TF-H c13", mc: "c", size: 40, kind: "K and M stars, some G", standard: true,
+                          here: true, picked: false, center: {x: 0, y: 0, z: 0}, sector_index: [35, 31, 54], distance: 3},
+                  rows: [{n: 0, name: "Drojau TF-H c13-0", visited: true, spansh: true, distance: 0, id: "76873176434",
+                          summary: {name: "Drojau TF-H c13-0", firsts: null, main_star: "K", body_count: 3, bodies_known: 3, value_now: 0, value_max: 1000}},
+                         {n: 1, name: "Drojau TF-H c13-1", visited: false, spansh: true, distance: 4.2, summary: null},
+                         {n: 2, name: "Drojau TF-H c13-2", visited: false, spansh: false, distance: null, summary: null}],
+                  next: 1, end: null, top: 1, visited: 1, spansh: 2, spansh_ts: "2026-10-11T20:00:00Z", auto: false};
+    const near = {boxels: [{mc: "d", label: "Drojau AB-U d4", prefix: "Drojau AB-U d4-", sector_index: [35, 31, 54], distance: 120, visited: 2}],
+                  codes: {c: {kind: "K and M stars", size: 40, yours: {systems: 10, bio: 4, elw: 0, ww: 1, aw: 0, terraformable: 2}},
+                          d: {kind: "F, G and K stars", size: 80, yours: {systems: 20, bio: 9, elw: 1, ww: 2, aw: 0, terraformable: 3}}}};
+    const json = o => Promise.resolve(new Response(JSON.stringify(o), {status: 200, headers: {"Content-Type": "application/json"}}));
+    w.fetch = (u, o) => {
+      const s = String(u);
+      if (s === "api/boxel" && o && o.method === "POST") { posted.push(JSON.parse(o.body)); return json(view); }
+      if (s === "api/boxel") return json(view);
+      if (s === "api/boxel/nearby") return json(near);
+      return realFetch(u, o);
+    };
+    const got = await w.eval(`(async () => {
+      const o = {}, m0 = store.get("nearMode", null), pc0 = data.game_pc, tick = () => new Promise(r => setTimeout(r, 60));
+      data.game_pc = true; data.boxel = {key: "smoke-" + Math.random(), auto: false};
+      store.set("nearMode", "boxel"); boxelKey = null; boxelNearKey = null; render(); await tick(); await tick();
+      const pane = document.getElementById("boxelPane");
+      o.shown = [!pane.hidden, document.getElementById("nearPane").hidden, document.getElementById("nearWrap").classList.contains("boxel")];
+      o.warning = pane.textContent.includes("Outrider cannot know how many systems a boxel holds");
+      o.rows = [...pane.querySelectorAll("#boxelTable tbody tr")].map(r => r.className);
+      o.next = !!pane.querySelector('.bxacts button[data-aim="next"][data-route="boxel"]:not([data-index])');
+      o.aims = [...pane.querySelectorAll('#boxelTable button[data-route="boxel"]')].map(b => b.dataset.index).join();
+      o.near = [pane.textContent.includes("from your 20 d systems: 45% with biology"), !!pane.querySelector("[data-bxpick]")];
+      pane.querySelector("[data-bxkeep]").click(); await tick();
+      pane.querySelector("[data-bxpick]").click(); await tick();
+      store.set("nearMode", m0 === null ? null : m0); data.game_pc = pc0; render();
+      o.back = !document.getElementById("nearPane").hidden;
+      return o; })()`);
+    w.fetch = realFetch;
+    const want = {shown: [true, true, true], warning: true, rows: ["visited", "next", "try"], next: true, aims: "1,2", near: [true, true],
+                  back: true, posted: [{prefix: "Drojau TF-H c13-", sector_index: [35, 31, 54]}, {prefix: "Drojau AB-U d4-", sector_index: [35, 31, 54]}]};
+    got.posted = posted;
+    const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| boxel mode |", good ? "the switch, the boxel's list and warning, Target next and 🎯 by number, Keep, the boxels nearby" : JSON.stringify({got, want}), errors.slice(before));
+  }
   // another site's POST is refused before any handler runs (radius: harmless even if it got through with {})
   const post = origin => fetch(base + "api/radius", {method: "POST", body: "{}",
     headers: Object.assign({"Content-Type": "application/json"}, origin ? {Origin: origin} : {})}).then(r => r.status);

@@ -159,6 +159,27 @@ Under the Where tile, the **discovery streak** is a dot per arrival for your las
 amber: bodies nobody had reported, blue: known, grey: revisited), and the **unreported horizon**: "nearest
 known unvisited: Xyz 4.8 ly". Any unvisited star closer than that on the galaxy map is one nobody has reported.
 
+## 📦 Boxel exploration
+
+A procedural system name says which cube of space (a **boxel**) it is in and what kind of stars that cube makes:
+in `Drojau TF-H c13-5` the **c** is the mass code (a 40 ly cube of K and M stars, some G) and **5** the system's number.
+A boxel's systems are numbered 0, 1, 2… without gaps, so you can visit them in order.
+
+**Nearby → Boxel** (the switch at the top of Nearby, in the Overview pane and the Nearby tab alike) lists the boxel you
+are in by number: systems you visited show your scans as Nearby does, ones Spansh knows are marked "known" (someone
+has been there), the rest are "to try". **Next** (with 🎯) is the lowest number you have not visited, and every row has
+its own 🎯: auto-target types the name into the galaxy map and checks the game targeted it, even for a system nobody
+has visited (Outrider works out its address from the boxel).
+
+- **⚠ Outrider cannot know how many systems a boxel holds.** It offers a few numbers above the highest known; explore
+  until a name the galaxy map cannot find. When auto-target cannot find one above every known number, the list says
+  "probably the end" (**retry** if it was only a hiccup).
+- **📌 Keep this boxel** stays on it when you jump out. **Auto-target the next on arrival** (opt-in) targets the kept
+  boxel's next system each time you arrive in one of its systems.
+- **Boxels nearby** lists the nearest boxels of each mass code in sectors you have been to, what each kind tends to
+  hold, and your own figures for it ("from your 852 d systems: 41% with biology…"). **Explore this boxel** keeps one.
+- Hand-made sectors ("Col 285 Sector…") lay their boxels out differently: their list works, 🎯 cannot check them.
+
 ## 🧬 The exobiology checklist
 
 **Bio/Geo → Exo-Biology** shows every species the rules know, one box per genus, for a galactic region: where you

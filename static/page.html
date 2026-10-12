@@ -71,10 +71,13 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
 </section>
 <div id="nearWrap">
   <div class="tablebar" id="nearOpts">
-    <label><input type="checkbox" id="showVisited" checked> show visited</label>
-    <label><input type="checkbox" id="showExplored" checked> show fully explored</label>
-    <label><input type="checkbox" id="oneJump"> one jump only</label>
-    <span class="unk">click a column heading to sort</span>
+    <span class="nearmode" role="radiogroup" aria-label="exploration">
+      <label title="the systems around you"><input type="radio" name="nearMode" value="standard"> Standard</label>
+      <label title="the boxel you are in (or one you keep): its systems by number, and boxels nearby"><input type="radio" name="nearMode" value="boxel"> Boxel</label></span>
+    <label class="stdonly"><input type="checkbox" id="showVisited" checked> show visited</label>
+    <label class="stdonly"><input type="checkbox" id="showExplored" checked> show fully explored</label>
+    <label class="stdonly"><input type="checkbox" id="oneJump"> one jump only</label>
+    <span class="unk stdonly">click a column heading to sort</span>
   </div>
 <div class="pane" id="nearPane">
 <table id="nearTable">
@@ -85,6 +88,7 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
   <tbody id="rows"></tbody>
 </table>
 </div>
+<div class="pane" id="boxelPane" hidden></div>
 </div>
 <section id="hereView" hidden>
   <div id="hereHead"></div>
