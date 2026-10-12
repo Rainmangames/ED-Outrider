@@ -4712,11 +4712,43 @@ def codex_type(r):
     return {"id": i, "name": outrider.codex_bodies.NAMES.get(i, "")} if i else None
 
 
-def codex_types_logged(db):
-    """Your codex's star and planet types per region: {region: [entry id]} (the page's ✦ / ✪ on bodies)."""
-    out = {}
+def codex_types_scanned(db, after=0, into=None, regions=None):
+    """The star and planet types you have scanned, per region: ({region: {entry id}}, the last own_bodies rowid read).
+    Only rows after `after` are read, added to `into` (an incremental update); `regions` caches each system's region.
+    A nav beacon's scan logs nothing in the codex: left out."""
+    out = into if into is not None else {}
+    regions = regions if regions is not None else {}
+    last = after
+    if not outrider.bio:
+        return out, last
+    for rowid, system, record in db.execute("SELECT rowid, system, record FROM own_bodies WHERE rowid > ? AND record IS NOT NULL",
+                                            (after,)):
+        last = max(last, rowid)
+        if system not in regions:
+            v = db.execute("SELECT x, y, z FROM visits WHERE id64=?", (system,)).fetchone()
+            regions[system] = outrider.bio.region_name(*v) if v and None not in v else None
+        if not regions[system]:
+            continue
+        try:
+            r = json.loads(record)
+        except ValueError:
+            continue
+        if r.get("scan_type") == "NavBeaconDetail":
+            continue
+        i = outrider.codex_bodies.entry_for(r)
+        if i:
+            out.setdefault(regions[system], set()).add(i)
+    return out, last
+
+
+def codex_types_logged(db, scanned=None):
+    """Your codex's star and planet types per region: {region: [entry id]} (the page's ✦ / ✪ on bodies). The codex
+    lines in your journals, and every type you have scanned in a region (`scanned`: codex_types_scanned's map): the
+    game logs a type only the first time you scan one there, and a commander's codex is often older than the journals
+    kept (the author's go back to 2023, their codex further), so a type scanned without a line was logged before."""
+    out = {k: set(v) for k, v in (scanned if scanned is not None else codex_types_scanned(db)[0]).items()}
     for region, i in db.execute("SELECT DISTINCT region, entry_id FROM codex WHERE entry_id BETWEEN 1100000 AND 1399999"):
-        out.setdefault(region or "", []).append(i)
+        out.setdefault(region or "", set()).add(i)
     return {k: sorted(v) for k, v in out.items()}
 
 
@@ -5849,6 +5881,7 @@ class State:
         # is gitignored, speech.json is edited in place). The paths actually in use, set at start (None in tests)
         self.speech_path = None
         self.config_path = None
+        self.pronounce_path = None   # your pronunciations (outrider.tts.PRONOUNCE.own), backed up with your lines
         self.backup_task = None
         self.backup_done_at = None  # time.monotonic() when the last backup ended
         self.seller_task = None
@@ -5940,6 +5973,8 @@ class State:
         self._boxel_arrival = (journals.pos or {}).get("ts")
         self._boxel_fetching = set()
         self._boxel_next = (None, None)   # (the payload's boxel key, boxel_next() for it)
+        self._codex_types = (None, None)  # (your scans' and codex lines' key, codex_types_logged for it)
+        self._codex_scanned = None        # (codex_types_scanned's map, last rowid read, regions, row count)
         self._boxel_sectors = (None, {})   # (visits count when built, {(sx, sy, sz): sector name})
         self.autotarget_task = None
         self._autotarget_cancel = None   # threading.Event: the automatic run's own token (switch-off, route cleared/replaced)
@@ -6026,7 +6061,7 @@ class State:
             "autotarget": self.autotarget_info(), "rail": self.rail_info(),   # the tablet's game buttons
             # boxel exploration: the page fetches api/boxel when this changes (a jump, a scan, Spansh's answer, a pick)
             "boxel": self.boxel_payload(),
-            "codex_types": codex_types_logged(self.db),   # your codex's body types per region (✦ / ✪ on bodies)
+            "codex_types": self.codex_types(),   # your codex's body types per region (✦ / ✪ on bodies)
             "hush": self.hush_info(),
             "firsts_watch": self.firsts_watch_info(),
             "copilot": dict(self.copilot, button=self.button.status if self.button else None),
@@ -6732,8 +6767,8 @@ class State:
         so nothing is ever deleted for a backup that did not work; once the zip is good, a journal that could
         not be archived is reported (warning: the backup itself worked) but the rotation still runs, so a lasting
         failure cannot pile up zips. Legacy folders stay out of the archive: they are a copy of something already
-        and never change. The zip also holds the speech file and the config file in use when they exist, and the lines you banned (see
-        State.speech_path); one of those that cannot be read is a warning too. Runs on a worker thread; returns
+        and never change. The zip also holds the speech file, the config file and your pronunciations when they
+        exist, and the lines you banned (see State.speech_path); one of those that cannot be read is a warning too. Runs on a worker thread; returns
         {path, size, kept, journals_to, copied, files, verified} (+ warning), files being the names inside the
         zip. The database copy must pass SQLite's quick_check and the zip testzip() before the zip replaces
         anything or the rotation runs; a copy or zip that fails raises (and the bad zip is deleted)."""
@@ -6767,7 +6802,7 @@ class State:
                 extra_failed = []
                 banned = outrider.speech.banned_path(self.speech_path) if self.speech_path else None
                 for src_path, arc in ((self.speech_path, "speech.json"), (banned, outrider.speech.BANNED_FILE),
-                                      (self.config_path, "ed_outrider.toml")):
+                                      (self.config_path, "ed_outrider.toml"), (self.pronounce_path, "pronounce.json")):
                     if not src_path or not os.path.exists(src_path):
                         continue
                     try:
@@ -11360,6 +11395,21 @@ class State:
                 "kept": list(kept) if kept else None, "cells": sorted(cells.values(), key=lambda c: (c["z"], c["x"])),
                 "layers": {str(k): v for k, v in sorted(layers.items())}, "codes": BOXEL_GRID_CODES}
 
+    def codex_types(self):
+        """codex_types_logged, worked out again only when your scans or codex lines change; your scans are read once and
+        then only the new ones (a re-read of the journals renumbers them: then all again)."""
+        top = self.db.execute("SELECT max(rowid), count(*) FROM own_bodies").fetchone()
+        key = (top, self.db.execute("SELECT count(*), max(ts) FROM codex").fetchone())
+        if self._codex_types[0] == key:
+            return self._codex_types[1]
+        seen = self._codex_scanned
+        if seen is None or (top[0] or 0) < seen[1] or top[1] < seen[3]:   # fewer or renumbered rows: from scratch
+            seen = ({}, 0, {}, 0)
+        found, last = codex_types_scanned(self.db, seen[1], seen[0], seen[2])
+        self._codex_scanned = (found, last, seen[2], top[1])
+        self._codex_types = (key, codex_types_logged(self.db, found))
+        return self._codex_types[1]
+
     def boxel_payload(self):
         """The payload's boxel: the key the page refetches api/boxel on (a jump, a scan, Spansh's answer, a pick), the
         auto-target opt-in, and the active boxel's Next (for Now: worked out again only when the key changes)."""
@@ -15373,6 +15423,7 @@ async def run(args, st):
     state.searcher = Searcher(state)
     state.db_path = args.db
     state.speech_path, state.config_path = st["speech_file"], args.config
+    state.pronounce_path = outrider.tts.PRONOUNCE.own
     loop = asyncio.get_running_loop()
     voice = meta_get(db, "voice_choice")   # picked in the alerts dialog: beats the config file once used
     # a Piper name, or any voice installed in piper-voices/ (a self-made one: the dialog lets you pick it, and it was

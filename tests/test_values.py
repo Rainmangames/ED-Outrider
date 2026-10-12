@@ -1061,6 +1061,15 @@ class BatchS1(unittest.TestCase):
                 self.assertIn("speech.json not backed up", out["warning"])
                 self.assertTrue(os.path.exists(out["path"]))
             os.chmod(self.state.speech_path, 0o600)
+            # your own pronunciations (data/pronounce.json, the voice lab's How is it said) go in too (the docs sweep,
+            # 2026-10-12: hand-made, like your lines)
+            self.state.pronounce_path = os.path.join(d, "pronounce.json")
+            with open(self.state.pronounce_path, "w") as f:
+                f.write('{"words": {"Jameson": "JAYM-sun"}}')
+            with unittest.mock.patch.object(ed_outrider, "BACKUP_DIR", os.path.join(d, "b4")), \
+                    unittest.mock.patch.object(ed_outrider, "LIVE_DIRS", []):
+                out = self.state.make_backup()
+            self.assertEqual(out["files"], ["x.sqlite", "speech.json", "ed_outrider.toml", "pronounce.json"])
 
 
 class Batch4Review(unittest.TestCase):

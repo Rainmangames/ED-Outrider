@@ -93,6 +93,26 @@ class Server(unittest.TestCase):
             self.db.execute("INSERT INTO codex (ts, entry_id, name, region) VALUES (?, ?, 'x', ?)", (at(10 + i), eid, region))
         self.assertEqual(self.state.payload()["codex_types"], {"Inner Orion Spur": [1100601, 1300302], "Norma Expanse": [1100601]})
 
+    def test_scanned_types_count_as_logged(self):
+        """The game logs a star or planet type only the first time you scan one in a region, and a commander's codex is
+        often older than the journals kept (the author's go back to 2023, their codex further): a type you have scanned
+        in a region without a codex line was logged before, so it is never ✦ there (review of the screenshots,
+        2026-10-12: every body in Inner Orion Spur showed ✦). A nav beacon's scan logs nothing: it does not count."""
+        at = lambda s: ed_outrider.iso_ts(self.now - 60 + s)
+        name = "Drojau TF-H c13-0"
+        self.j.handle({"event": "FSDJump", "timestamp": at(0), "StarSystem": name, "SystemAddress": 9, "StarPos": [-4179.0, -64.0, 3339.0]})
+        scan = {"event": "Scan", "timestamp": at(5), "ScanType": "Detailed", "StarSystem": name, "SystemAddress": 9, "BodyID": 4,
+                "BodyName": name + " B 3", "PlanetClass": "Icy body", "AtmosphereType": "None", "TerraformState": "",
+                "DistanceFromArrivalLS": 900.0, "WasDiscovered": True, "WasMapped": False}
+        self.j.handle(scan)
+        self.j.handle(dict(scan, timestamp=at(6), ScanType="NavBeaconDetail", BodyID=5, BodyName=name + " B 4", PlanetClass="Rocky body"))
+        region = ed_outrider.outrider.bio.region_name(-4179.0, -64.0, 3339.0)
+        logged = self.state.payload()["codex_types"]
+        self.assertIn(1300801, logged.get(region, []))        # the icy body you scanned: logged before
+        self.assertNotIn(1300601, logged.get(region, []))     # the nav beacon's rocky body: not counted
+        self.j.handle(dict(scan, timestamp=at(7), BodyID=6, BodyName=name + " B 5", PlanetClass="Rocky body"))
+        self.assertIn(1300601, self.state.payload()["codex_types"][region])   # a later scan: read incrementally
+
 
 if __name__ == "__main__":
     unittest.main()

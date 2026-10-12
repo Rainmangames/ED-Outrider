@@ -2,6 +2,15 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-12 · ✦ on body types: your scans count as logged; pronunciations backed up
+- The ✦ / ✪ on star and planet types marked nearly every body in the regions explored before the journals kept (the
+  author's go back to May 2023, their codex further: Inner Orion Spur held 2 body-type codex lines, so 42 types read as
+  new; found in the release screenshots). The game logs a type only the first time you scan one in a region (109 of the
+  author's 111 such lines say new), so a type you have scanned there without a line was logged before: your own scans
+  (not a nav beacon's) now count. Read once (25,874 scans in 0.2 s), then only the new ones.
+- Your own pronunciations (`data/pronounce.json`, the voice lab's How is it said) go into the dated backups with your
+  lines and the config (found by the docs sweep).
+
 ## 2026-10-12 · Carrier tritium: reserved space weighs nothing
 - The carrier's tritium jumps counted the space a buy order reserves as cargo, so with a buy order open each jump read
   heavier than it is (found by the Fable review of the suggestion plan, checked on the author's journals). The game's
