@@ -4404,28 +4404,39 @@ const settle = async maxMs => {
     const w = dom.window, before = errors.length, real = w.fetch, posted = [];
     const cat = {current: "en_GB-cori-medium", voices: [
       {name: "de_DE-thorsten-high", language: "de_DE", language_name: "German (Germany)", quality: "high", speakers: 1, size_mb: 114, installed: false},
-      {name: "en_GB-alan-low", language: "en_GB", language_name: "English (Great Britain)", quality: "low", speakers: 1, size_mb: 63, installed: false},
-      {name: "en_GB-cori-medium", language: "en_GB", language_name: "English (Great Britain)", quality: "medium", speakers: 1, size_mb: 63, installed: true}]};
+      {name: "en_GB-alan-low", language: "en_GB", language_name: "English (Great Britain)", quality: "low", speakers: 1, size_mb: 63, installed: false,
+       sample: "https://rhasspy.github.io/piper-samples/samples/en/en_GB/alan/low/speaker_0.mp3"},
+      {name: "en_GB-cori-medium", language: "en_GB", language_name: "English (Great Britain)", quality: "medium", speakers: 1, size_mb: 63, installed: true},
+      {name: "en_GB-vctk-medium", language: "en_GB", language_name: "English (Great Britain)", quality: "medium", speakers: 109, size_mb: 77, installed: false}]};
     const json = body => Promise.resolve({ok: true, status: 200, headers: {get: () => "application/json"}, json: async () => body});
     w.fetch = (u, o) => /api\/voices\/catalogue/.test(String(u)) ? json(cat)
       : /api\/voice$/.test(String(u)) && o && o.method === "POST" ? (posted.push(JSON.parse(o.body).voice), json({ok: true})) : real(u, o);
-    w.eval("mvVoices = null; data.tts = Object.assign({}, data.tts, {voice: 'en_GB-cori-medium'})");
+    w.eval("mvVoices = null; data.tts = Object.assign({}, data.tts, {voice: 'en_GB-cori-medium'}); store.set('mvSort', null); __played = []; __sound0 = labSound; labSound = url => (__played.push(url), {done: Promise.resolve(), stop() {}})");
     const d = w.document, mv = d.getElementById("moreVoices");
     mv.open = true; mv.dispatchEvent(new w.Event("toggle"));
     await sleep(150);
     const rows = () => [...d.querySelectorAll("#mvList .mvrow")].map(r => r.textContent.replace(/\s+/g, " ").trim());
     const got = {langs: [...d.querySelectorAll("#mvLang option")].map(o => o.value), lang: d.getElementById("mvLang").value, rows: rows()};
+    d.querySelector('#mvList [data-mvsample]').click();             // Piper's own sample, before downloading
+    await sleep(50);
+    got.played = w.eval("__played.slice()");
+    const order = k => { d.getElementById("mvSort").value = k; d.getElementById("mvSort").dispatchEvent(new w.Event("change"));
+      return [...d.querySelectorAll("#mvList .mvname")].map(x => x.textContent).join(","); };
+    got.sorted = [order("quality"), order("-size"), order("size"), order("name")];
     d.querySelector('#mvList [data-mv="en_GB-alan-low"]').click();
     await sleep(100);
     got.posted = posted;
     d.getElementById("mvLang").value = "de_DE"; d.getElementById("mvLang").dispatchEvent(new w.Event("change"));
     got.de = rows();
-    w.fetch = real; mv.open = false; w.eval("mvVoices = null");
-    const want = {langs: ["en_GB", "de_DE"], lang: "en_GB", rows: ["alanlow · 63 MBDownload and use", "corimedium · 63 MBin use"],   // (the spans' text run together)
+    w.fetch = real; mv.open = false; w.eval("mvVoices = null; labSound = __sound0; store.set('mvSort', null)");
+    const want = {langs: ["en_GB", "de_DE"], lang: "en_GB", rows: ["alanlow · 63 MB▶ sampleDownload and use", "corimedium · 63 MBin use",
+                                                                   "vctkmedium · 109 speakers · 77 MBDownload and use"],   // (the spans' text run together)
+                  played: ["https://rhasspy.github.io/piper-samples/samples/en/en_GB/alan/low/speaker_0.mp3"],
+                  sorted: ["cori,vctk,alan", "vctk,alan,cori", "alan,cori,vctk", "alan,cori,vctk"],
                   posted: ["en_GB-alan-low"], de: ["thorstenhigh · 114 MBDownload and use"]};
     const goodV = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && goodV;
-    console.log(goodV ? "OK" : "FAIL", "| more voices |", goodV ? "Piper's catalogue by language; Download and use asks the server for it" : JSON.stringify(got), errors.slice(before));
+    console.log(goodV ? "OK" : "FAIL", "| more voices |", goodV ? "Piper's catalogue by language, sorted by name, quality or size; ▶ sample plays Piper's recording; Download and use asks the server for it" : JSON.stringify(got), errors.slice(before));
   }
   // the desktop theme (Settings > Display): Default - Outrider and the tablet's nine; a choice is set on <html>, changes
   // the colours, is remembered for this browser; the Default again removes it

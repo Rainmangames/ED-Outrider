@@ -1325,6 +1325,8 @@ class VoiceCatalogue(unittest.TestCase):
         self.assertEqual((cori["language"], cori["language_name"], cori["quality"], cori["size_mb"], cori["installed"], cori["speakers"]),
                          ("en_GB", "English (Great Britain)", "medium", 63, True, 1))
         self.assertEqual((got[0]["installed"], got[2]["speakers"]), (False, 904))
+        # Piper's own recording of each, to hear before downloading (the author, 2026-10-11)
+        self.assertEqual(cori["sample"], "https://rhasspy.github.io/piper-samples/samples/en/en_GB/cori/medium/speaker_0.mp3")
 
     def test_endpoint(self):
         import asyncio

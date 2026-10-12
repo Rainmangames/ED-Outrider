@@ -54,6 +54,8 @@ FILE_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/{path}?down
 # Piper's list of every voice (the voice lab's More voices), kept beside the voices for a week
 CATALOGUE_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/voices.json?download=true"
 CATALOGUE_CACHE = os.path.join(VOICES_DIR, "voices.json")
+# Piper's own recording of each voice (its first speaker), on the project's samples site: More voices' ▶ sample
+SAMPLE_URL = "https://rhasspy.github.io/piper-samples/samples/{base}/speaker_0.mp3"
 CATALOGUE_MAX_AGE = 7 * 86400
 # The longest line spoken (about a minute of speech): a cap on the synthesis work one request can ask for.
 # A longer line is cut at a sentence or clause boundary, never mid-word (see clip_text).
@@ -203,7 +205,8 @@ def fetch_catalogue(force=False, cache=None):
 
 def catalogue_summary(doc, installed=()):
     """The catalogue for the page: [{name, language (en_GB), language_name ("English (Great Britain)"), quality,
-    speakers, size_mb (the model), installed}], by name; entries that are not well-formed voices are left out."""
+    speakers, size_mb (the model), installed, sample (Piper's recording of it)}], by name; entries that are not
+    well-formed voices are left out."""
     out, have = [], set(installed)
     for name, v in (doc or {}).items():
         if not isinstance(v, dict) or not VOICE_NAME.fullmatch(name):
@@ -215,7 +218,8 @@ def catalogue_summary(doc, installed=()):
                     "language_name": f"{lang.get('name_english') or ''} ({lang.get('country_english') or ''})".replace(" ()", "").strip(),
                     "quality": v.get("quality") or name.rsplit("-", 1)[1],
                     "speakers": v.get("num_speakers") if isinstance(v.get("num_speakers"), int) else 1,
-                    "size_mb": round(size / 1e6) if size else None, "installed": name in have})
+                    "size_mb": round(size / 1e6) if size else None, "installed": name in have,
+                    "sample": SAMPLE_URL.format(base=voice_paths(name)[1].rsplit("/", 1)[0])})
     return sorted(out, key=lambda x: x["name"])
 
 

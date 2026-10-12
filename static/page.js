@@ -7769,18 +7769,33 @@ async function loadMoreVoices(refresh = false) {
   sel.value = names.has(want) ? want : langs.length ? langs[0][0] : "";
   drawMoreVoices();
 }
+// More voices' order (per browser): by name, by quality (best first), or by the download's size either way
+const MV_QUALITY = {x_low: 0, low: 1, medium: 2, high: 3};
+const mvSortKey = () => { const k = store.get("mvSort", "name"); return ["name", "quality", "size", "-size"].includes(k) ? k : "name"; };
+function mvSorted(list) {
+  const k = mvSortKey(), name = v => v.name.split("-")[1] || v.name, q = v => MV_QUALITY[v.quality] ?? -1, mb = v => v.size_mb ?? Infinity;
+  const byName = (a, b) => name(a).localeCompare(name(b)) || q(b) - q(a);
+  return [...list].sort(k === "quality" ? (a, b) => q(b) - q(a) || byName(a, b) : k === "size" ? (a, b) => mb(a) - mb(b) || byName(a, b)
+    : k === "-size" ? (a, b) => (b.size_mb ?? -1) - (a.size_mb ?? -1) || byName(a, b) : byName);
+}
 function drawMoreVoices() {
   const lang = document.getElementById("mvLang").value, cur = data && data.tts && data.tts.voice;
-  document.getElementById("mvList").innerHTML = (mvVoices || []).filter(v => v.language === lang).map(v =>
+  document.getElementById("mvSort").value = mvSortKey();
+  document.getElementById("mvList").innerHTML = mvSorted((mvVoices || []).filter(v => v.language === lang)).map(v =>
     `<div class="mvrow"><span class="mvname">${esc(v.name.split("-")[1].replace(/_/g, " "))}</span>` +
     `<span class="unk">${esc(v.quality)}${v.speakers > 1 ? ` · ${v.speakers} speakers` : ""}${v.size_mb ? ` · ${v.size_mb} MB` : ""}</span>` +
+    // Piper's own recording of the voice (its website), before downloading anything
+    (v.sample ? `<button type="button" class="try" data-mvsample="${esc(v.sample)}" title="Piper's own recording of this voice, from its website${v.speakers > 1 ? " (its first speaker)" : ""}">▶ sample</button>` : "") +
     (v.name === cur ? `<span class="ok">in use</span>` : `<button type="button" data-mv="${esc(v.name)}">${v.installed ? "Use" : "Download and use"}</button>`) +
     `</div>`).join("") || `<div class="hint">no voices in this language</div>`;
 }
 document.getElementById("moreVoices").addEventListener("toggle", e => { if (e.target.open && !mvVoices) loadMoreVoices(); });
 document.getElementById("mvLang").onchange = drawMoreVoices;
+document.getElementById("mvSort").onchange = e => { store.set("mvSort", e.target.value); drawMoreVoices(); };
 document.getElementById("mvRefresh").onclick = () => loadMoreVoices(true);
 document.getElementById("mvList").addEventListener("click", async e => {
+  const smp = e.target.closest("[data-mvsample]");
+  if (smp) { labPlayUrl(smp.dataset.mvsample, "Piper's sample could not be played (offline, or the browser held it back: click the page first)"); return; }
   const b = e.target.closest("[data-mv]"); if (!b) return;
   const v = (mvVoices || []).find(x => x.name === b.dataset.mv);
   let r;
@@ -7840,6 +7855,15 @@ async function labSay(text, how) {
   catch { labMsg("The browser held the sound back: click anywhere on the page, then try again", true); return false; }
   finally { URL.revokeObjectURL(url); if (token === labToken) labNow = null; }
   return token === labToken;
+}
+// play a recording from a URL (More voices' ▶ sample) through the lab's player, so ■ Stop and closing stop it too
+async function labPlayUrl(url, failed) {
+  labStop();
+  const token = labToken;
+  labNow = labSound(url);
+  labMsg("");
+  try { await labNow.done; } catch { if (token === labToken) labMsg(failed, true); }
+  finally { if (token === labToken) labNow = null; }
 }
 const labStyleName = st => { const base = st.replace(/_profane$/, ""), v = (speechLib.styles || {})[base];
   return (typeof v === "string" ? v : (v && v.label) || base) + (st.endsWith("_profane") ? ", swearing" : ""); };

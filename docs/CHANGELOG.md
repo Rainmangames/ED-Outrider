@@ -2,6 +2,13 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · More voices: sorted, and Piper's samples
+- More voices (in the voice lab) sorts by name, quality (best first) or size either way (the author; per browser), and
+  each voice has **▶ sample**: Piper's own recording of it from the project's samples site (rhasspy.github.io/
+  piper-samples, its first speaker), heard before downloading anything. The catalogue gains `sample` (`SAMPLE_URL`);
+  25 voices picked at random from all 176, plus three newer ones, all had theirs. It plays through the lab's player:
+  ■ Stop stops it.
+
 ## 2026-10-11 · The voice lab moves into the page, with speakers
 - **🎙 Voice lab** in ⚙ Settings → Voice replaces `voice_lab.py` (a separate Tk window, now removed with its tests;
   the author's ask). It plays in the browser you are using, from the server's Piper (`api/say`), so it works on a
