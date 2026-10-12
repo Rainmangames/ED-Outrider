@@ -16,6 +16,9 @@ centauri.webp: the Centauri Republic, vorlon.webp: the Vorlon Empire)
   (babylon5.fandom.com; Category:User-created public domain images):
     EAS_wiki.png, Wiki_narnregime.png, Wiki_minbarifed.png, Wiki_centaurirep.png, Wiki_vorlonemp.png (by Blind Wolf,
     "Emblem of the Vorlon Empire", licensing {{Self}}; the wiki's CDN serves it as WebP, kept unchanged)
+  shadow.webp: an emblem for the Shadows, an AI-generated image the author made (2026-10-12), loosely based on the
+    design of the Shadows' ships; recoloured from black to the theme's purples (brightness mapped from #5A2D8C to
+    #E4DCF0, transparency kept), scaled to 512 x 512 and saved as WebP.
   The emblems themselves are Babylon 5's (c) Warner Bros.
 
 Star Wars

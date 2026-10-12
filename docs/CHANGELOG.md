@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-12 · Babylon 5 - Shadows theme
+- An eleventh theme for the tablet, the desktop page (Settings → Display) and the overlay's panels (the author's ask):
+  **Babylon 5 - Shadows**, the Shadows' ships evoked, not copied. Black with a purple floor, dark purple panels, light
+  grey text, the emblem's violet for what is chosen and pale lilac for headings; thorn-cut corners (a long slant at top
+  right and bottom left), a faint purple shadow; the overlay's panels cut-cornered. Metal Mania (spiked serifs, the
+  author asked for a jagged face) for headings, newly shipped with its SIL OFL licence, and Exo 2 for text; your own
+  heading font as `data/fonts/shadow-display.ttf`.
+- Its emblem under the tablet's page list: an AI-generated image the author made, loosely based on the Shadows' ships,
+  recoloured from black to the theme's purples so it shows on a dark page, credited in `static/emblems/CREDITS.txt`.
+
 ## 2026-10-12 · The link pill says states only
 - The link pill counted seconds ("linked · 2 s", "stale · 48 s", "no link · retrying since 14:02"); it now says only
   the state (the author's ask): "linked", "linked · no game" when Outrider answers but the game is not running, and

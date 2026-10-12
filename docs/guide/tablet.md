@@ -5,10 +5,11 @@
 ## 📱 On a tablet
 
 Open `http://<your PC>:8025/tablet` on a tablet in landscape (made for a larger tablet, about 1280 × 800 CSS pixels):
-the same pages in a cockpit layout, in one of ten themes: LCARS (below), Elite (the cockpit HUD's orange, with cut
-corners), five from Babylon 5 (Earthforce: navy and steel; Narn: rust and ochre, wedge-cut; Minbari: indigo, lilac and
+the same pages in a cockpit layout, in one of eleven themes: LCARS (below), Elite (the cockpit HUD's orange, with cut
+corners), six from Babylon 5 (Earthforce: navy and steel; Narn: rust and ochre, wedge-cut; Minbari: indigo, lilac and
 pearl, soft arches and thin double lines; Centauri: gold on royal purple, ornate notched double borders; Vorlon: sea
-green and gold on deep green-black, soft arcs with a faint glow), Sith (black,
+green and gold on deep green-black, soft arcs with a faint glow; Shadows: violet and light grey on black and dark purple,
+thorn-cut corners and spiked lettering), Sith (black,
 crimson, thin hard lines), Rebel Alliance (cockpit orange and sand, blue for what is chosen) or Dark (a modern app's dark mode: slate
 cards, switches and line icons beside the words). Settings picks one per tablet. The Elite, Babylon 5 and Star Wars
 themes show their emblem in the free space under the page list (credits at the bottom of this page). Outrider must listen on your network
@@ -61,10 +62,10 @@ Any browser at `/tablet` works too, without the wake word and Ask.
 
 The fonts are Antonio and Barlow Condensed, both under the SIL Open Font License and shipped with Outrider, as are the
 other themes' (Michroma, Saira, Orbitron, Exo 2, Russo One, Marcellus, Cinzel, Cormorant Garamond, Share Tech Mono, Rajdhani,
-Oxanium, Inter); Dark's icons
+Oxanium, Inter, Metal Mania); Dark's icons
 are Lucide's (ISC licence, in `static/icons/`). A heading font of your own goes in your git-ignored `data/` folder and
 is never shared: `data/fonts/<theme>-display.ttf`: `lcars-display.ttf`, `elite-display.ttf` (a Eurostile-style
-face), `babylon5-display.ttf`, `narn-display.ttf`, `minbari-display.ttf`, `centauri-display.ttf`, `vorlon-display.ttf`, `sith-display.ttf` or
+face), `babylon5-display.ttf`, `narn-display.ttf`, `minbari-display.ttf`, `centauri-display.ttf`, `vorlon-display.ttf`, `shadow-display.ttf`, `sith-display.ttf` or
 `alliance-display.ttf`.
 
 ---

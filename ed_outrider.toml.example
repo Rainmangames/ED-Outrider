@@ -223,7 +223,7 @@
 # The in-game overlay: panels drawn over Elite's window (borderless or windowed) by a small window Outrider runs on the
 # game PC (a game-PC feature: not on a server). The page's Settings -> In-game overlay switches it and arranges the panels.
 # enabled = false
-# theme = "default"         # the panels' colours: default, lcars, elite, babylon5, narn, minbari, centauri, vorlon, sith, alliance, dark
+# theme = "default"         # the panels' colours: default, lcars, elite, babylon5, narn, minbari, centauri, vorlon, shadow, sith, alliance, dark
 # text_size = "normal"      # small, normal or large
 # system_panel = true       # the bodies worth your time, in supercruise
 # body_panel = true         # the body you are heading to or near

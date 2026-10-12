@@ -1,0 +1,74 @@
+/* Babylon 5 - Shadows, a tablet theme (data-theme="shadow"): the Shadows' ships from Babylon 5, evoked, not copied.
+   Near-black with a purple cast, dark purple panels, light grey text, the emblem's violet and pale lilac; thorn-cut
+   corners (a long slant at top right and bottom left, like the emblem's barbs) and a faint purple shadow. Fonts: Metal
+   Mania (headings, spiked serifs) and Exo 2 (text), both SIL OFL 1.1, in static/fonts/ with their licences. Your own
+   heading font goes first if you drop it in as data/fonts/shadow-display.ttf (served at /userfonts/; never committed).
+   No show assets apart from the faction emblem under the page list (static/emblems/CREDITS.txt). */
+@font-face { font-family: "Shadow Display"; font-display: swap;
+  src: url("../../userfonts/shadow-display.ttf") format("truetype"), url("../fonts/MetalMania-Regular.ttf") format("truetype"); }
+@font-face { font-family: "Metal Mania"; font-display: swap; src: url("../fonts/MetalMania-Regular.ttf") format("truetype"); }
+@font-face { font-family: "Exo 2"; font-weight: 100 900; font-display: swap; src: url("../fonts/Exo2-VF.ttf") format("truetype"); }
+
+:root[data-theme="shadow"] {
+  --sd-bg: #060409; --sd-panel: #140B20; --sd-deep: #2B1745; --sd-purple: #4A2878; --sd-violet: #A57BE6; --sd-lilac: #CDBDF2;
+  --sd-grey: #D6D3DD; --sd-line: #2F1D4A; --sd-muted: #9C95AA; --sd-red: #FF6B7D; --sd-amber: #F0B44C;
+  --sd-shade: rgba(74, 40, 120, .35); --sd-thorn: 14px;
+  /* page.css's colours, so the views take the theme too */
+  --bg: var(--sd-bg); --panel: var(--sd-panel); --line: var(--sd-line); --text: var(--sd-grey); --muted: var(--sd-muted);
+  --accent: var(--sd-violet); --good: #8FD6A8; --warn: var(--sd-amber); --bad: var(--sd-red); --info: var(--sd-lilac);
+  --hot: #E9DDFF; --biohot: #F2A6D8;
+  --tb-font: "Exo 2", system-ui, sans-serif; --tb-font-display: "Shadow Display", "Metal Mania", serif;
+  --tb-case: none; --tb-track: .5px; --tb-size: 17px;
+  --tb-title: var(--sd-lilac);
+  --tb-chip-bg: var(--sd-panel); --tb-chip-k: var(--sd-muted); --tb-chip-v: var(--sd-grey); --tb-chip-radius: 0;
+  --tb-group-bg: var(--sd-panel); --tb-group-fg: var(--sd-lilac); --tb-group-open-bg: var(--sd-purple); --tb-group-open-fg: #FFFFFF;
+  --tb-group-radius: 0; --tb-page-radius: 0;
+  --tb-page-bg: transparent; --tb-page-fg: var(--sd-grey); --tb-page-on-bg: var(--sd-violet); --tb-page-on-fg: var(--sd-bg);
+  --tb-fill: transparent;
+  --tb-btn-bg: var(--sd-deep); --tb-btn-fg: var(--sd-grey); --tb-btn-on-bg: var(--sd-violet); --tb-btn-on-fg: var(--sd-bg); --tb-btn-radius: 0;
+  --tb-link-ok: var(--sd-violet); --tb-link-stale: var(--sd-amber); --tb-link-none: var(--sd-red);
+  --tb-rail-border: var(--sd-line); --tb-sheet-bg: #0C0714; --tb-sheet-border: var(--sd-purple); --tb-sheet-radius: 0;
+  --tb-banner-bg: #0C0714; --tb-banner-fg: var(--sd-grey); --tb-banner-border: var(--sd-violet); --tb-danger: var(--sd-red);
+  --tb-rb-on-bg: var(--sd-violet); --tb-rb-on-fg: var(--sd-bg); --tb-rb-off-bg: var(--sd-panel); --tb-rb-off-fg: var(--sd-grey);
+  --tb-rb-high-bg: var(--sd-lilac); --tb-rb-pend-bg: var(--sd-panel); --tb-rb-pend-fg: var(--sd-amber); --tb-rb-unk-border: var(--sd-muted);
+  --tb-rb-unk-fg: var(--sd-muted); --tb-rb-dim: var(--sd-line); --tb-rb-dim-fg: #8A8298; --tb-rb-amber: var(--sd-amber); --tb-rb-radius: 0;
+  color-scheme: dark;
+}
+/* black, with a purple dark pooling from below like a Shadow vessel's hull */
+:root[data-theme="shadow"] body.tablet { background: radial-gradient(ellipse at 50% 125%, #1E0F33, var(--sd-bg) 60%); color: var(--text); }
+/* thorn cuts: a long slant at top right and bottom left, a faint purple shadow behind the big blocks */
+[data-theme="shadow"] .tb-chip, [data-theme="shadow"] .tb-link, [data-theme="shadow"] .tb-page, [data-theme="shadow"] .tb-btn,
+[data-theme="shadow"] .tb-voice, [data-theme="shadow"] .tb-rb {
+  clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px)); }
+[data-theme="shadow"] .tb-sheet, [data-theme="shadow"] .tb-banner, [data-theme="shadow"] .tb-group, [data-theme="shadow"] body.tablet .pane {
+  clip-path: polygon(0 0, calc(100% - var(--sd-thorn)) 0, 100% var(--sd-thorn), 100% 100%, var(--sd-thorn) 100%, 0 calc(100% - var(--sd-thorn))); }
+[data-theme="shadow"] .tb-sheet, [data-theme="shadow"] .tb-banner { border: 1px solid var(--sd-purple); box-shadow: inset 0 0 22px var(--sd-shade); }
+[data-theme="shadow"] .tb-group { border: 1px solid var(--sd-line); border-left: 3px solid var(--sd-purple); }
+[data-theme="shadow"] .tb-group.open { border-left-color: var(--sd-violet); box-shadow: inset 0 0 16px var(--sd-shade); }
+[data-theme="shadow"] .tb-chip, [data-theme="shadow"] .tb-link { border: 1px solid var(--sd-line); }
+[data-theme="shadow"] .tb-page:not(.on) { border-left: 2px solid var(--sd-line); }
+[data-theme="shadow"] .tb-head .tb-corner { background: linear-gradient(160deg, var(--sd-purple), var(--sd-deep) 70%);
+  clip-path: polygon(0 0, 100% 0, 100% 35%, 55% 100%, 0 100%); }
+[data-theme="shadow"] .tb-head .tb-bar { border-bottom: 2px solid var(--sd-deep); box-shadow: 0 2px 12px var(--sd-shade); }
+[data-theme="shadow"] .tb-foot .tb-corner { background: var(--sd-deep); clip-path: polygon(0 0, 55% 0, 100% 100%, 0 100%); }
+[data-theme="shadow"] .tb-foot .tb-bar { border-top: 1px solid var(--sd-line); }
+[data-theme="shadow"] .tb-title { font-family: var(--tb-font-display); letter-spacing: 1.5px; }
+/* the views */
+[data-theme="shadow"] body.tablet th { color: var(--sd-lilac); }
+[data-theme="shadow"] body.tablet tr.target td { background: rgba(165, 123, 230, .14); }
+[data-theme="shadow"] body.tablet #nowView .now-sys { color: var(--sd-lilac); font-family: var(--tb-font-display); letter-spacing: 1.5px; }
+[data-theme="shadow"] .tb-sheet h2 { color: var(--sd-lilac); font-family: var(--tb-font-display); letter-spacing: 1px; }
+/* the faction's emblem under the page list (static/emblems/CREDITS.txt) */
+[data-theme="shadow"] .tb-emblem { display: block; background-image: url("../emblems/shadow.webp"); opacity: .8; }
+
+/* ---- the desktop page (Settings > Display): thorn cuts and a purple shadow ---- */
+:root[data-theme="shadow"] { --desk-pill: 0; --desk-radius: 0; --desk-lbl: var(--sd-lilac); --desk-pill-size: 13px; --desk-pill-font: var(--tb-font); --desk-pill-case: none; }
+[data-theme="shadow"] body:not(.tablet) { background: radial-gradient(ellipse at 50% 130%, #1A0D2C, var(--sd-bg) 55%) fixed; }
+[data-theme="shadow"] body:not(.tablet) :is(.tile, dialog) {
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
+[data-theme="shadow"] body:not(.tablet) header { border-bottom: 2px solid var(--sd-deep); box-shadow: 0 2px 14px var(--sd-shade); }
+[data-theme="shadow"] body:not(.tablet) .tile { border-color: var(--sd-line); border-left: 3px solid var(--sd-purple); box-shadow: inset 0 0 14px var(--sd-shade); }
+[data-theme="shadow"] body:not(.tablet) .views button { border-color: var(--sd-deep); }
+[data-theme="shadow"] body:not(.tablet) .views button.on { background: var(--sd-violet); color: var(--sd-bg); border-color: var(--sd-violet); }
+[data-theme="shadow"] body:not(.tablet) dialog { border: 1px solid var(--sd-purple); border-left: 4px solid var(--sd-violet); box-shadow: inset 0 0 24px var(--sd-shade); }
+[data-theme="shadow"] body:not(.tablet) th { color: var(--sd-lilac); }

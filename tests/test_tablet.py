@@ -254,8 +254,8 @@ class Tablet(unittest.TestCase):
         """The Babylon 5 and Star Wars themes show their faction's emblem in the free space under the page list (the
         author's request): local copies (the Android app blocks anything that is not Outrider), credited with their
         licences, one per theme and none for the others, served as images."""
-        emblems = {"elite": "elite.webp", "babylon5": "babylon5.webp", "narn": "narn.webp", "minbari": "minbari.webp", "centauri": "centauri.webp", "vorlon": "vorlon.webp",
-                   "sith": "sith.svg", "alliance": "alliance.svg"}
+        emblems = {"elite": "elite.webp", "babylon5": "babylon5.webp", "narn": "narn.webp", "minbari": "minbari.webp", "centauri": "centauri.webp",
+                   "vorlon": "vorlon.webp", "shadow": "shadow.webp", "sith": "sith.svg", "alliance": "alliance.svg"}
         folder = os.path.join(ed_outrider.STATIC_DIR, "emblems")
         with open(os.path.join(folder, "CREDITS.txt"), encoding="utf-8") as f:
             credits = f.read()

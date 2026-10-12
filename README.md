@@ -54,7 +54,7 @@ also run 24/7 on a home server in Docker.
 | 📈 **The long view** | Each trip from sale to sale with what it actually paid, what each ship loss cost, your best finds, ranks and career statistics. |
 | 🗣 **A voice with personality** | A natural neural voice, down to business, sarcastic or sweet, briefing you on arrival and warning before you leave something unfinished. |
 | ⛏️ **Rhino mining** | A heading-up surface map on Now with your rigs, sample points and ship, and every collection kept per body. |
-| 📱 **A tablet in the cockpit** | Every page in a touch layout with ten themes, alerts as banners, game buttons on a control rail, and the voice on the tablet if you like. |
+| 📱 **A tablet in the cockpit** | Every page in a touch layout with eleven themes, alerts as banners, game buttons on a control rail, and the voice on the tablet if you like. |
 | 🎙️ **Ask out loud** | "Hey Vespa, status report": answered in the voice from what Outrider knows, with an optional AI for anything else. |
 | 🎯 **Automation (game PC; Linux, Windows experimental)** | Auto honk fires the Discovery Scanner on arrival, auto-target targets the next route system after a supercharge, and one HOTAS button (Linux) targets the next route system with a tap, gives a status report with a double tap and hushes with a hold. |
 
@@ -86,7 +86,7 @@ Everything about installing, the optional parts, Docker, other devices and backu
 | <a id="-cargo-and-your-carrier"></a><a id="-trading"></a>**[Cargo and trading](docs/guide/cargo-and-trading.md)** | Your hold and your fleet carrier's (tracked, no Frontier sign-in), the carrier's tritium, Sell / Buy from Spansh's markets, trade routes |
 | <a id="-alerts"></a><a id="-the-voice"></a><a id="-ask-outrider-by-voice"></a><a id="-ask-an-ai-about-your-game"></a>**[Voice and alerts](docs/guide/voice-and-alerts.md)** | What Outrider tells you and when, the voice and its personalities, editing and banning lines, asking by voice, asking an AI |
 | <a id="-auto-honk"></a><a id="-the-co-pilot-button"></a>**[Automation](docs/guide/automation.md)** | Auto honk and the co-pilot button (on the game PC) |
-| <a id="-on-a-tablet"></a>**[On a tablet](docs/guide/tablet.md)** | The touch layout at /tablet, its ten themes, the control rail, the Android app |
+| <a id="-on-a-tablet"></a>**[On a tablet](docs/guide/tablet.md)** | The touch layout at /tablet, its eleven themes, the control rail, the Android app |
 | **[In-game overlay](docs/guide/overlay.md)** | Panels drawn over the game: the system worth your time, the body you are heading to, a surface radar, the system strip, Now (To-Do & Info), bio signals; arranging them |
 | **[Uploads](docs/guide/uploads.md)** | EDDN, EDSM and Inara (opt-in, off by default): what is sent and never sent, one uploader at a time, the keys |
 | <a id="-settings"></a><a id="-good-to-know"></a>**[Settings and good to know](docs/guide/settings.md)** | Every setting and config key, and the things worth knowing (what "not on the page" means, estimates, updates) |

@@ -38,7 +38,7 @@ const TABLET = typeof document !== "undefined" && !!document.body && document.bo
 // (null: you were on Now already, or chose a page since); mapWas: whether the map showed at the last draw
 const TB = {group: null, beforeMap: null, mapWas: false, bannerTimer: null, bannerKey: null,
             groups: {explore: ["now", "near", "here", "bio"], navigate: ["bm", "search", "map", "hwy"], records: ["hist", "log", "mat", "firsts"]},
-            themes: ["lcars", "elite", "babylon5", "narn", "minbari", "centauri", "vorlon", "sith", "alliance", "dark"], railPending: {}, railEdit: null};
+            themes: ["lcars", "elite", "babylon5", "narn", "minbari", "centauri", "vorlon", "shadow", "sith", "alliance", "dark"], railPending: {}, railEdit: null};
 // Where you are, as the exact id64 string (position.id). The JSON number position.id64 loses the last digits above
 // 2^53, so string comparisons with the server's exact ids (arrival, Here, moments) must use this.
 const posId = () => data && data.position ? data.position.id ?? String(data.position.id64) : null;
@@ -8575,7 +8575,7 @@ document.getElementById("uploadsBox").addEventListener("click", async e => {
 });
 // Settings -> In-game overlay (data.overlay: State.overlay_info): the switches, whether a window is drawing, the test
 // panels and Arrange mode, and each panel's place, size and transparency (POST api/overlay, api/overlay/layout)
-const OV_THEMES = ["default", "lcars", "elite", "babylon5", "narn", "minbari", "centauri", "vorlon", "sith", "alliance", "dark"];
+const OV_THEMES = ["default", "lcars", "elite", "babylon5", "narn", "minbari", "centauri", "vorlon", "shadow", "sith", "alliance", "dark"];
 const OV_PANELS = [["system", "System", "the bodies worth your time, in supercruise"], ["body", "Body", "the body you are heading to or near"],
                    ["radar", "Surface radar", "on a body's surface: samples, colony rings, the ship"],
                    ["strip", "System strip", "two short lines across the top: where you are, the star, bodies found, values"],
@@ -9361,7 +9361,7 @@ function tabSetup() {
   tabDrawNav(); tabDrawCaption(); tabDrawAsk();
 }
 // the themes with an emblem under the page list (their stylesheets set it; static/emblems/CREDITS.txt)
-const TB_EMBLEMS = ["elite", "babylon5", "narn", "minbari", "centauri", "vorlon", "sith", "alliance"];
+const TB_EMBLEMS = ["elite", "babylon5", "narn", "minbari", "centauri", "vorlon", "shadow", "sith", "alliance"];
 function tabEmblem(on) {   // Settings: Show the theme's emblem (per tablet, on by default)
   document.documentElement.classList.toggle("tb-noemblem", !on);
   document.getElementById("tabEmblem").checked = !!on;

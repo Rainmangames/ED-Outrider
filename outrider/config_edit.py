@@ -22,7 +22,7 @@ HIDDEN_SECTIONS = {"eddn", "edsm", "inara"}   # written by their own page sectio
 SECRETS = {("server", "password"), ("assistant", "api_key"), ("mcp", "password")}   # never sent to the page, only "set" or not
 # keys with a fixed set of values, shown as a choice (ed_outrider.py adds [speech] server_player's, from outrider.tts)
 CHOICES = {("server", "game_pc"): ("auto", "true", "false"), ("highway", "autotarget_entry"): ("type", "paste"),
-           ("overlay", "theme"): ("default", "lcars", "elite", "babylon5", "narn", "minbari", "centauri", "vorlon", "sith",
+           ("overlay", "theme"): ("default", "lcars", "elite", "babylon5", "narn", "minbari", "centauri", "vorlon", "shadow", "sith",
                                   "alliance", "dark"),
            ("overlay", "text_size"): ("small", "normal", "large")}
 HEADER = re.compile(r"^\s*\[\s*([A-Za-z0-9_.-]+)\s*\]")

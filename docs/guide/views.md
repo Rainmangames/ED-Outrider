@@ -118,7 +118,7 @@ them only on a small window). A table too wide for its box
 switches to short forms ("HMC", "G star"; hover for the full text) rather than scroll sideways.
 
 **Themes.** ⚙ Settings → Display → **Theme on this browser** dresses the page in one of the tablet's themes: LCARS,
-Elite, Babylon 5 (Earthforce, Narn, Minbari, Centauri, Vorlon), Sith, Rebel Alliance or Dark, each with its colours, its
+Elite, Babylon 5 (Earthforce, Narn, Minbari, Centauri, Vorlon, Shadows), Sith, Rebel Alliance or Dark, each with its colours, its
 lettering on the title, tabs and labels, and its shapes. **Default - Outrider** is the look above, and the only one that
 follows your system's light mode. Each browser keeps its own choice, and the tablet has its own.
 
