@@ -299,7 +299,7 @@ HIGHWAY_DONE = 20           # ...and done rows above them (the most recent)
 BOXEL_SPANSH_CHUNK = 300   # names per Spansh request (an exact list of a boxel's names)
 BOXEL_SPANSH_MAX = 3000    # names asked about at most for one boxel
 BOXEL_SPANSH_MAX_AGE = 86400   # s: Spansh's list of a boxel is asked again after a day
-BOXEL_SPANSH_KEEP = 20     # boxels whose Spansh list is kept (meta boxel_spansh)
+BOXEL_SPANSH_KEEP = 60     # boxels whose Spansh list is kept (meta boxel_spansh: the one explored and those recommended)
 HIGHWAY_LIVE_S = 120        # s: an arrival or a supercharge older than this is catch-up (no clipboard, no auto-target)
 HIGHWAY_SUGGEST_CACHE = 200  # system-name suggestions kept (per typed prefix)
 HIGHWAY_HEAVY_SLACK = 0.5    # t: fuel over the most the next jump allows by more than this is "too heavy" (Spansh plans
@@ -11191,9 +11191,13 @@ class State:
         if not pos or pos.get("x") is None:
             return {"boxels": [], "codes": {}}
         boxels = outrider.boxel.nearby(pos, self.boxel_sectors())
+        cache = meta_get(self.db, "boxel_spansh") or {}
         for b in boxels:
             v = self.boxel_visited(b["prefix"])
-            b.update(visited=len(v), top=max(v, default=None), kind=outrider.boxel.KINDS[b["mc"]], size=outrider.boxel.size(b["mc"]))
+            sp = {int(k) for k in ((cache.get(b["prefix"]) or {}).get("systems") or {}) if str(k).isdigit()}
+            # the highest number known, yours or Spansh's (the author: where it is from does not matter there)
+            b.update(visited=len(v), top=max(set(v) | sp, default=None), spansh_asked=b["prefix"] in cache,
+                     kind=outrider.boxel.KINDS[b["mc"]], size=outrider.boxel.size(b["mc"]))
         stats = self.boxel_code_stats()
         return {"boxels": boxels, "codes": {c: {"kind": outrider.boxel.KINDS[c], "size": outrider.boxel.size(c), "yours": stats[c]}
                                             for c in outrider.boxel.CODES}}
@@ -14550,8 +14554,18 @@ def make_app(state, hosts=None):
         return web.json_response(state.boxel_view())
 
     async def boxel_nearby_view(_):
-        """GET /api/boxel/nearby: recommended boxels near you, by mass code, with what each tends to hold and your figures."""
-        return web.json_response(state.boxel_nearby())
+        """GET /api/boxel/nearby: recommended boxels near you, by mass code, with what each tends to hold and your figures.
+        Spansh is asked about the ones it has no list of yet (a day old), one after another in the background."""
+        out = state.boxel_nearby()
+        due = [b["prefix"] for b in out["boxels"] if state.boxel_spansh_due(b["prefix"])]
+        if due and not any(not t.done() for t in boxel_tasks):
+            async def ask_each(prefixes):
+                for p in prefixes:
+                    await state.boxel_spansh_fetch(p)
+            task = asyncio.get_running_loop().create_task(ask_each(due))
+            boxel_tasks.add(task)
+            task.add_done_callback(boxel_tasks.discard)
+        return web.json_response(out)
 
     async def voice_download_view(request):
         """POST /api/voices/download {voice}: download a Piper voice without switching to it (the voice lab's More

@@ -123,6 +123,11 @@ class Server(unittest.TestCase):
         self.assertTrue(near["boxels"])
         self.assertEqual(set(near["codes"]), set("abcdefgh"))
         self.assertEqual(near["codes"]["b"]["yours"]["systems"], 1)
+        mine = next(b for b in near["boxels"] if b["prefix"] == "Smojooe XF-G b24-")
+        self.assertEqual((mine["visited"], mine["top"], mine["spansh_asked"]), (1, 0, False))
+        ed_outrider.meta_set(self.db, "boxel_spansh", {"Smojooe XF-G b24-": {"ts": ed_outrider.iso_ts(self.now), "systems": {"41": {}}}})
+        mine = next(b for b in self.state.boxel_nearby()["boxels"] if b["prefix"] == "Smojooe XF-G b24-")
+        self.assertEqual((mine["top"], mine["spansh_asked"]), (41, True))   # the highest known, yours or Spansh's
         d = next(b for b in near["boxels"] if b["mc"] == "d")
         self.assertTrue(self.state.boxel_set(d["prefix"], d["sector_index"]))
         v = self.state.boxel_view()

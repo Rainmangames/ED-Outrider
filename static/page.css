@@ -245,7 +245,7 @@ dialog .reset { color: var(--info); cursor: pointer; font-size: 11px; margin-lef
 .nearmode label { display: inline-flex; align-items: center; gap: 3px; padding: 1px 4px; }
 #nearWrap.boxel .stdonly { display: none; }
 .bxhead { margin: 6px 0; } .bxhead .bxname { font-weight: 600; } .bxhead .bxkind { color: var(--muted); }
-.bxwarn { color: var(--warn); font-size: 12px; margin: 4px 0 6px; }
+.bxwarn { color: var(--warn); font-size: 12px; margin-left: 1.2em; }   /* beside "you have visited · Spansh knows" */
 .bxacts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0; font-size: 13px; }
 #boxelTable td.n { color: var(--muted); text-align: right; width: 3em; }
 #boxelTable tr.visited td { opacity: .85; } #boxelTable tr.next td { background: color-mix(in srgb, var(--accent) 10%, transparent); }

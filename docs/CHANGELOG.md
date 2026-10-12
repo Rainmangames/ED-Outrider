@@ -2,6 +2,14 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-11 · Boxel mode: the switch beside This system, the highest known number
+- The Standard / Boxel switch sits on the Overview's own bar, left of "This system" (back in Nearby's options on the
+  Nearby tab); the warning that Outrider cannot know a boxel's size sits on the "you have visited · Spansh knows" line
+  (the author).
+- The boxel's head and every recommended boxel show the **highest known number** (yours or Spansh's, whichever is
+  higher: the author). Spansh is asked about the recommended boxels it has no list of yet, one after another in the
+  background, kept a day like the explored one's (meta `boxel_spansh` now keeps 60 boxels).
+
 ## 2026-10-11 · Babylon 5 - Vorlon theme
 - A tenth theme for the tablet, the desktop page (Settings → Display) and the overlay's panels (the author's ask):
   **Babylon 5 - Vorlon**, the Vorlon Empire's living ships evoked, not copied. Deep sea-green dark, the emblem's sea

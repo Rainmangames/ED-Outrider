@@ -2829,7 +2829,7 @@ function renderBoxelMode() {
   if (!on || !data) return;
   const key = data.boxel && data.boxel.key;
   if (key !== boxelKey) { boxelKey = key; loadBoxel(); }
-  const nk = `${posId()}`;
+  const nk = `${posId()}|${key}`;   // a jump, or Spansh's answers about the boxels nearby
   if (nk !== boxelNearKey) { boxelNearKey = nk; loadBoxelNear(); }
 }
 const BOXEL_WARNING = "Outrider cannot know how many systems a boxel holds: explore until a name the galaxy map cannot find.";
@@ -2850,8 +2850,8 @@ function drawBoxel() {
       : d.spansh_ts ? `Spansh knows ${d.spansh}${d.spansh ? ` (up to -${Math.max(...d.rows.filter(r => r.spansh).map(r => r.n))})` : ""}` : "";
     html += `<div class="bxhead"><span class="bxname copy" data-name="${esc(b.label)}" title="click to copy">${esc(b.label)}</span>` +
       `${b.here ? " · you are here" : b.distance != null ? ` · ${b.distance.toFixed(0)} ly away` : ""} · <span class="bxkind">${boxelCodeLine(b.mc, {size: b.size, kind: b.kind, yours: boxelNear && boxelNear.codes && boxelNear.codes[b.mc] && boxelNear.codes[b.mc].yours})}</span>` +
-      `<div class="hint">you have visited ${d.visited}${spansh ? ` · ${spansh}` : ""}${d.end != null ? ` · -${d.end} not found: probably the end` : ""}</div></div>` +
-      `<div class="bxwarn">⚠ ${BOXEL_WARNING}</div>` +
+      `<div class="hint">you have visited ${d.visited}${spansh ? ` · ${spansh}` : ""}${d.top >= 0 ? ` · highest known <b>-${d.top}</b>` : ""}${d.end != null ? ` · -${d.end} not found: probably the end` : ""}` +
+      ` <span class="bxwarn">⚠ ${BOXEL_WARNING}</span></div></div>` +
       `<div class="bxacts">` +
       (pc && nxt && b.standard ? `<span>Next: <b>${esc(nxt.name)}</b>${hwyAimBtn(nxt.name, "boxel", null)}</span>` : "") +
       (!b.picked ? `<button type="button" class="try" data-bxkeep="${esc(b.prefix)}" title="keep exploring this boxel when you jump out of it (auto-target works on a kept boxel)">📌 Keep this boxel</button>`
@@ -2875,7 +2875,8 @@ function drawBoxel() {
     const codes = [...new Set(nb.boxels.map(x => x.mc))];
     html += `<details class="bxnear setsec" open><summary>Boxels nearby <span class="sum-note">the nearest of each kind, in sectors you have been to; what each tends to hold is what explorers have seen, not a promise</span></summary>` +
       codes.map(mc => `<h4>${boxelCodeLine(mc, nb.codes[mc])}</h4>` + `<div class="bxcode">` + nb.boxels.filter(x => x.mc === mc).map(x =>
-        `<div>${esc(x.label)} · ${x.distance.toFixed(0)} ly${x.visited ? ` · you visited ${x.visited}` : ""} ` +
+        `<div>${esc(x.label)} · ${x.distance.toFixed(0)} ly${x.visited ? ` · you visited ${x.visited}` : ""}` +
+        `${x.top != null ? ` · highest known <b>-${x.top}</b>` : x.spansh_asked ? " · none known yet" : ""} ` +
         `<button type="button" class="try" data-bxpick="${esc(x.prefix)}" data-bxsec="${esc(JSON.stringify(x.sector_index))}">Explore this boxel</button></div>`).join("") + `</div>`).join("") +
       `</details>`;
   }
@@ -3010,6 +3011,11 @@ function placeOverview() {
   const ov = document.getElementById("overView"), here = document.getElementById("hereView"), near = document.getElementById("nearWrap");
   const paneHere = document.getElementById("ovHere"), paneNear = document.getElementById("ovNear");
   if (!ovHome.here) { ovHome.here = here.nextSibling; ovHome.near = near.nextSibling; }
+  // the Standard / Boxel switch: on the Overview's own bar, left of "This system" (the author, 2026-10-11); in
+  // Nearby's options on the Nearby tab
+  const mode = document.querySelector(".nearmode"), bar = document.querySelector("#overView .ovbar"), opts = document.getElementById("nearOpts");
+  if (view === "overview") { if (mode.parentNode !== bar) bar.insertBefore(mode, bar.firstChild); }
+  else if (mode.parentNode !== opts) opts.insertBefore(mode, opts.firstChild);
   if (view === "overview") {
     if (here.parentNode !== paneHere) paneHere.appendChild(here);
     if (near.parentNode !== paneNear) paneNear.appendChild(near);
