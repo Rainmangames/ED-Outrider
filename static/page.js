@@ -2859,12 +2859,13 @@ function drawBoxel() {
       (!b.picked ? `<button type="button" class="try" data-bxkeep="${esc(b.prefix)}" title="keep exploring this boxel when you jump out of it (auto-target works on a kept boxel)">📌 Keep this boxel</button>`
         : `<button type="button" class="try" data-bxback="1" title="follow the boxel you are in again">${b.here ? "📌 kept · let go" : "↩ the boxel I am in"}</button>`) +
       (pc ? `<label title="arriving in a system of the kept boxel, auto-target its next one (after the Highway's delay)"><input type="checkbox" id="bxAuto"${d.auto ? " checked" : ""}> auto-target the next on arrival${d.auto && !b.picked ? ` <span class="warnc">(keep a boxel first)</span>` : ""}</label>` : "") +
+      `<label title="Next and the auto-target go only to the systems nobody is known to have visited (Spansh knows the others: the first discovery is most likely gone, though first mapping or footfall may not be)"><input type="checkbox" id="bxSkip"${d.skip_known ? " checked" : ""}> skip systems someone has visited</label>` +
       (d.done ? `<button type="button" class="try" data-bxdone="0" title="take the done mark back">undo done</button>`
         : !d.complete ? `<button type="button" class="try" data-bxdone="1" title="finished with this boxel, complete or not: it leaves the recommendations (a kept boxel is let go)">✓ Done with this boxel</button>` : "") +
       (d.end != null ? `<button type="button" class="try" data-bxretry="1" title="a failed search is not always a missing name: offer the numbers above it again">retry above -${d.end}</button>` : "") +
       (!b.standard ? `<span class="unk">a hand-made sector: 🎯 cannot check its systems</span>` : "") + `</div>`;
     const rowHtml = r => { const s = r.summary;
-      return `<tr class="${[r.visited && "visited", r.n === d.next && "next", !r.visited && !r.spansh && "try"].filter(Boolean).join(" ")}">` +
+      return `<tr class="${[r.visited && "visited", r.n === d.next && "next", !r.visited && !r.spansh && "try", d.skip_known && r.spansh && !r.visited && "skipped"].filter(Boolean).join(" ")}">` +
         `<td class="n">-${r.n}</td><td class="name copy" data-name="${esc(r.name)}" title="click to copy">${nameWords(r.name)}${s ? firstsIcon(s.firsts) : ""}</td>` +
         `<td class="num">${r.distance != null ? r.distance.toFixed(1) : ""}</td>` +
         `<td>${r.visited ? `<span class="ok" title="you have been here">✓ visited</span>` : r.spansh ? `<span class="unk" title="Spansh knows it: someone has been here">known</span>` : `<span class="unk">to try</span>`}</td>` +
@@ -2897,7 +2898,10 @@ document.getElementById("boxelPane").addEventListener("click", e => {
   else if (pick) boxelPost({prefix: pick.dataset.bxpick, sector_index: JSON.parse(pick.dataset.bxsec || "null")});
   else if (retry) boxelPost({clear_end: true});
 });
-document.getElementById("boxelPane").addEventListener("change", e => { if (e.target.id === "bxAuto") boxelPost({auto: e.target.checked}); });
+document.getElementById("boxelPane").addEventListener("change", e => {
+  if (e.target.id === "bxAuto") boxelPost({auto: e.target.checked});
+  else if (e.target.id === "bxSkip") boxelPost({skip_known: e.target.checked});
+});
 function emptyMessage(rows) {
   const others = data.systems.filter(s => sysId(s) !== posId()).length;
   if (/^asking|^fetching/.test(data.status)) return "loading…";

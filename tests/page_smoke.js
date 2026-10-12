@@ -4949,6 +4949,7 @@ const settle = async maxMs => {
                 pane.textContent.includes("Drojau AB-U d4 · 120 ly · you visited 2 · highest known -37"), pane.textContent.includes("highest known -1"),
                 pane.textContent.includes("done or complete nearby (left out above): Drojau QQ-A d4 ✓ complete")];
       o.doneBtn = !!pane.querySelector('[data-bxdone="1"]');
+      const skip = pane.querySelector("#bxSkip"); skip.checked = true; skip.dispatchEvent(new Event("change", {bubbles: true})); await tick();
       pane.querySelector('[data-bxdone="1"]').click(); await tick();
       pane.querySelector("[data-bxkeep]").click(); await tick();
       pane.querySelector("[data-bxpick]").click(); await tick();
@@ -4957,7 +4958,7 @@ const settle = async maxMs => {
       return o; })()`);
     w.fetch = realFetch;
     const want = {shown: [true, true, true], warning: true, place: [true, true, true], rows: ["visited", "next", "try"], next: true, aims: "1,2", near: [true, true, true, true, true], doneBtn: true,
-                  back: true, posted: [{done: true}, {prefix: "Drojau TF-H c13-", sector_index: [35, 31, 54]}, {prefix: "Drojau AB-U d4-", sector_index: [35, 31, 54]}]};
+                  back: true, posted: [{skip_known: true}, {done: true}, {prefix: "Drojau TF-H c13-", sector_index: [35, 31, 54]}, {prefix: "Drojau AB-U d4-", sector_index: [35, 31, 54]}]};
     got.posted = posted;
     const good = JSON.stringify(got) === JSON.stringify(want) && errors.length === before;
     allOk = allOk && good;

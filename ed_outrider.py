@@ -5967,7 +5967,8 @@ class State:
                                                         (self.journals.pos or {}).get("id64"), self.journals.last_event_ts,
                                                         len(self._boxel_fetching), json.dumps(meta_get(self.db, "boxel_ends")),
                                                         json.dumps({k: (v or {}).get("ts") for k, v in (meta_get(self.db, "boxel_spansh") or {}).items()}),
-                                                        meta_get(self.db, "boxel_auto"), json.dumps(meta_get(self.db, "boxel_done")))),
+                                                        meta_get(self.db, "boxel_auto"), meta_get(self.db, "boxel_skip_known"),
+                                                        json.dumps(meta_get(self.db, "boxel_done")))),
                       "auto": bool(meta_get(self.db, "boxel_auto"))},
             "hush": self.hush_info(),
             "firsts_watch": self.firsts_watch_info(),
@@ -11111,14 +11112,17 @@ class State:
         # boxel_done). Either way Next offers nothing more (the rows' own 🎯 still work)
         complete = end is not None and end > 0 and all(n in visited for n in range(end))
         done = prefix in (meta_get(self.db, "boxel_done") or {})
-        nxt = None if complete or done else next((r["n"] for r in rows if not r["visited"]), None)
+        # skip_known (opt-in, meta boxel_skip_known): Next passes over the ones Spansh knows too (someone has been there:
+        # the first discovery is most likely gone), for first discoveries only
+        skip = bool(meta_get(self.db, "boxel_skip_known"))
+        nxt = None if complete or done else next((r["n"] for r in rows if not r["visited"] and not (skip and r["spansh"])), None)
         return {"complete": complete, "done": done, "boxel": {"prefix": prefix, "label": b["label"], "mc": b["mc"], "size": outrider.boxel.size(b["mc"]),
                           "kind": outrider.boxel.KINDS[b["mc"]], "standard": bool(b.get("standard")), "here": b["here"],
                           "picked": b["picked"], "center": b.get("center"), "sector_index": b.get("sector_index"),
                           "distance": round(dist(pos, b["center"]), 1) if pos and b.get("center") else None},
                 "rows": rows, "next": nxt, "end": end, "top": top, "visited": len(visited), "spansh": len(spansh),
                 "spansh_ts": cache.get("ts"), "spansh_error": cache.get("error"), "spansh_asking": prefix in self._boxel_fetching,
-                "auto": auto}
+                "auto": auto, "skip_known": skip}
 
     def boxel_spansh_due(self, prefix, now=None):
         """Whether Spansh's list of this boxel is older than BOXEL_SPANSH_MAX_AGE (or was never asked for)."""
@@ -14583,8 +14587,13 @@ def make_app(state, hosts=None):
         you are in); {auto: bool} the opt-in auto-target on arrival; {clear_end: true} takes back the active boxel's end;
         {done: bool} marks the active boxel done with (a kept one is let go) or not."""
         body = await json_object(request)
-        if body is None or not ({"prefix", "auto", "clear_end", "done"} & set(body)):
-            return web.json_response({"error": "expected {prefix}, {auto}, {clear_end} or {done}"}, status=400)
+        if body is None or not ({"prefix", "auto", "clear_end", "done", "skip_known"} & set(body)):
+            return web.json_response({"error": "expected {prefix}, {auto}, {skip_known}, {clear_end} or {done}"}, status=400)
+        if "skip_known" in body:   # Next passes over the systems Spansh knows (someone has been there)
+            if not isinstance(body["skip_known"], bool):
+                return web.json_response({"error": "skip_known must be true or false"}, status=400)
+            meta_set(state.db, "boxel_skip_known", body["skip_known"])
+            state.db.commit()
         if "done" in body:   # the boxel being explored, done with (or not)
             if not isinstance(body["done"], bool):
                 return web.json_response({"error": "done must be true or false"}, status=400)

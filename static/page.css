@@ -251,6 +251,7 @@ dialog .reset { color: var(--info); cursor: pointer; font-size: 11px; margin-lef
 #boxelTable td.n { color: var(--muted); text-align: right; width: 3em; }
 #boxelTable tr.visited td { opacity: .85; } #boxelTable tr.next td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 #boxelTable tr.try td.name { color: var(--muted); font-style: italic; }
+#boxelTable tr.skipped td { opacity: .45; }   /* someone has been there, and Next passes over them (skip on) */
 .bxnear { margin-top: 10px; } .bxnear h4 { margin: 8px 0 2px; font-size: 13px; } .bxnear .bxcode { margin: 0 0 6px; font-size: 12px; }
 .bxnear .bxyours { color: var(--muted); }
 #searchView { margin-top: 12px; }

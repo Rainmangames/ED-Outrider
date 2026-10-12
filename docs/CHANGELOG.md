@@ -2,6 +2,11 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-12 · Boxels: skip the systems someone has visited
+- Next (and the auto-target on arrival) went to the lowest number you had not visited, including ones Spansh knows
+  (someone has been there). An opt-in, **skip systems someone has visited** (meta `boxel_skip_known`, off by default),
+  passes over those for first discoveries only; the list dims them while it is on (the author agreed).
+
 ## 2026-10-11 · Boxels: complete and done
 - A boxel is **✓ complete** by itself once its end is known (a name the galaxy map could not find) and you have visited
   every system below it; **✓ Done with this boxel** marks one finished, complete or not (the author agreed; meta

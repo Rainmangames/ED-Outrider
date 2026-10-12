@@ -131,6 +131,13 @@ class Server(unittest.TestCase):
         v = self.state.boxel_view()
         self.assertEqual((v["top"], v["spansh"], v["rows"][12]["spansh"], v["rows"][-1]["n"]), (12, 1, True, 12 + ed_outrider.outrider.boxel.TRY_ABOVE))
         self.assertIsNotNone(v["rows"][12]["distance"])
+        # skip the ones someone has visited (opt-in): Next passes over Spansh's -6 (you have -0 to -5)
+        ed_outrider.meta_set(self.db, "boxel_spansh", {"Drojau TF-H c13-": {"ts": ed_outrider.iso_ts(self.now), "systems": {"6": {}, "12": {}}}})
+        self.assertEqual(self.state.boxel_view()["next"], 6)
+        ed_outrider.meta_set(self.db, "boxel_skip_known", True)
+        v = self.state.boxel_view()
+        self.assertEqual((v["next"], v["skip_known"], self.state.boxel_target()[0]["index"]), (7, True, 7))
+        ed_outrider.meta_set(self.db, "boxel_skip_known", False)
         self.assertFalse(self.state.boxel_spansh_due("Drojau TF-H c13-", self.now))
 
     def test_pick_nearby_and_api(self):
