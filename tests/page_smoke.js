@@ -4964,6 +4964,32 @@ const settle = async maxMs => {
     allOk = allOk && good;
     console.log(good ? "OK" : "FAIL", "| boxel mode |", good ? "the switch, the boxel's list and warning, Target next and 🎯 by number, Keep, the boxels nearby" : JSON.stringify({got, want}), errors.slice(before));
   }
+  // green gas giants (2026-10-12): the ladder model's guess as a green planet with "?", a confirmed one without; on the
+  // body in Here, a Now line ("check in the system map"), Nearby's tag, the legend, and its own alert switch
+  {
+    const w = dom.window, before = errors.length;
+    const got = w.eval(`(() => {
+      const o = {}, hd0 = hereData, v0 = view;
+      const body = (name, ggg, id) => ({name, body_id: id, type: "Planet", subtype: "Class I gas giant", genera: [], bio: 0, geo: 0, organics: [],
+        codex: [], curiosities: [], bio_guess: [], value_parts: {bio_factor: 1}, mining: 0, ggg});
+      hereData = {id64: posId(), name: "Gree", leaving: null, phenomena: [], tree: null,
+                  bodies: [body("B 3", {chance: "likely", class: "class1", rung: 1, border: 250}, 4), body("C 1", {confirmed: true}, 7), body("D 2", null, 8)]};
+      renderHere();
+      o.here = [...document.querySelectorAll("#hereRows tr[data-body]")].map(r => { const g = r.querySelector(".ggg"); return g ? (g.classList.contains("sure") ? "sure" : "guess:" + g.textContent) : "-"; });
+      o.legend = [...document.querySelectorAll("#hereLegend .lgi")].some(e => e.querySelector(".ggg"));
+      view = "now"; renderNow();
+      const line = document.querySelector("#nowView .now-ggg");
+      o.now = line ? line.textContent.replace(/\\s+/g, " ").trim() : null;
+      o.nearby = notable({ggg: [{body: "B 3", chance: "likely"}, {body: "A 1", chance: "possible"}], ggg_green: 0}).includes('class="ggg"');
+      o.alert = !!document.querySelector('#alertOpts input[data-alert="ggg"]');
+      hereData = hd0; view = v0; render();
+      return JSON.stringify(o); })()`);
+    const g = JSON.parse(got);
+    const want = {here: ["guess:?", "sure", "-"], legend: true, now: "? Potential green gas giant: B 3 · check in the system map · Green gas giant: C 1", nearby: true, alert: true};
+    const good = JSON.stringify(g) === JSON.stringify(want) && errors.length === before;
+    allOk = allOk && good;
+    console.log(good ? "OK" : "FAIL", "| green gas giants |", good ? "the guess with ?, the confirmed one, Now's line, Nearby's tag, the legend, the alert switch" : JSON.stringify({g, want}), errors.slice(before));
+  }
   // another site's POST is refused before any handler runs (radius: harmless even if it got through with {})
   const post = origin => fetch(base + "api/radius", {method: "POST", body: "{}",
     headers: Object.assign({"Content-Type": "application/json"}, origin ? {Origin: origin} : {})}).then(r => r.status);

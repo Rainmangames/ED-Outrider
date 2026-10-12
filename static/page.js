@@ -137,6 +137,11 @@ function dual(fullHtml, shortHtml, {title = null, titleHtml = null, s2 = null} =
 // a system name whose words never break inside ("Synuefe BH-D d11-101" wraps at its spaces, not after a hyphen,
 // when a compact2 table lets names wrap)
 // (compact2 only: the split copy renders a hair differently, so a table that fits keeps the name in one piece)
+// a green gas giant: a green ringed planet, with "?" while it is only the ladder model's guess (the author, 2026-10-12)
+const GGG_SVG = `<svg viewBox="0 0 18 14" width="17" height="13" aria-hidden="true"><ellipse cx="9" cy="7" rx="8.2" ry="2.3" fill="none" stroke="#9BE7A9" stroke-width="1.1" transform="rotate(-18 9 7)"/><circle cx="9" cy="7" r="4.6" fill="#3FBF6A"/><path d="M5.2 5.6 Q9 4.4 12.8 5.6" stroke="#B8F5C5" stroke-width=".8" fill="none"/></svg>`;
+const gggIcon = (sure, title, n = 1) => `<span class="ggg${sure ? " sure" : ""}" title="${esc(title)}">${GGG_SVG}${sure ? "" : "?"}${n > 1 ? "×" + n : ""}</span>`;
+const gggTitle = g => g.confirmed ? "a green gas giant: your codex entry confirms it"
+  : `a potential green gas giant (${g.chance}): the community's seven-layer ladder model puts a cloud layer exactly on a colour border (layer ${g.rung}, ${g.border} K). A guess: check it in the system map, the codex confirms it`;
 const nameWords = n => { const split = esc(n).split(" ").map(w => /-/.test(w) ? `<span class="nw">${w}</span>` : w).join(" ");
   return split === esc(n) ? split : `<span class="c2hide">${esc(n)}</span><span class="sf2">${split}</span>`; };
 // a plain text in both forms
@@ -173,9 +178,12 @@ function valueTitle(s) {
 function notable(s) {
   const n = s.notable || {};
   const names = {ELW: "Earth-like", WW: "water world", AW: "ammonia world", T: "terraformable"};
+  const gg = s.ggg || [];
   return ["ELW", "WW", "AW", "T"].filter(k => n[k]).map(k =>
     `<span class="nb ${k}" title="${names[k]}${n[k] > 1 ? "s" : ""}">${k}${n[k] > 1 ? "×" + n[k] : ""}</span>`).join("") +
     (s.bio_potential ? `<span class="nb bio" title="exobiology: up to this much across ${s.bio_bodies_guessed} bod${s.bio_bodies_guessed === 1 ? "y" : "ies"}, from spawn rules">🧬≤${credits(s.bio_potential)}</span>` : "") +
+    (gg.length ? gggIcon(false, `potential green gas giant${gg.length > 1 ? "s" : ""} (the community's ladder model, from your scans or Spansh's): ` +
+      gg.map(x => `${x.body} (${x.chance})`).join(", "), gg.length) : "") + (s.ggg_green ? gggIcon(true, "a green gas giant your codex confirms", s.ggg_green) : "") +
     phenomenaTag(s.phenomena) + rareStarTag(s.rare_stars) + sitesTag(s.sites) + poiTag(s.pois) + oldDataTag(s.stale_bio) + bioUnknownTag(s.bio_unknown) +
     (s.curiosities ? `<span class="nb cur" title="${(s.curiosity_list || []).map(c => esc(`${c.body}: ${c.tag} (${c.why})`)).join("&#10;")}">🔭${s.curiosities > 1 ? "×" + s.curiosities : ""}</span>` : "");
 }
@@ -888,6 +896,14 @@ function renderNow() {
       lines.push(`<div class="now-line now-sites"><span class="ok">${esc(siteText(siteBodies.map(b => ({body: b.name, sites: b.sites}))))}</span></div>`);
     if (hd && hd.pois && hd.pois.length)   // FSS signals worth a detour: Titans, beacons, listening posts...
       lines.push(`<div class="now-line now-poi"><span class="ok">📍 ${esc(poiText(hd.pois).replace(/^./, c => c.toUpperCase()))}</span></div>`);
+    // green gas giants here: the model's guesses (check them in the system map) and any your codex confirms
+    const gggs = hd && hd.bodies ? hd.bodies.filter(b => b.ggg) : [];
+    if (gggs.length) {
+      const guess = gggs.filter(b => !b.ggg.confirmed), sure = gggs.filter(b => b.ggg.confirmed);
+      lines.push(`<div class="now-line now-ggg">` + (guess.length ? `${gggIcon(false, gggTitle(guess[0].ggg))} <span class="ok">Potential green gas giant${guess.length > 1 ? "s" : ""}: ` +
+        `${guess.map(b => `${esc(b.name)}${b.ggg.chance === "possible" ? " (possible)" : ""}`).join(", ")}</span> <span class="unk">· check in the system map</span>` : "") +
+        (sure.length ? `${guess.length ? " · " : ""}${gggIcon(true, gggTitle(sure[0].ggg))} <span class="ok">Green gas giant${sure.length > 1 ? "s" : ""}: ${sure.map(b => esc(b.name)).join(", ")}</span>` : "") + `</div>`);
+    }
     if (hd && hd.rare_stars && hd.rare_stars.length)   // a black hole, a Wolf-Rayet...: rare stars here
       lines.push(`<div class="now-line now-rare"><span class="ok">⭐ ${esc(rareStarText(hd.rare_stars).replace(/^./, c => c.toUpperCase()))}</span></div>`);
     // notable stellar phenomena the FSS found here: how many and where, and how many are still to visit
@@ -1597,6 +1613,7 @@ const ALERTS = [["discovery", "targeting a system: the fanfare if nobody has rep
   ["unsold", "unsold data crosses a threshold", "cash"], ["hull", "hull damage, heat damage, interdiction", "danger"],
   ["carrier", "your carrier arrives somewhere", "chime"], ["codex", "a new codex entry", "chime"],
   ["phenomena", "notable stellar phenomena (life in clouds or rings) the FSS finds in a system where you have none on record: how many", "find"],
+  ["ggg", "a potential green gas giant: one of your own scans fits the community's seven-layer ladder model (a guess: check it in the system map)", "find"],
   ["rare_star", "a rare star resolved (a black hole, Wolf-Rayet, carbon, O-type, Herbig Ae/Be, a supergiant, a rare white dwarf...)", "find"],
   ["surface_site", "surface sites on a body: Guardian or Thargoid sites (once the DSS has mapped it) or an unknown planetary anomaly (the FSS)", "find"],
   ["signal_poi", "an FSS signal worth a detour, new to the system: a Titan, a Guardian beacon, a generation ship, a listening post (tourist beacons, number stations and memorials are shown, not said)", "find"],
@@ -1778,10 +1795,10 @@ const JUMP_LINE_WAIT = 8000;   // ms: the jump line's latest start after the cha
 // ms after Status.json says "in the tunnel" (it says so about 2 s before the countdown ends): the line then starts
 // with the tunnel itself (the author's timing, in game 2026-10-03)
 const JUMP_TUNNEL_DELAY = 2500;
-const SPEECH_SYS_BOUND = new Set(["find", "signals", "jump", "honk", "brief", "fss", "mapped", "approach", "bodybrief", "jumponium", "phenomena", "rare_star", "surface_site", "signal_poi", "curious", "highway", "riches", "exo", "trade", "autotarget"]);
+const SPEECH_SYS_BOUND = new Set(["find", "signals", "jump", "honk", "brief", "fss", "mapped", "approach", "bodybrief", "jumponium", "phenomena", "ggg", "rare_star", "surface_site", "signal_poi", "curious", "highway", "riches", "exo", "trade", "autotarget"]);
 // a rig confirmation answers your own press, like a line asked for
 const speechPrio = (kind, tag) => DANGER.has(tag) || kind === "hull" || kind === "fuel" ? 0 : kind === "manual" || kind === "rigs" ? 1
-  : ["find", "signals", "codex", "phenomena", "rare_star", "surface_site", "signal_poi", "bodybrief", "supercharge", "jumponium"].includes(kind) ? 3 : 2;
+  : ["find", "signals", "codex", "phenomena", "ggg", "rare_star", "surface_site", "signal_poi", "bodybrief", "supercharge", "jumponium"].includes(kind) ? 3 : 2;
 // the queue without what went stale by `now` with the ship at `pos`
 const speechExpire = (items, now, pos) => items.filter(it => now - it.notBefore <= SPEECH_MAX_AGE
   && (it.sys == null || it.sys === pos) && (!it.still || it.still()));
@@ -2146,7 +2163,7 @@ const LINE_SAMPLES = {
   find_body: {what: "Water world, terraformable, undiscovered", body: "A 3", value: "2.3M"}, mapped_before: {},
   find_bio: {body: "B 7", value: "19.0M"}, sample_clear: {genus: "Stratum"},
   codex: {entry: "Stratum Tectonicas", what: "new to your codex for this region"},
-  phenomena: {what: "three notable stellar phenomena, all in rings"}, rare_star: {what: "a black hole at B"},
+  phenomena: {what: "three notable stellar phenomena, all in rings"}, ggg: {body: "B 3"}, rare_star: {what: "a black hole at B"},
   surface_site: {what: "Guardian sites on B 3"}, signal_poi: {what: "a Guardian beacon"}, curious: {},
   fuel_low: {pct: 18}, fuel_star: {pct: 22, star: "white dwarf"}, fuel_target: {pct: 22, system: "Drojau LL-O b26-3"},
   fuel_topup: {rate: "8 of the last 20 stars were scoopable", jumps: "about 6 jumps"}, hull: {pct: 42}, interdicted: {by: "someone"},
@@ -3177,7 +3194,7 @@ function renderHere() {
     const firsts = [b.first_discovered && `<span class="fl" title="first discovered">🏁</span>`, b.first_mapped && `<span class="fl" title="first mapped">🗺</span>`,
                     !b.first_mapped && b.mapped && `<span class="fl unk" title="mapped (not first)">🗺</span>`,
                     b.first_footfall && `<span class="fl" title="first footfall">👣</span>`, !b.scanned && `<span class="unk" title="known to Spansh, not scanned by you">—</span>`].filter(Boolean).join("");
-    return `<tr class="${b.main ? "main" : ""}${selectedBody === b.name ? " sel" : ""}${destBody === b ? " dest" : ""}${hotClasses(b)}" data-body="${esc(b.name)}" data-bodypop="${esc(b.name)}"><td class="name" data-name="${esc(b.name)}">${ind}${esc(b.name)}${(b.curiosities || []).length ? ` <span class="cur" title="${b.curiosities.map(c => esc(c.tag + ": " + c.why)).join("&#10;")}">🔭</span>` : ""}${b.notable ? ` <span class="nb ${b.notable}">${b.notable}</span>` : ""}${b.terraformable ? ` <span class="nb T">T</span>` : ""}${firsts ? `<div class="sf2 sub2">${firsts}</div>` : ""}</td>
+    return `<tr class="${b.main ? "main" : ""}${selectedBody === b.name ? " sel" : ""}${destBody === b ? " dest" : ""}${hotClasses(b)}" data-body="${esc(b.name)}" data-bodypop="${esc(b.name)}"><td class="name" data-name="${esc(b.name)}">${ind}${esc(b.name)}${b.ggg ? " " + gggIcon(!!b.ggg.confirmed, gggTitle(b.ggg)) : ""}${(b.curiosities || []).length ? ` <span class="cur" title="${b.curiosities.map(c => esc(c.tag + ": " + c.why)).join("&#10;")}">🔭</span>` : ""}${b.notable ? ` <span class="nb ${b.notable}">${b.notable}</span>` : ""}${b.terraformable ? ` <span class="nb T">T</span>` : ""}${firsts ? `<div class="sf2 sub2">${firsts}</div>` : ""}</td>
       <td>${sfText(b.type === "Star" ? "star" : "planet", b.subtype || "")}${b.type === "Star" ? (b.scoopable ? ` <span class="scoop">⛽</span>` : "") : ""}${b.rings ? `<span class="sf2"> ${icon("ring", "i-ring", b.rings, ringsText(b))}</span>` : ""}${b.dist_ls != null ? `<div class="sf2 sub2 unk">${Math.round(b.dist_ls).toLocaleString()} ls</div>` : ""}</td>
       <td class="num c2hide">${b.dist_ls != null ? Math.round(b.dist_ls).toLocaleString() : ""}</td>
       <td class="num${b.gravity >= highGravity() ? " noscoop" : ""}">${b.gravity != null && b.type === "Planet" ? b.gravity.toFixed(2) : ""}${atm ? `<div class="sf2 atm2" title="${esc(atm)}">${esc(shortForm("atmosphere", atm))}</div>` : ""}</td>
@@ -3224,6 +3241,8 @@ let lastDestKey = null;
 // each, no explanations in brackets (the author, 2026-10-11: the line got too long); the cells' own hovers say more.
 const HERE_LEGEND = [
   [(q, s) => q(".cur"), "🔭", "something unusual"],
+  [q => q(".ggg:not(.sure)"), gggIcon(false, ""), "potential green gas giant"],
+  [q => q(".ggg.sure"), gggIcon(true, ""), "green gas giant"],
   [q => q(".nb.ELW"), `<span class="nb ELW">ELW</span>`, "Earth-like world"],
   [q => q(".nb.WW"), `<span class="nb WW">WW</span>`, "water world"],
   [q => q(".nb.AW"), `<span class="nb AW">AW</span>`, "ammonia world"],
@@ -7263,6 +7282,9 @@ function onData() {
       else if (m.kind === "surface_site" && m.what)   // Guardian / Thargoid sites, an anomaly: said with delight
         alertOut("surface_site", `${siteIcons(m.sites)} ${m.what[0].toUpperCase()}${m.what.slice(1)}`, "",
                  {say: () => line("surface_site", {what: m.what}, `Surface sites: ${m.what}.`)});
+      else if (m.kind === "ggg" && m.body)   // a potential green gas giant: the ladder model's guess, said with delight
+        alertOut("ggg", `Potential green gas giant: ${m.body}`, `${m.what || "a gas giant"}${m.chance === "possible" ? ", possible" : ""}: check it in the system map`,
+                 {say: () => line("ggg", {body: m.body}, `Possible green gas giant: ${m.body}.`)});
       else if (m.kind === "rare_star" && m.what)   // a rare star resolved: said with delight
         alertOut("rare_star", `⭐ ${m.what[0].toUpperCase()}${m.what.slice(1)}`, m.star || "",
                  {say: () => line("rare_star", {what: m.what}, `Rare star: ${m.what}.`)});
@@ -7517,7 +7539,7 @@ const speechLogFacts = e => [e.kind + (e.tag ? "/" + e.tag : ""), e.style, e.voi
 const ALERT_SHORT = {arrival: "Arrival", game: "Game start and quit", jump: "FSD charge", honk: "Honk", brief: "Arrival brief", fss: "FSS",
   leaving: "Leaving", fuel: "Fuel", scoop: "Tank full", scoopstop: "Scooping stopped", supercharge: "Supercharge", find: "Find",
   jumponium: "Jumponium", sampling: "Sampling", approach: "High-g approach", bodybrief: "Body brief", sell: "Selling", saleleft: "Sale left data",
-  unsold: "Unsold", hull: "Hull and danger", carrier: "Carrier", codex: "Codex", phenomena: "Stellar phenomena", rare_star: "Rare star", surface_site: "Surface sites", signal_poi: "Signals worth a detour", curious: "Curiosities", loss: "Ship lost", rigs: "Rigs", rigleash: "Rig leash",
+  unsold: "Unsold", hull: "Hull and danger", carrier: "Carrier", codex: "Codex", phenomena: "Stellar phenomena", ggg: "Green gas giant?", rare_star: "Rare star", surface_site: "Surface sites", signal_poi: "Signals worth a detour", curious: "Curiosities", loss: "Ship lost", rigs: "Rigs", rigleash: "Rig leash",
   rigsout: "Rigs out", mapped: "Mapped", signals: "Signals", highway: "Neutron Highway", autotarget: "Auto-target", manual: "Asked for",
   exo: "Exomastery route", riches: "Road to Riches", trade: "Trade route"};
 const speechMuted = new Set();   // kinds turned off from the tally this session (each shows an undo)
@@ -9338,7 +9360,7 @@ const TAB_ALERT_NAMES = {discovery: "Targeting a system", arrival: "Arriving som
   supercharge: "Supercharged", highway: "Highway next stop", autotarget: "Auto-target", find: "Valuable body",
   jumponium: "Jumponium materials", sampling: "Exobiology unfinished", approach: "High gravity", bodybrief: "Bio signals on approach",
   sell: "Selling", saleleft: "Data left after a sale", unsold: "Unsold data", hull: "Hull, heat, interdiction",
-  carrier: "Carrier arrived", codex: "New codex entry", phenomena: "Stellar phenomena", rare_star: "Rare star", surface_site: "Surface sites", signal_poi: "Signals worth a detour", curious: "Curiosities", loss: "Ship lost", rigs: "Mining rigs", rigleash: "Rig too far",
+  carrier: "Carrier arrived", codex: "New codex entry", phenomena: "Stellar phenomena", ggg: "Green gas giant?", rare_star: "Rare star", surface_site: "Surface sites", signal_poi: "Signals worth a detour", curious: "Curiosities", loss: "Ship lost", rigs: "Mining rigs", rigleash: "Rig too far",
   rigsout: "Rigs still out"};
 function tabDrawAlerts() {
   const tog = (attr, k, on, what) => `<label class="tb-tog"><input type="checkbox" data-${attr}="${esc(k)}"${on ? " checked" : ""}> ${what}</label>`;

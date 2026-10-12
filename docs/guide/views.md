@@ -159,6 +159,20 @@ Under the Where tile, the **discovery streak** is a dot per arrival for your las
 amber: bodies nobody had reported, blue: known, grey: revisited), and the **unreported horizon**: "nearest
 known unvisited: Xyz 4.8 ly". Any unvisited star closer than that on the galaxy map is one nobody has reported.
 
+## 🟢 Potential green gas giants
+
+A green gas giant looks like any other in the FSS: nothing flags it. The community's **seven-layer ladder** model
+(CMDR Regza's, from a hint by Dr. K. Ross and CMDR Arcanic, whose edGGG catalogue it was fitted to) predicts which ones
+render green from a giant's surface temperature, mass and radius. Outrider runs it on every gas giant it has the
+journal's own figures for: your scans, and Spansh's records of other people's.
+
+- **A green planet with "?"** marks a potential one: beside the body in Here, on the system's row in Nearby (a
+  system worth going to), and a Now line ("Potential green gas giant: B 3 · check in the system map"). Without the
+  "?" it is confirmed: your codex has its green entry.
+- **"Potential green gas giant"** is said when one of your own scans fits (its own switch under Discoveries).
+- "likely" is a confirmed rule of the model, "possible" a derived one. It is a guess about where to look: some kinds
+  (Class II, V, helium giants) and some temperatures cannot be predicted at all, and nothing is said for them.
+
 ## 📦 Boxel exploration
 
 A procedural system name says which cube of space (a **boxel**) it is in and what kind of stars that cube makes:

@@ -53,6 +53,8 @@ KEYS = {
                   "Cocijo', 'a Guardian beacon')",
     "curious": "the system you are in shows curiosities for the first time (rare planet classes, odd orbits, ringed "
                "landables...): one line that there is something to look at on the panels, never the list",
+    "ggg": "one of your own scans predicts a green gas giant (the community's seven-layer ladder model: a guess, said "
+           "with delight, never a fact): {body} (the body's short name, e.g. 'B 3')",
     "fuel_low": "the game's low fuel warning: {pct}",
     "fuel_star": "arrived under 30% fuel at a star you cannot scoop: {pct}, {star}",
     "fuel_target": "targeted a star you cannot scoop with under 30% fuel: {pct}, {system}",
@@ -405,6 +407,7 @@ SAMPLES = {
     "surface_site": {"what": "Guardian sites on B 3"},
     "signal_poi": {"what": "a Guardian beacon"},
     "curious": {},
+    "ggg": {"body": "B 3"},
     "fuel_low": {"pct": 18}, "fuel_star": {"pct": 22, "star": "white dwarf"},
     "fuel_target": {"pct": 22, "system": "Drojau LL-O b26-3"},
     "fuel_topup": {"rate": "8 of the last 20 stars were scoopable", "jumps": "about 6 jumps"}, "hull": {"pct": 42}, "interdicted": {"by": "someone"},

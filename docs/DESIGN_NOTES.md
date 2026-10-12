@@ -9,6 +9,12 @@ upstream project's choices, not rules of the game.
 - **No keyboard shortcuts.** A deliberate upstream choice, declined more than once; clickable things are reachable with
   Tab and act on Enter/Space instead.
 - **No VoiceAttack integration.** Not used upstream; the co-pilot button and the page cover the same ground.
+- **Green gas giants are a guess, said as one** (2026-10-12, `outrider/ggg.py`). The seven-layer ladder model is a
+  community reconstruction (Canonn's issue 222, 2026-10-05), not the game's code: a match is "potential", never a fact,
+  and a codex entry replaces it. It needs the journal's own temperature (green windows can be 0.00002 K wide): yours
+  and Spansh's records keep it (checked: Spansh's equals the journal's); its class rules are a table. Written from the
+  published rules; checked against Canonn's implementation on 21,747 giants (the author's 1,735 and 20,000 made up):
+  the same verdict every time. The author's 1,017 predictable giants: none called green, none in the codex.
 - **Boxels: what can and cannot be known** (2026-10-11, `outrider/boxel.py`). A procedural name's boxel, its centre and
   any of its systems' id64 are computed from a known system's position (checked: 2,763 of 2,763 of the author's
   standard-sector systems), so auto-target checks a never-visited system by id64. A boxel's size (how many systems)

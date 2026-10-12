@@ -245,6 +245,9 @@ dialog .reset { color: var(--info); cursor: pointer; font-size: 11px; margin-lef
 .nearmode label { display: inline-flex; align-items: center; gap: 3px; padding: 1px 4px; }
 #nearWrap.boxel .stdonly { display: none; }
 .bxhead { margin: 6px 0; } .bxhead .bxname { font-weight: 600; } .bxhead .bxkind { color: var(--muted); }
+/* a green gas giant (sure) or the ladder model's guess (?) */
+.ggg { display: inline-flex; align-items: center; gap: 1px; color: #3FBF6A; font-weight: 700; font-size: .95em; white-space: nowrap; cursor: help; }
+.ggg svg { vertical-align: -2px; }
 .bxfin { font-weight: 600; margin-right: 4px; }
 .bxwarn { color: var(--warn); font-size: 12px; margin-left: 1.2em; }   /* beside "you have visited · Spansh knows" */
 .bxacts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0; font-size: 13px; }

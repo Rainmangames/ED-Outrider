@@ -204,6 +204,7 @@ import outrider.checklist  # the exobiology checklist: every species by region, 
 import outrider.codex_images  # the checklists' pictures: Canonn's links and credits, refreshed once a day
 import outrider.overlay    # the in-game overlay's panels as draw lists (the window: python3 -m outrider.overlay_window)
 import outrider.overlay_runner  # Outrider runs that window itself on the game PC while the overlay is wanted
+import outrider.ggg        # potential green gas giants: the community's seven-layer ladder model (pure)
 import outrider.boxel      # boxel exploration: the cube a procedural name places a system in, its systems, its id64s (pure)
 from outrider.core import iso_ts, ts_seconds   # journal timestamps
 from outrider.fsd import (   # the frame shift drive's maths: range, fuel per jump, the fuel model, fleet figures
@@ -4057,6 +4058,11 @@ class Journals:
                         self.moment("rare_star", ts, system=str(system), what=what, star=record.get("subtype"))
                 if record["type"] == "Planet" and not known:
                     self.moment("scan", ts, system=system, body_id=ev["BodyID"])
+                    p = outrider.ggg.predict(ev) if live_event(ts) else None
+                    if p:   # a potential green gas giant (a guess from the ladder model), said with delight
+                        body = short_name(ev.get("StarSystem") or (self.pos or {}).get("name"), ev.get("BodyName") or "") or ev.get("BodyName")
+                        self.moment("ggg", ts, system=str(system), body=body, chance=p["chance"],
+                                    what=outrider.ggg.SPOKEN_CLASS.get(p["class"], "a gas giant"))
                     if ev.get("Landable") and ev.get("Materials"):
                         self.note_jumponium(system, ev, ts)
                 # a nav-beacon scan's Was* flags are not the game's record of the body (outrider.unsold skips them too):
@@ -4696,6 +4702,29 @@ CARBON_STARS = {"CS Star", "C Star", "CN Star", "CJ Star", "CH Star", "CHd Star"
 RARE_WHITE_DWARFS = {"DAV", "DBV", "DCV", "DAO", "DO", "DOV", "DX", "DBZ"}
 SUPERGIANT_WORDS = {"Blue-White": "a blue-white supergiant", "White": "a white supergiant",
                     "White-Yellow": "a yellow-white supergiant", "Red": "a red supergiant"}
+
+
+def ggg_state(record, codex_names=()):
+    """A body's green gas giant state: {"confirmed": True} when its codex entry says so, else the model's prediction
+    (outrider.ggg.predict_record: {chance, class, rung, border, temperature}) or None."""
+    if outrider.ggg.confirmed(codex_names):
+        return {"confirmed": True}
+    return outrider.ggg.predict_record(record)
+
+
+def ggg_bodies(db, id64, system_name, records):
+    """[{body, chance}] for a system's potential green gas giants (yours and Spansh's records), and the count of ones a
+    codex entry confirms: what Nearby's row says (a system worth going to)."""
+    green = {r[0] for r in db.execute(f"SELECT body_id FROM codex WHERE system=? AND name IN ({','.join('?' * len(outrider.ggg.CODEX_GREEN))})",
+                                      (id64, *outrider.ggg.CODEX_GREEN))}
+    out = []
+    for r in records:
+        if r.get("body_id") in green:
+            continue
+        p = outrider.ggg.predict_record(r)
+        if p:
+            out.append({"body": short_name(system_name, r.get("name") or "") or r.get("name"), "chance": p["chance"]})
+    return out, len(green)
 
 
 def rare_star_words(subtype):
@@ -8496,6 +8525,8 @@ class State:
                 "bio_options": bio_options(r, star, ctx, {o["genus"] for o in held}) if r.get("bio") and not known_genera else None,
                 # a codex entry with no body (a phenomenon in space) is no unscanned body's: those have bid None too
                 "organics": organics.get(bid, []), "codex": codex.get(bid, []) if bid is not None else [],
+                # a potential green gas giant (the ladder model on its full-precision temperature) or a confirmed one
+                "ggg": ggg_state(r, [c["name"] for c in (codex.get(bid, []) if bid is not None else [])]),
                 "sites": r.get("sites") or None,
                 "scanned": bid is not None, "first_discovered": first_disc, "mapped": is_mapped,
                 "first_mapped": first_map, "map_state": map_state, "footfall": bool(f and f["foot_ts"]),
@@ -9543,6 +9574,7 @@ class State:
         s["no_dump"] = bool(base.get("no_dump"))   # Spansh has no body details: the popup stops saying "loading"
         s["phenomena"] = [dict(r) for r in self.db.execute("SELECT kind, reached_ts, coalesce(n, 1) AS n, max((SELECT count(DISTINCT site) FROM phenomena_sites ps WHERE ps.system = phenomena.system AND ps.kind = phenomena.kind), reached_ts IS NOT NULL) AS visited FROM phenomena WHERE system=?", (id64,))]
         s["rare_stars"] = rare_stars(records, base["name"])   # from Spansh's records too: seen before you go
+        s["ggg"], s["ggg_green"] = ggg_bodies(self.db, id64, base["name"], records)   # Spansh's too: a system to go to
         s["sites"] = surface_sites(records, base["name"])     # Guardian, Thargoid, anomalies: your own scans
         s["pois"] = [dict(r) for r in self.db.execute("SELECT kind, name FROM poi WHERE system=? ORDER BY ts", (id64,))]
         raws = {short_name(base["name"], r_["name"]): json.loads(r_["raw"]) for r_ in self.db.execute(

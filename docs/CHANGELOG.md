@@ -2,6 +2,16 @@
 
 Newest first, one entry per commit.
 
+## 2026-10-12 · Potential green gas giants
+- The community's seven-layer ladder model (CMDR Regza, from a hint by Dr. K. Ross and CMDR Arcanic; published by
+  Canonn on 2026-10-05) predicts which gas giants render green from the journal's own temperature, mass and radius
+  (`outrider/ggg.py`, written from the published rules: the same verdict as Canonn's code on 21,747 giants). Not a
+  curiosity, where it would blend in (the author): its own **green planet with "?"** on the body in Here and on the
+  system's row in Nearby (from Spansh's records of other people's scans too, which keep the journal's temperature:
+  a system to go to), a **Now line**, and a **"Potential green gas giant"** alert when your own scan fits, with its
+  own lines in every personality (`ggg`, 50 a list) and its own switch under Discoveries. A codex entry confirms one:
+  the "?" goes. Class II, V and helium giants, and the model's "nudged" temperatures, cannot be predicted: nothing said.
+
 ## 2026-10-12 · Boxels: skip the systems someone has visited
 - Next (and the auto-target on arrival) went to the lowest number you had not visited, including ones Spansh knows
   (someone has been there). An opt-in, **skip systems someone has visited** (meta `boxel_skip_known`, off by default),
