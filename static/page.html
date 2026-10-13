@@ -77,12 +77,32 @@ try { var d = document.documentElement, t = JSON.parse(localStorage.getItem("des
     <label class="stdonly"><input type="checkbox" id="showVisited" checked> show visited</label>
     <label class="stdonly"><input type="checkbox" id="showExplored" checked> show fully explored</label>
     <label class="stdonly"><input type="checkbox" id="oneJump"> one jump only</label>
+    <label class="stdonly" title="Keep Nearby centered on the current system while you explore elsewhere"><input type="checkbox" id="nearLock"> lock search area</label>
+    <button type="button" class="stdonly" id="nearLockRefresh" hidden title="Refresh the locked area from Spansh">Refresh area</button>
+    <span class="unk stdonly" id="nearLockStatus" aria-live="polite"></span>
+    <label class="stdonly" title="Only show systems with no reported scans: unreported or no scan data"><input type="checkbox" id="nearNoScans"> no scan data only</label>
+    <details class="stdonly" id="nearMassFilters" style="position:relative;display:inline-block">
+      <summary style="cursor:pointer">mass codes ▾</summary>
+      <span style="display:inline-flex;flex-wrap:wrap;gap:8px;padding:6px 0" role="group" aria-label="Mass codes">
+        <label><input type="checkbox" data-mass="a"> A</label>
+        <label><input type="checkbox" data-mass="b"> B</label>
+        <label><input type="checkbox" data-mass="c"> C</label>
+        <label><input type="checkbox" data-mass="d"> D</label>
+        <label><input type="checkbox" data-mass="e"> E</label>
+        <label><input type="checkbox" data-mass="f"> F</label>
+        <label><input type="checkbox" data-mass="g"> G</label>
+        <label><input type="checkbox" data-mass="h"> H</label>
+        <label title="Keep named systems and systems with no detectable mass code"><input type="checkbox" id="nearMassOther"> Other</label>
+      </span>
+    </details>
+    <button type="button" id="nearCopyVisible" class="stdonly" title="Copy the names of systems currently visible in Nearby, in their displayed order">Copy visible systems</button>
+    <span id="nearCopyCount" class="unk stdonly" aria-live="polite"></span>
     <span class="unk stdonly">click a column heading to sort</span>
   </div>
 <div class="pane" id="nearPane">
 <table id="nearTable">
   <thead><tr>
-    <th></th><th data-sort="name">System</th><th class="num" data-sort="distance">Dist</th><th class="num hide-sm c2hide" title="jumps at your max range">Jumps</th><th class="c2hide">Status</th><th>Main star</th>
+    <th></th><th data-sort="name">System</th><th class="num" data-sort="distance">Dist</th><th data-sort="mass" title="Elite procedural system mass code (A to H)">Mass</th><th class="num hide-sm c2hide" title="jumps at your max range">Jumps</th><th class="c2hide">Status</th><th>Main star</th>
     <th>Bodies</th><th class="c2hide">Notable</th><th class="num hide-sm" data-sort="value" title="what selling now would pay for data you hold from this system / the most it could pay once fully scanned, mapped and sampled">Value now / max</th><th class="num hide-sm c2hide">Known</th>
   </tr></thead>
   <tbody id="rows"></tbody>

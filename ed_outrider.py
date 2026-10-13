@@ -397,7 +397,7 @@ HIGH_GRAVITY = 2.0
 MODULE_WARN = 80
 # The Nearby radius choices offered on the page (ly). Bigger spheres cost Spansh requests and page redraws:
 # ~1,500 systems at 100 ly out in the black, far more near the bubble.
-RADIUS_CHOICES = (20, 25, 30, 40, 50)
+RADIUS_CHOICES = (20, 25, 30, 40, 50, 75, 100)
 # Spoken alerts: the Piper voice, and the one used when it is missing (see outrider/tts.py).
 VOICE, VOICE_FALLBACK = outrider.tts.DEFAULT_VOICE, outrider.tts.DEFAULT_FALLBACK
 BACKUP_DIR = os.path.join(outrider.DATA_DIR, "backups")   # where backups go (in data/, git-ignored); journals are archived in its journals/
@@ -5285,10 +5285,12 @@ class Spansh:
     async def close(self):
         await self.session.close()
 
-    async def sphere(self, pos, radius, max_pages=SPANSH_MAX_PAGES):
+    async def sphere(self, pos, radius, max_pages=SPANSH_MAX_PAGES, pace_s=0):
         """Every system Spansh knows within radius of pos (search-level detail), nearest first."""
         results, page = [], 0
         while page < max_pages:
+            if page and pace_s:
+                await asyncio.sleep(pace_s)
             body = {
                 "filters": {"distance": {"min": "0", "max": str(radius + 0.5)}},
                 "reference_coords": {"x": pos["x"], "y": pos["y"], "z": pos["z"]},
@@ -5838,6 +5840,10 @@ class State:
         self.visited = set()
         self.status = "starting"
         self.center = None
+        self.near_locked = False
+        self.near_anchor = None
+        self.near_last_query = 0.0
+        self.near_last_manual = 0.0
         self.refresh_task = None
         self.target = None         # classified FSD target for the page
         self.target_key = None
@@ -6051,6 +6057,7 @@ class State:
             # the speaking window waits for a click before it can make a sound (it lapses with the window itself)
             "speaker_audio_blocked": bool(self.speaker_audio_blocked and self.speaker_present()),
             "status": self.status, "radius": self.radius,
+            "near_locked": self.near_locked, "near_anchor": with_id(self.near_anchor),
             "radius_choices": sorted({float(x) for x in RADIUS_CHOICES} | {self.radius}),
             "sphere_cut": self.sphere_cut,
             "tts": self.speaker.info() if self.speaker else None,
@@ -9789,20 +9796,65 @@ class State:
                 self.bump()
 
     def maybe_refresh(self):
-        pos = self.journals.pos
+        # Nearby has one native search center. Locking preserves it while ship/journal data
+        # continues changing independently; unlocking restores the normal arrival behavior.
+        pos = self.near_anchor if self.near_locked else self.journals.pos
         if not pos:
             return
-        retry = False
-        if self.center and self.center["id64"] == pos["id64"]:
-            if not (self.retry_at and time.time() >= self.retry_at
-                    and (not self.refresh_task or self.refresh_task.done())):
+        same = self.center and self.center["id64"] == pos["id64"]
+        if same:
+            if self.refresh_task and not self.refresh_task.done():
                 return
-            retry = True
+            retry = bool(self.retry_at and time.time() >= self.retry_at)
+            # Optional background refresh of the locked area; only while Elite's journal
+            # has been active during the past 30 minutes. No extra search if idle.
+            active = False
+            if self.near_locked and self.journals.last_event_ts:
+                try:
+                    active = 0 <= time.time() - ts_seconds(self.journals.last_event_ts) < 1800
+                except (TypeError, ValueError):
+                    pass
+            periodic = bool(self.near_locked and active and time.time() - self.near_last_query >= 600)
+            if not retry and not periodic:
+                return
+        else:
+            retry = False
         self.center = pos
         self.retry_at = None
         if self.refresh_task and not self.refresh_task.done():
             self.refresh_task.cancel()
+        self.near_last_query = time.time()
         self.refresh_task = asyncio.create_task(self.refresh(pos, retry))
+
+    def lock_nearby(self, locked):
+        """Pin Native Nearby to the ship's current system; the original table remains."""
+        if locked:
+            pos = self.journals.pos
+            if not pos:
+                return False
+            self.near_anchor = dict(pos)
+            self.near_locked = True
+            # If already centered here, retain the warm cache and don't refetch.
+        else:
+            self.near_locked = False
+            self.near_anchor = None
+        self.maybe_refresh()
+        self.bump()
+        return True
+
+    def refresh_nearby_locked(self):
+        if not self.near_locked:
+            return False
+        if self.refresh_task and not self.refresh_task.done():
+            return False
+        if time.time() - self.near_last_manual < 600:
+            return False
+        self.near_last_manual = time.time()
+        # Manual refresh of the same native sphere. This bypasses only the timer;
+        # Spansh's existing retry/error handling remains intact.
+        self.center = None
+        self.maybe_refresh()
+        return True
 
     def set_radius(self, r):
         """Change the Nearby sphere from the page: remembered in the database and fetched at once."""
@@ -9811,7 +9863,7 @@ class State:
         self.radius = r
         meta_set(self.db, "radius_choice", r)
         self.db.commit()
-        self.center = None          # forces a fresh Spansh sphere around where you are
+        self.center = None          # forces a new Spansh sphere around the selected center
         self.maybe_refresh()
         self.bump()
 
@@ -9897,7 +9949,10 @@ class State:
         self.bump()
         edsm, spansh_failed = [], None
         try:
-            results = await self.spansh.sphere(pos, r)
+            if self.near_locked:
+                results = await self.spansh.sphere(pos, r, pace_s=10)
+            else:
+                results = await self.spansh.sphere(pos, r)
             # a dense region (near the bubble or Colonia): Spansh has more than we fetch, so the list is
             # only complete out to the last system returned; say so rather than call it every system
             self.sphere_cut = round(results[-1]["distance"], 1) \
@@ -14935,6 +14990,22 @@ def make_app(state, hosts=None):
         return web.json_response({"voices": outrider.tts.catalogue_summary(doc, state.speaker.installed()),
                                   "current": state.speaker.voice_name})
 
+    async def near_lock_view(request):
+        try:
+            body = await request.json()
+        except (ValueError, TypeError):
+            return web.json_response({"error": "bad request"}, status=400)
+        if not isinstance(body, dict) or not isinstance(body.get("locked"), bool):
+            return web.json_response({"error": "expected {locked: true/false}"}, status=400)
+        if not state.lock_nearby(body["locked"]):
+            return web.json_response({"error": "current system position unavailable"}, status=409)
+        return web.json_response({"locked": state.near_locked, "anchor": with_id(state.near_anchor)})
+
+    async def near_refresh_view(request):
+        if not state.refresh_nearby_locked():
+            return web.json_response({"error": "not locked or refresh already in progress"}, status=409)
+        return web.json_response({"ok": True})
+
     async def radius_view(request):
         try:
             r = float((await request.json())["radius"])
@@ -15033,6 +15104,8 @@ def make_app(state, hosts=None):
     app.router.add_get("/api/cargo/lookup", cargo_lookup_view)
     app.router.add_get("/api/nearest", nearest_view)
     app.router.add_post("/api/radius", radius_view)
+    app.router.add_post("/api/near-lock", near_lock_view)
+    app.router.add_post("/api/near-lock/refresh", near_refresh_view)
     app.router.add_get("/api/say", say_view)
     app.router.add_post("/api/say/play", pc_only(say_play_view))
     app.router.add_post("/api/say/prefetch", say_prefetch_view)

@@ -57,6 +57,58 @@ const showVisited = document.getElementById("showVisited");
 const showExplored = document.getElementById("showExplored");
 showVisited.checked = store.get("showVisited", true);
 showExplored.checked = store.get("showExplored", true);
+// Nearby survey controls are per-browser preferences, separate from shared server defaults.
+const nearNoScans = document.getElementById("nearNoScans");
+nearNoScans.checked = store.get("nearNoScans", false);
+const nearMassCodes = "abcdefgh";
+const massCode = name => {
+  // Procedural names end with a mass-code letter followed by a boxel number,
+  // e.g. "Blae Hypue GS-E b59-51" or "Gria Hypue XJ-W a1-16".
+  const match = String(name || "").match(/(?:^|\s)([a-h])\d+(?:-\d+)?$/i);
+  return match ? match[1].toLowerCase() : "other";
+};
+const storedMass = store.get("nearMassCodes", [...nearMassCodes, "other"]);
+const selectedMass = new Set(Array.isArray(storedMass) ? storedMass : [...nearMassCodes, "other"]);
+const massCheckboxes = [...document.querySelectorAll("#nearMassFilters input")];
+for (const cb of massCheckboxes) {
+  const code = cb.dataset.mass || "other";
+  cb.checked = selectedMass.has(code);
+  cb.addEventListener("change", () => {
+    if (cb.checked) selectedMass.add(code); else selectedMass.delete(code);
+    store.set("nearMassCodes", [...selectedMass]);
+    render();
+  });
+}
+nearNoScans.addEventListener("change", () => { store.set("nearNoScans", nearNoScans.checked); render(); });
+// Copy precisely the systems currently displayed by the Standard Nearby filters and sort.
+let nearbyVisibleNames = [];
+const nearCopyButton = document.getElementById("nearCopyVisible");
+const nearCopyCount = document.getElementById("nearCopyCount");
+let nearCopyTimer;
+new MutationObserver(() => {
+  clearTimeout(nearCopyTimer);
+  if (nearCopyCount.textContent) nearCopyTimer = setTimeout(() => { nearCopyCount.textContent = ""; }, 3000);
+}).observe(nearCopyCount, {childList: true, characterData: true, subtree: true});
+nearCopyButton.addEventListener("click", async () => {
+  const names = nearbyVisibleNames.slice();
+  if (!names.length) { nearCopyCount.textContent = "No systems to copy"; return; }
+  try {
+    await navigator.clipboard.writeText(names.join("\n"));
+    nearCopyCount.textContent = `Copied ${names.length} system${names.length === 1 ? "" : "s"}`;
+  } catch (err) {
+    // Fallback for browsers without clipboard permission (e.g. non-local HTTP).
+    const field = document.createElement("textarea");
+    field.value = names.join("\n");
+    field.style.position = "fixed";
+    field.style.left = "-9999px";
+    document.body.appendChild(field);
+    field.select();
+    const copied = document.execCommand("copy");
+    field.remove();
+    nearCopyCount.textContent = copied ? `Copied ${names.length} systems` : "Clipboard blocked by browser";
+  }
+});
+
 
 async function apiJson(url, opts) {
   // Server errors come back as JSON from the API middleware; anything else is reported plainly.
@@ -2756,15 +2808,20 @@ function render() {
   if (view === "map") { if (!M.open) M.key = null; M.open = true; loadMap(); drawMap(); } else M.open = false;
   if (view === "hwy") { loadHwy(); loadRich(); }
   refreshPop();
+  renderNearLock();
   const jr = effRange();
-  let rows = data.systems.filter(s => sysId(s) !== sysId(p))
+  let rows = data.systems.filter(s => data.near_locked || sysId(s) !== sysId(p))
     .filter(s => showVisited.checked || !s.visited)
     .filter(s => showExplored.checked || s.status !== "explored")
+    .filter(s => !nearNoScans.checked || s.status === "unreported" || s.status === "no bodies")
+    .filter(s => selectedMass.has(massCode(s.name)))
     .filter(s => !oneJump.checked || !jr || s.distance <= jr);
   rows.sort(sortWith("near", sortKey("near") === "name"
     ? (a, b) => a.name.localeCompare(b.name, undefined, {numeric: true})
+    : sortKey("near") === "mass" ? (a, b) => massCode(a.name).localeCompare(massCode(b.name)) || a.distance - b.distance
     : sortKey("near") === "value" ? (a, b) => (b.value_max || 0) - (a.value_max || 0) || a.distance - b.distance
     : (a, b) => a.distance - b.distance));
+  nearbyVisibleNames = rows.map(s => s.name);
   // Fuel: the nearest scoopable star you can reach (visited or not) gets a tag when the tank is low.
   const fuel = data.fuel, lowFuel = fuel && fuel.live && fuel.pct != null && fuel.pct < 30;
   const scoopNext = lowFuel && data.systems.filter(s => sysId(s) !== sysId(p) && s.main_scoopable && (!jr || s.distance <= jr))
@@ -2774,7 +2831,7 @@ function render() {
   document.getElementById("subKnown").textContent = data.systems.length;
   document.getElementById("subUnvisited").textContent = unvisited;
   document.getElementById("subCut").innerHTML = data.sphere_cut != null
-    ? ` · <span class="warn" title="Spansh knows more systems in range than Outrider fetches; the list is complete only out to ${data.sphere_cut} ly. A smaller radius shows them all.">complete to ${data.sphere_cut} ly</span>` : "";
+    ? ` · <span class="warn" title="Spansh knows more systems in range than Outrider fetches; the list is complete only out to ${data.sphere_cut} ly. A smaller radius shows them all.">SYSTEM REQUEST LIMIT REACHED (complete to ${data.sphere_cut} ly)</span>` : "";
   const rs = document.getElementById("radiusSel"), choices = data.radius_choices || [data.radius];
   if (rs.dataset.opts !== choices.join(",")) {   // rebuilt only when the choices change, so an open list stays open
     rs.innerHTML = choices.map(r => `<option value="${r}">${r}</option>`).join(""); rs.dataset.opts = choices.join(",");
@@ -2840,11 +2897,12 @@ function render() {
       <td class="name" data-name="${esc(s.name)}" title="click to copy">${isPrev
         ? `<span class="prevmark" title="you just came from here">↩</span>` : ""}${nameWords(s.name)}${firstsIcon(s.firsts)}<div class="sf2 sub2">${status}</div></td>
       <td class="num dist"${far ? ` title="beyond your max jump range"` : ""}>${s.distance.toFixed(2)}</td>
+      <td>${massCode(s.name) === "other" ? "—" : massCode(s.name).toUpperCase()}</td>
       <td class="num hide-sm c2hide">${jumps == null ? "" : jumps === 1 ? "1" : `<span class="unk">${jumps}</span>`}</td>
       <td class="c2hide">${status}</td>
       <td>${star(s)}</td><td class="bodies" data-pop data-id="${esc(s.id)}">${bodies(s)}${nb ? `<div class="sf2 sub2 notable">${nb}</div>` : ""}</td>
       <td class="notable c2hide">${nb}</td><td class="num hide-sm" title="${valueTitle(s)}">${valueCell(s)}</td><td class="num hide-sm c2hide">${known}</td></tr>`;
-  }).join("") || `<tr><td colspan="10" class="unk">${emptyMessage(rows)}</td></tr>`;
+  }).join("") || `<tr><td colspan="11" class="unk">${emptyMessage(rows)}</td></tr>`;
   refocus("rows", fkRows);
   renderBoxelMode();
   document.getElementById("updateLine").hidden = !data.restart_needed;
@@ -2859,6 +2917,62 @@ function render() {
   // the strips drawn above may have grown the header past what app mode leaves room for (or shrunk it back)
   if (applyAppMode()) { renderSurface(); drawMap(); drawHwyMap(); }
 }
+// Native Nearby center lock. Do not use a second table or a second search engine.
+const nearLock = document.getElementById("nearLock");
+const nearLockRefresh = document.getElementById("nearLockRefresh");
+const nearLockStatus = document.getElementById("nearLockStatus");
+let nearLockPending = false;
+let nearLockNotice = "";
+let nearLockNoticeTimer = null;
+function setLockNotice(text) {
+  nearLockNotice = text;
+  clearTimeout(nearLockNoticeTimer);
+  nearLockNoticeTimer = setTimeout(() => { nearLockNotice = ""; renderNearLock(); }, 4000);
+  renderNearLock();
+}
+function renderNearLock() {
+  if (!data) return;
+  nearLock.checked = !!data.near_locked;
+  nearLock.disabled = nearLockPending;
+  nearLockRefresh.hidden = !data.near_locked;
+  nearLockRefresh.disabled = nearLockPending || String(data.status || "").startsWith("asking Spansh");
+  const anchor = data.near_anchor;
+  const name = anchor && anchor.name ? anchor.name : "";
+  // Reuse Nearby's delegated .copy[data-name] handler; never add a second clipboard action.
+  const centerName = name || (data.position && data.position.name) || "";
+  nearLockStatus.replaceChildren();
+  if (nearLockNotice) {
+    nearLockStatus.textContent = nearLockNotice;
+  } else if (centerName) {
+    const label = document.createElement("span");
+    label.textContent = data.near_locked ? "Locked: " : "Center: ";
+    const link = document.createElement("span");
+    link.className = "copy";
+    link.dataset.name = centerName;
+    link.title = "click to copy system name";
+    link.textContent = centerName;
+    nearLockStatus.append(label, link);
+  }
+}
+nearLock.addEventListener("change", async () => {
+  if (nearLockPending) return;
+  nearLockPending = true;
+  try {
+    const r = await apiJson("api/near-lock", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({locked: nearLock.checked})});
+    if (r.error) setLockNotice(r.error);
+  } catch (e) { setLockNotice("Couldn't change Nearby search center"); }
+  finally { nearLockPending = false; renderNearLock(); }
+});
+nearLockRefresh.addEventListener("click", async () => {
+  if (nearLockPending) return;
+  nearLockPending = true;
+  try {
+    const r = await apiJson("api/near-lock/refresh", {method: "POST"});
+    setLockNotice(r.error || "Refreshing locked area…");
+  } catch { setLockNotice("Refresh couldn't start"); }
+  finally { nearLockPending = false; renderNearLock(); }
+});
 // ---- boxel exploration (2026-10-11): Nearby's Standard / Boxel switch (one choice per browser, the Overview pane and
 // the Nearby tab alike). Boxel lists the boxel you are in, or one kept (📌, or picked below), by number: your visits
 // filled in with your scans, Spansh's known ones, the unknown ones to try; 🎯 / Target next by auto-target (the id64 is
